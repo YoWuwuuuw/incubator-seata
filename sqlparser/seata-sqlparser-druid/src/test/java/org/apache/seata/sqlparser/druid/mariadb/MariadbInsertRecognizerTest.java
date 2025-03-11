@@ -14,11 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.sqlparser.druid;
+package org.apache.seata.sqlparser.druid.mariadb;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import org.apache.seata.sqlparser.druid.AbstractRecognizerTest;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
@@ -27,16 +31,13 @@ import com.alibaba.druid.sql.dialect.mysql.ast.expr.MySqlOrderingExpr;
 
 import org.apache.seata.sqlparser.SQLParsingException;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.druid.mysql.MySQLInsertRecognizer;
 import org.apache.seata.sqlparser.util.JdbcConstants;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 
 /**
- * The type My sql insert recognizer test.
+ * The type Mariadb insert recognizer test.
  *
  */
-public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
+public class MariadbInsertRecognizerTest extends AbstractRecognizerTest {
 
     private final int pkIndex = 0;
 
@@ -50,13 +51,13 @@ public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
 
         SQLStatement statement = getSQLStatement(sql);
 
-        MySQLInsertRecognizer mySQLInsertRecognizer = new MySQLInsertRecognizer(sql, statement);
+        MariadbInsertRecognizer insertRecognizer = new MariadbInsertRecognizer(sql, statement);
 
-        Assertions.assertEquals(sql, mySQLInsertRecognizer.getOriginalSQL());
-        Assertions.assertEquals("t1", mySQLInsertRecognizer.getTableName());
-        Assertions.assertEquals(Collections.singletonList("name"), mySQLInsertRecognizer.getInsertColumns());
-        Assertions.assertEquals(1, mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
-        Assertions.assertEquals(Collections.singletonList("name1"), mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
+        Assertions.assertEquals(sql, insertRecognizer.getOriginalSQL());
+        Assertions.assertEquals("t1", insertRecognizer.getTableName());
+        Assertions.assertEquals(Collections.singletonList("name"), insertRecognizer.getInsertColumns());
+        Assertions.assertEquals(1, insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
+        Assertions.assertEquals(Collections.singletonList("name1"), insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
     }
 
     /**
@@ -69,13 +70,13 @@ public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
 
         SQLStatement statement = getSQLStatement(sql);
 
-        MySQLInsertRecognizer mySQLInsertRecognizer = new MySQLInsertRecognizer(sql, statement);
+        MariadbInsertRecognizer insertRecognizer = new MariadbInsertRecognizer(sql, statement);
 
-        Assertions.assertEquals(sql, mySQLInsertRecognizer.getOriginalSQL());
-        Assertions.assertEquals("t1", mySQLInsertRecognizer.getTableName());
-        Assertions.assertEquals(Arrays.asList("name1", "name2"), mySQLInsertRecognizer.getInsertColumns());
-        Assertions.assertEquals(1, mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
-        Assertions.assertEquals(Arrays.asList("name1", "name2"), mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
+        Assertions.assertEquals(sql, insertRecognizer.getOriginalSQL());
+        Assertions.assertEquals("t1", insertRecognizer.getTableName());
+        Assertions.assertEquals(Arrays.asList("name1", "name2"), insertRecognizer.getInsertColumns());
+        Assertions.assertEquals(1, insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
+        Assertions.assertEquals(Arrays.asList("name1", "name2"), insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
     }
 
     /**
@@ -88,32 +89,32 @@ public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
 
         SQLStatement statement = getSQLStatement(sql);
 
-        MySQLInsertRecognizer mySQLInsertRecognizer = new MySQLInsertRecognizer(sql, statement);
+        MariadbInsertRecognizer insertRecognizer = new MariadbInsertRecognizer(sql, statement);
 
-        Assertions.assertEquals(sql, mySQLInsertRecognizer.getOriginalSQL());
-        Assertions.assertEquals("t1", mySQLInsertRecognizer.getTableName());
-        Assertions.assertEquals(Arrays.asList("name1", "name2"), mySQLInsertRecognizer.getInsertColumns());
-        Assertions.assertEquals(3, mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
-        Assertions.assertEquals(Arrays.asList("name1", "name2"), mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
-        Assertions.assertEquals(Arrays.asList("name3", "name4"), mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(1));
-        Assertions.assertEquals(Arrays.asList("name5", "name6"), mySQLInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(2));
+        Assertions.assertEquals(sql, insertRecognizer.getOriginalSQL());
+        Assertions.assertEquals("t1", insertRecognizer.getTableName());
+        Assertions.assertEquals(Arrays.asList("name1", "name2"), insertRecognizer.getInsertColumns());
+        Assertions.assertEquals(3, insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).size());
+        Assertions.assertEquals(Arrays.asList("name1", "name2"), insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(0));
+        Assertions.assertEquals(Arrays.asList("name3", "name4"), insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(1));
+        Assertions.assertEquals(Arrays.asList("name5", "name6"), insertRecognizer.getInsertRows(Collections.singletonList(pkIndex)).get(2));
     }
 
     @Test
     public void testGetSqlType() {
         String sql = "insert into t(id) values (?)";
-        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
 
-        MySQLInsertRecognizer recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        MariadbInsertRecognizer recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getSQLType(), SQLType.INSERT);
     }
 
     @Test
     public void testGetTableAlias() {
         String sql = "insert into t(id) values (?)";
-        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
 
-        MySQLInsertRecognizer recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        MariadbInsertRecognizer recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
     }
 
@@ -122,28 +123,28 @@ public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
 
         //test for no column
         String sql = "insert into t values (?)";
-        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
 
-        MySQLInsertRecognizer recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        MariadbInsertRecognizer recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         List<String> insertColumns = recognizer.getInsertColumns();
         Assertions.assertNull(insertColumns);
 
         //test for normal
         sql = "insert into t(a) values (?)";
-        asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
 
-        recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         insertColumns = recognizer.getInsertColumns();
         Assertions.assertEquals(1, insertColumns.size());
 
         //test for exception
         Assertions.assertThrows(SQLParsingException.class, () -> {
             String s = "insert into t(a) values (?)";
-            List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, JdbcConstants.MYSQL);
+            List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, JdbcConstants.MARIADB);
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
             sqlInsertStatement.getColumns().add(new MySqlOrderingExpr());
 
-            MySQLInsertRecognizer oracleInsertRecognizer = new MySQLInsertRecognizer(s, sqlInsertStatement);
+            MariadbInsertRecognizer oracleInsertRecognizer = new MariadbInsertRecognizer(s, sqlInsertStatement);
             oracleInsertRecognizer.getInsertColumns();
         });
     }
@@ -152,37 +153,38 @@ public class MySQLInsertRecognizerTest extends AbstractRecognizerTest {
     public void testGetInsertRows() {
         //test for null value
         String sql = "insert into t(id, no, name, age, time) values (1, null, 'a', ?, now())";
-        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
 
-        MySQLInsertRecognizer recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        MariadbInsertRecognizer recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         List<List<Object>> insertRows = recognizer.getInsertRows(Collections.singletonList(pkIndex));
         Assertions.assertEquals(1, insertRows.size());
 
         //test for exception
         Assertions.assertThrows(SQLParsingException.class, () -> {
             String s = "insert into t(a) values (?)";
-            List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, JdbcConstants.MYSQL);
+            List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, JdbcConstants.MARIADB);
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
             sqlInsertStatement.getValuesList().get(0).getValues().set(pkIndex, new MySqlOrderingExpr());
 
-            MySQLInsertRecognizer mysqlInsertRecognizer = new MySQLInsertRecognizer(s, sqlInsertStatement);
-            mysqlInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
+            MariadbInsertRecognizer insertRecognizer = new MariadbInsertRecognizer(s, sqlInsertStatement);
+            insertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
         });
     }
 
     @Override
     public String getDbType() {
-        return JdbcConstants.MYSQL;
+        return JdbcConstants.MARIADB;
     }
 
     @Test
     public void testGetInsertColumns_2() {
         String sql = "insert into t(`id`, `no`, `name`, `age`) values (1, 'no001', 'aaa', '20')";
-        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
-        MySQLInsertRecognizer recognizer = new MySQLInsertRecognizer(sql, asts.get(0));
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, JdbcConstants.MARIADB);
+        MariadbInsertRecognizer recognizer = new MariadbInsertRecognizer(sql, asts.get(0));
         List<String> insertColumns = recognizer.getInsertColumns();
         for (String insertColumn : insertColumns) {
             Assertions.assertTrue(insertColumn.contains("`"));
         }
     }
+
 }

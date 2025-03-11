@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.rm.datasource.sql.druid.dm;
+package org.apache.seata.sqlparser.druid.oracle;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
@@ -22,7 +22,7 @@ import com.alibaba.druid.sql.ast.statement.SQLDeleteStatement;
 import com.alibaba.druid.sql.dialect.oracle.ast.expr.OracleArgumentExpr;
 import org.apache.seata.sqlparser.ParametersHolder;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.druid.dm.DmDeleteRecognizer;
+import org.apache.seata.sqlparser.druid.oracle.OracleDeleteRecognizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,16 +31,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 
-public class DmDeleteRecognizerTest {
+public class OracleDeleteRecognizerTest {
 
-    private static final String DB_TYPE = "dm";
+    private static final String DB_TYPE = "oracle";
 
     @Test
     public void testGetSqlType() {
         String sql = "delete from t where id = ?";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        DmDeleteRecognizer recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        OracleDeleteRecognizer recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getSQLType(), SQLType.DELETE);
     }
 
@@ -49,7 +49,7 @@ public class DmDeleteRecognizerTest {
         String sql = "delete from t where id = ?";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        DmDeleteRecognizer recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        OracleDeleteRecognizer recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
     }
 
@@ -58,7 +58,7 @@ public class DmDeleteRecognizerTest {
         String sql = "delete from t where id = ?";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        DmDeleteRecognizer recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        OracleDeleteRecognizer recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getTableName(), "t");
     }
 
@@ -67,10 +67,10 @@ public class DmDeleteRecognizerTest {
         String sql = "delete from t";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        DmDeleteRecognizer recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        OracleDeleteRecognizer recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         String whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
             @Override
-            public Map<Integer, ArrayList<Object>> getParameters() {
+            public Map<Integer,ArrayList<Object>> getParameters() {
                 return null;
             }
         }, new ArrayList<>());
@@ -81,10 +81,10 @@ public class DmDeleteRecognizerTest {
         sql = "delete from t where id = ?";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
             @Override
-            public Map<Integer, ArrayList<Object>> getParameters() {
+            public Map<Integer,ArrayList<Object>> getParameters() {
                 ArrayList<Object> idParam = new ArrayList<>();
                 idParam.add(1);
                 Map result = new HashMap();
@@ -98,10 +98,10 @@ public class DmDeleteRecognizerTest {
 
         sql = "delete from t where id in (?)";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
             @Override
-            public Map<Integer, ArrayList<Object>> getParameters() {
+            public Map<Integer,ArrayList<Object>> getParameters() {
                 ArrayList<Object> idParam = new ArrayList<>();
                 idParam.add(1);
                 Map result = new HashMap();
@@ -115,10 +115,10 @@ public class DmDeleteRecognizerTest {
 
         sql = "delete from t where id between ? and ?";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
             @Override
-            public Map<Integer, ArrayList<Object>> getParameters() {
+            public Map<Integer,ArrayList<Object>> getParameters() {
                 ArrayList<Object> idParam = new ArrayList<>();
                 idParam.add(1);
                 ArrayList<Object> idParam2 = new ArrayList<>();
@@ -138,9 +138,9 @@ public class DmDeleteRecognizerTest {
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
             SQLDeleteStatement deleteAst = (SQLDeleteStatement) sqlStatements.get(0);
             deleteAst.setWhere(new OracleArgumentExpr());
-            new DmDeleteRecognizer(s, deleteAst).getWhereCondition(new ParametersHolder() {
+            new OracleDeleteRecognizer(s, deleteAst).getWhereCondition(new ParametersHolder() {
                 @Override
-                public Map<Integer, ArrayList<Object>> getParameters() {
+                public Map<Integer,ArrayList<Object>> getParameters() {
                     return new HashMap<>();
                 }
             }, new ArrayList<>());
@@ -153,7 +153,7 @@ public class DmDeleteRecognizerTest {
         String sql = "delete from t";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        DmDeleteRecognizer recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        OracleDeleteRecognizer recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         String whereCondition = recognizer.getWhereCondition();
 
         //test for no condition
@@ -162,7 +162,7 @@ public class DmDeleteRecognizerTest {
         sql = "delete from t where id = 1";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition();
 
         //test for normal sql
@@ -170,7 +170,7 @@ public class DmDeleteRecognizerTest {
 
         sql = "delete from t where id in (1)";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition();
 
         //test for sql with in
@@ -178,7 +178,7 @@ public class DmDeleteRecognizerTest {
 
         sql = "delete from t where id between 1 and 2";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
-        recognizer = new DmDeleteRecognizer(sql, asts.get(0));
+        recognizer = new OracleDeleteRecognizer(sql, asts.get(0));
         whereCondition = recognizer.getWhereCondition();
         //test for sql with in
         Assertions.assertEquals("id BETWEEN 1 AND 2", whereCondition);
@@ -189,7 +189,7 @@ public class DmDeleteRecognizerTest {
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
             SQLDeleteStatement deleteAst = (SQLDeleteStatement) sqlStatements.get(0);
             deleteAst.setWhere(new OracleArgumentExpr());
-            new DmDeleteRecognizer(s, deleteAst).getWhereCondition();
+            new OracleDeleteRecognizer(s, deleteAst).getWhereCondition();
         });
     }
 }

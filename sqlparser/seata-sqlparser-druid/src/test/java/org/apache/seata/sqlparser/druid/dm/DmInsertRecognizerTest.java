@@ -14,32 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.rm.datasource.sql.druid.oracle;
+package org.apache.seata.sqlparser.druid.dm;
 
-import java.util.Collections;
-import java.util.List;
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.dialect.oracle.ast.expr.OracleBinaryDoubleExpr;
 import org.apache.seata.sqlparser.SQLParsingException;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.druid.oracle.OracleInsertRecognizer;
+import org.apache.seata.sqlparser.druid.dm.DmInsertRecognizer;
 import org.apache.seata.sqlparser.struct.NotPlaceholderExpr;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 
-public class OracleInsertRecognizerTest {
+public class DmInsertRecognizerTest {
 
-    private static final String DB_TYPE = "oracle";
+    private static final String DB_TYPE = "dm";
 
     @Test
     public void testGetSqlType() {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OracleInsertRecognizer recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        DmInsertRecognizer recognizer = new DmInsertRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getSQLType(), SQLType.INSERT);
     }
 
@@ -48,7 +48,7 @@ public class OracleInsertRecognizerTest {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OracleInsertRecognizer recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        DmInsertRecognizer recognizer = new DmInsertRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
     }
 
@@ -57,7 +57,7 @@ public class OracleInsertRecognizerTest {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OracleInsertRecognizer recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        DmInsertRecognizer recognizer = new DmInsertRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getTableName(), "t");
     }
 
@@ -68,7 +68,7 @@ public class OracleInsertRecognizerTest {
         String sql = "insert into t values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OracleInsertRecognizer recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        DmInsertRecognizer recognizer = new DmInsertRecognizer(sql, asts.get(0));
         List<String> insertColumns = recognizer.getInsertColumns();
         Assertions.assertNull(insertColumns);
 
@@ -76,7 +76,7 @@ public class OracleInsertRecognizerTest {
         sql = "insert into t(a) values (?)";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        recognizer = new DmInsertRecognizer(sql, asts.get(0));
         insertColumns = recognizer.getInsertColumns();
         Assertions.assertEquals(1, insertColumns.size());
 
@@ -84,11 +84,11 @@ public class OracleInsertRecognizerTest {
         Assertions.assertThrows(SQLParsingException.class, () -> {
             String s = "insert into t(a) values (?)";
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
-            SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
+            SQLInsertStatement sqlInsertStatement = (SQLInsertStatement) sqlStatements.get(0);
             sqlInsertStatement.getColumns().add(new OracleBinaryDoubleExpr());
 
-            OracleInsertRecognizer oracleInsertRecognizer = new OracleInsertRecognizer(s, sqlInsertStatement);
-            oracleInsertRecognizer.getInsertColumns();
+            DmInsertRecognizer dmInsertRecognizer = new DmInsertRecognizer(s, sqlInsertStatement);
+            dmInsertRecognizer.getInsertColumns();
         });
     }
 
@@ -99,7 +99,7 @@ public class OracleInsertRecognizerTest {
         String sql = "insert into t(id, no, name, age, time) values (id_seq.nextval, null, 'a', ?, now())";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OracleInsertRecognizer recognizer = new OracleInsertRecognizer(sql, asts.get(0));
+        DmInsertRecognizer recognizer = new DmInsertRecognizer(sql, asts.get(0));
         List<List<Object>> insertRows = recognizer.getInsertRows(Collections.singletonList(pkIndex));
         Assertions.assertEquals(1, insertRows.size());
 
@@ -107,11 +107,11 @@ public class OracleInsertRecognizerTest {
         Assertions.assertThrows(SQLParsingException.class, () -> {
             String s = "insert into t(a) values (?)";
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
-            SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
+            SQLInsertStatement sqlInsertStatement = (SQLInsertStatement) sqlStatements.get(0);
             sqlInsertStatement.getValuesList().get(0).getValues().set(pkIndex, new OracleBinaryDoubleExpr());
 
-            OracleInsertRecognizer oracleInsertRecognizer = new OracleInsertRecognizer(s, sqlInsertStatement);
-            oracleInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
+            DmInsertRecognizer dmInsertRecognizer = new DmInsertRecognizer(s, sqlInsertStatement);
+            dmInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
         });
     }
 
@@ -119,9 +119,10 @@ public class OracleInsertRecognizerTest {
     public void testNotPlaceholder_giveValidPkIndex() {
         String sql = "insert into test(create_time) values(sysdate)";
         List<SQLStatement> sqlStatements = SQLUtils.parseStatements(sql, DB_TYPE);
+        ;
 
-        OracleInsertRecognizer oracle = new OracleInsertRecognizer(sql, sqlStatements.get(0));
-        List<List<Object>> insertRows = oracle.getInsertRows(Collections.singletonList(-1));
+        DmInsertRecognizer dm = new DmInsertRecognizer(sql, sqlStatements.get(0));
+        List<List<Object>> insertRows = dm.getInsertRows(Collections.singletonList(-1));
         Assertions.assertTrue(insertRows.get(0).get(0) instanceof NotPlaceholderExpr);
     }
 }

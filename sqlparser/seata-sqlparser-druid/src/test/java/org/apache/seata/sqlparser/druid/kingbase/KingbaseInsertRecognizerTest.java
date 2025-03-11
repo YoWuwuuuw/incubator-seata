@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.rm.datasource.sql.druid.oscar;
+package org.apache.seata.sqlparser.druid.kingbase;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
@@ -22,7 +22,7 @@ import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.dialect.oracle.ast.expr.OracleBinaryDoubleExpr;
 import org.apache.seata.sqlparser.SQLParsingException;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.druid.oscar.OscarInsertRecognizer;
+import org.apache.seata.sqlparser.druid.kingbase.KingbaseInsertRecognizer;
 import org.apache.seata.sqlparser.struct.NotPlaceholderExpr;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -30,19 +30,17 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * The type Oscar insert recognizer test.
- */
-public class OscarInsertRecognizerTest {
 
-    private static final String DB_TYPE = "oscar";
+public class KingbaseInsertRecognizerTest {
+
+    private static final String DB_TYPE = "kingbase";
 
     @Test
     public void testGetSqlType() {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        KingbaseInsertRecognizer recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getSQLType(), SQLType.INSERT);
     }
 
@@ -51,7 +49,7 @@ public class OscarInsertRecognizerTest {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        KingbaseInsertRecognizer recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
     }
 
@@ -60,7 +58,7 @@ public class OscarInsertRecognizerTest {
         String sql = "insert into t(id) values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        KingbaseInsertRecognizer recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getTableName(), "t");
     }
 
@@ -71,7 +69,7 @@ public class OscarInsertRecognizerTest {
         String sql = "insert into t values (?)";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        KingbaseInsertRecognizer recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         List<String> insertColumns = recognizer.getInsertColumns();
         Assertions.assertNull(insertColumns);
 
@@ -79,7 +77,7 @@ public class OscarInsertRecognizerTest {
         sql = "insert into t(a) values (?)";
         asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         insertColumns = recognizer.getInsertColumns();
         Assertions.assertEquals(1, insertColumns.size());
 
@@ -90,8 +88,8 @@ public class OscarInsertRecognizerTest {
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
             sqlInsertStatement.getColumns().add(new OracleBinaryDoubleExpr());
 
-            OscarInsertRecognizer oscarInsertRecognizer = new OscarInsertRecognizer(s, sqlInsertStatement);
-            oscarInsertRecognizer.getInsertColumns();
+            KingbaseInsertRecognizer kingbaseInsertRecognizer = new KingbaseInsertRecognizer(s, sqlInsertStatement);
+            kingbaseInsertRecognizer.getInsertColumns();
         });
     }
 
@@ -102,7 +100,7 @@ public class OscarInsertRecognizerTest {
         String sql = "insert into t(id, no, name, age, time) values (id_seq.nextval, null, 'a', ?, now())";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer recognizer = new OscarInsertRecognizer(sql, asts.get(0));
+        KingbaseInsertRecognizer recognizer = new KingbaseInsertRecognizer(sql, asts.get(0));
         List<List<Object>> insertRows = recognizer.getInsertRows(Collections.singletonList(pkIndex));
         Assertions.assertEquals(1, insertRows.size());
 
@@ -113,8 +111,8 @@ public class OscarInsertRecognizerTest {
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement)sqlStatements.get(0);
             sqlInsertStatement.getValuesList().get(0).getValues().set(pkIndex, new OracleBinaryDoubleExpr());
 
-            OscarInsertRecognizer oscarInsertRecognizer = new OscarInsertRecognizer(s, sqlInsertStatement);
-            oscarInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
+            KingbaseInsertRecognizer kingbaseInsertRecognizer = new KingbaseInsertRecognizer(s, sqlInsertStatement);
+            kingbaseInsertRecognizer.getInsertRows(Collections.singletonList(pkIndex));
         });
     }
 
@@ -123,8 +121,8 @@ public class OscarInsertRecognizerTest {
         String sql = "insert into test(create_time) values(sysdate)";
         List<SQLStatement> sqlStatements = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        OscarInsertRecognizer oscar = new OscarInsertRecognizer(sql, sqlStatements.get(0));
-        List<List<Object>> insertRows = oscar.getInsertRows(Collections.singletonList(-1));
+        KingbaseInsertRecognizer kingbase = new KingbaseInsertRecognizer(sql, sqlStatements.get(0));
+        List<List<Object>> insertRows = kingbase.getInsertRows(Collections.singletonList(-1));
         Assertions.assertTrue(insertRows.get(0).get(0) instanceof NotPlaceholderExpr);
     }
 }

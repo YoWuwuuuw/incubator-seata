@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.rm.datasource.sql.druid.kingbase;
+package org.apache.seata.sqlparser.druid.oracle;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
@@ -22,7 +22,7 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import org.apache.seata.sqlparser.ParametersHolder;
 import org.apache.seata.sqlparser.SQLParsingException;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.druid.kingbase.KingbaseSelectForUpdateRecognizer;
+import org.apache.seata.sqlparser.druid.oracle.OracleSelectForUpdateRecognizer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -31,16 +31,16 @@ import java.util.List;
 import java.util.Map;
 
 
-public class KingbaseSelectForUpdateRecognizerTest {
+public class OracleSelectForUpdateRecognizerTest {
 
-    private static final String DB_TYPE = "kingbase";
+    private static final String DB_TYPE = "oracle";
 
     @Test
     public void testGetSqlType() {
         String sql = "select * from t where id = ? for update";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        KingbaseSelectForUpdateRecognizer recognizer = new KingbaseSelectForUpdateRecognizer(sql, asts.get(0));
+        OracleSelectForUpdateRecognizer recognizer = new OracleSelectForUpdateRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getSQLType(), SQLType.SELECT_FOR_UPDATE);
     }
 
@@ -50,7 +50,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
         String sql = "select * from t for update";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        KingbaseSelectForUpdateRecognizer recognizer = new KingbaseSelectForUpdateRecognizer(sql, asts.get(0));
+        OracleSelectForUpdateRecognizer recognizer = new OracleSelectForUpdateRecognizer(sql, asts.get(0));
         String whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
             @Override
             public Map<Integer,ArrayList<Object>> getParameters() {
@@ -65,7 +65,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
         String sql = "select * from t for update";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        KingbaseSelectForUpdateRecognizer recognizer = new KingbaseSelectForUpdateRecognizer(sql, asts.get(0));
+        OracleSelectForUpdateRecognizer recognizer = new OracleSelectForUpdateRecognizer(sql, asts.get(0));
         String whereCondition = recognizer.getWhereCondition();
 
         Assertions.assertEquals("", whereCondition);
@@ -76,7 +76,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
             SQLSelectStatement selectAst = (SQLSelectStatement) sqlStatements.get(0);
             selectAst.setSelect(null);
-            new KingbaseSelectForUpdateRecognizer(s, selectAst).getWhereCondition();
+            new OracleSelectForUpdateRecognizer(s, selectAst).getWhereCondition();
         });
 
         //test for query was null
@@ -85,7 +85,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(s, DB_TYPE);
             SQLSelectStatement selectAst = (SQLSelectStatement) sqlStatements.get(0);
             selectAst.getSelect().setQuery(null);
-            new KingbaseSelectForUpdateRecognizer(s, selectAst).getWhereCondition();
+            new OracleSelectForUpdateRecognizer(s, selectAst).getWhereCondition();
         });
     }
 
@@ -94,7 +94,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
         String sql = "select * from t where id = ? for update";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        KingbaseSelectForUpdateRecognizer recognizer = new KingbaseSelectForUpdateRecognizer(sql, asts.get(0));
+        OracleSelectForUpdateRecognizer recognizer = new OracleSelectForUpdateRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
     }
 
@@ -103,7 +103,7 @@ public class KingbaseSelectForUpdateRecognizerTest {
         String sql = "select * from t where id = ? for update";
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
 
-        KingbaseSelectForUpdateRecognizer recognizer = new KingbaseSelectForUpdateRecognizer(sql, asts.get(0));
+        OracleSelectForUpdateRecognizer recognizer = new OracleSelectForUpdateRecognizer(sql, asts.get(0));
         Assertions.assertEquals(recognizer.getTableName(), "t");
     }
 }
