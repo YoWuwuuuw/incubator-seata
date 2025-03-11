@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.rm.datasource.sql.druid.postgresql;
+package org.apache.seata.sqlparser.druid.postgresql;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,12 +25,9 @@ import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.expr.SQLBetweenExpr;
 import com.alibaba.druid.sql.ast.statement.SQLUpdateSetItem;
 import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
-import org.apache.seata.rm.datasource.sql.SQLVisitorFactory;
 import org.apache.seata.sqlparser.ParametersHolder;
 import org.apache.seata.sqlparser.SQLParsingException;
 import org.apache.seata.sqlparser.SQLType;
-import org.apache.seata.sqlparser.SQLUpdateRecognizer;
-import org.apache.seata.sqlparser.druid.postgresql.PostgresqlUpdateRecognizer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -43,22 +40,27 @@ public class PostgresqlUpdateRecognizerTest {
     public void testGetSqlType() {
         String sql = "update t set n = ?";
 
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        Assertions.assertEquals(recognizer.getSQLType(), SQLType.UPDATE);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        Assertions.assertEquals(postgresqlUpdateRecognizer.getSQLType(), SQLType.UPDATE);
     }
 
     @Test
     public void testGetUpdateColumns() {
         // test with normal
         String sql = "update t set a = ?, b = ?, c = ?";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        List<String> updateColumns = recognizer.getUpdateColumns();
+//        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        List<String> updateColumns = postgresqlUpdateRecognizer.getUpdateColumns();
         Assertions.assertEquals(updateColumns.size(), 3);
 
         // test with alias
         sql = "update t set a.a = ?, a.b = ?, a.c = ?";
-        recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        updateColumns = recognizer.getUpdateColumns();
+//        recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
+        asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        updateColumns = postgresqlUpdateRecognizer.getUpdateColumns();
         Assertions.assertEquals(updateColumns.size(), 3);
 
         //test with error
@@ -70,8 +72,8 @@ public class PostgresqlUpdateRecognizerTest {
             for (SQLUpdateSetItem updateSetItem : updateSetItems) {
                 updateSetItem.setColumn(new SQLBetweenExpr());
             }
-            PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(s, sqlUpdateStatement);
-            postgresqlUpdateRecognizer.getUpdateColumns();
+            PostgresqlUpdateRecognizer postgresqlUpdateRecognizer1 = new PostgresqlUpdateRecognizer(s, sqlUpdateStatement);
+            postgresqlUpdateRecognizer1.getUpdateColumns();
         });
     }
 
@@ -79,14 +81,16 @@ public class PostgresqlUpdateRecognizerTest {
     public void testGetUpdateValues() {
         // test with normal
         String sql = "update t set a = ?, b = ?, c = ?";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        List<Object> updateValues = recognizer.getUpdateValues();
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        List<Object> updateValues = postgresqlUpdateRecognizer.getUpdateValues();
         Assertions.assertEquals(updateValues.size(), 3);
 
         // test with values
         sql = "update t set a = 1, b = 2, c = 3";
-        recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        updateValues = recognizer.getUpdateValues();
+        asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        updateValues = postgresqlUpdateRecognizer.getUpdateValues();
         Assertions.assertEquals(updateValues.size(), 3);
 
         // test with error
@@ -98,16 +102,17 @@ public class PostgresqlUpdateRecognizerTest {
             for (SQLUpdateSetItem updateSetItem : updateSetItems) {
                 updateSetItem.setValue(new SQLBetweenExpr());
             }
-            PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(s, sqlUpdateStatement);
-            postgresqlUpdateRecognizer.getUpdateValues();
+            PostgresqlUpdateRecognizer postgresqlUpdateRecognizer1 = new PostgresqlUpdateRecognizer(s, sqlUpdateStatement);
+            postgresqlUpdateRecognizer1.getUpdateValues();
         });
     }
 
     @Test
     public void testGetWhereCondition_0() {
         String sql = "update t set a = 1";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        String whereCondition = recognizer.getWhereCondition(new ParametersHolder() {
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        String whereCondition = postgresqlUpdateRecognizer.getWhereCondition(new ParametersHolder() {
             @Override
             public Map<Integer, ArrayList<Object>> getParameters() {
                 return null;
@@ -121,8 +126,9 @@ public class PostgresqlUpdateRecognizerTest {
     public void testGetWhereCondition_1() {
 
         String sql = "update t set a = 1";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        String whereCondition = recognizer.getWhereCondition();
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        String whereCondition = postgresqlUpdateRecognizer.getWhereCondition();
 
         Assertions.assertEquals("", whereCondition);
     }
@@ -130,15 +136,17 @@ public class PostgresqlUpdateRecognizerTest {
     @Test
     public void testGetTableAlias() {
         String sql = "update t set a = ?, b = ?, c = ?";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        Assertions.assertNull(recognizer.getTableAlias());
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        Assertions.assertNull(postgresqlUpdateRecognizer.getTableAlias());
     }
 
     @Test
     public void testGetTableName() {
         String sql = "update t set a = ?, b = ?, c = ?";
-        SQLUpdateRecognizer recognizer = (SQLUpdateRecognizer) SQLVisitorFactory.get(sql, DB_TYPE).get(0);
-        Assertions.assertEquals(recognizer.getTableName(), "t");
+        List<SQLStatement> asts = SQLUtils.parseStatements(sql, DB_TYPE);
+        PostgresqlUpdateRecognizer postgresqlUpdateRecognizer = new PostgresqlUpdateRecognizer(sql, asts.get(0));
+        Assertions.assertEquals(postgresqlUpdateRecognizer.getTableName(), "t");
     }
 
 }
