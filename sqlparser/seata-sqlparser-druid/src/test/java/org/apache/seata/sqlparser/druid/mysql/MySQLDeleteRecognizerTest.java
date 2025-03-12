@@ -24,6 +24,7 @@ import org.apache.seata.sqlparser.ParametersHolder;
 import org.apache.seata.sqlparser.SQLType;
 import org.apache.seata.sqlparser.druid.AbstractRecognizerTest;
 import org.apache.seata.sqlparser.druid.BaseRecognizer;
+import org.apache.seata.sqlparser.druid.sqlserver.SqlServerDeleteRecognizer;
 import org.apache.seata.sqlparser.util.JdbcConstants;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -196,6 +197,12 @@ public class MySQLDeleteRecognizerTest extends AbstractRecognizerTest {
 
         MySQLDeleteRecognizer recognizer = new MySQLDeleteRecognizer(sql, asts.get(0));
         Assertions.assertNull(recognizer.getTableAlias());
+
+        sql = "DELETE t1 FROM t t1 WHERE t1.id = ?";
+        asts = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+
+        recognizer = new MySQLDeleteRecognizer(sql, asts.get(0));
+        Assertions.assertEquals("t1", recognizer.getTableAlias());
     }
 
     @Test
