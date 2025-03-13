@@ -18,7 +18,11 @@ package org.apache.seata.sqlparser.druid;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.statement.*;
+import com.alibaba.druid.sql.ast.statement.SQLDeleteStatement;
+import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
+import com.alibaba.druid.sql.ast.statement.SQLReplaceStatement;
+import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.sqlparser.SQLRecognizer;
@@ -58,15 +62,10 @@ class DruidSQLRecognizerFactoryImpl implements SQLRecognizerFactory {
             }
 
             // When recognizer is null, it indicates that recognizerHolder cannot allocate unsupported syntax, like merge and replace
-            if (recognizer == null) {
-                if (ast instanceof SQLReplaceStatement) {
-                    //just like:replace into t (id,dr) values (1,'2'), (2,'3')
-                    throw new NotSupportYetException("not support the sql syntax with ReplaceStatement:" + ast +
-                            "\nplease see the doc about SQL restrictions https://seata.apache.org/zh-cn/docs/user/sqlreference/dml");
-                } else {
-                    throw new NotSupportYetException("Unsupported SQL syntax: " + ast.getClass().getName() +
-                            "\nplease see the doc about SQL restrictions https://seata.apache.org/zh-cn/docs/user/sqlreference/dml");
-                }
+            if (ast instanceof SQLReplaceStatement) {
+                //just like:replace into t (id,dr) values (1,'2'), (2,'3')
+                throw new NotSupportYetException("not support the sql syntax with ReplaceStatement:" + ast +
+                        "\nplease see the doc about SQL restrictions https://seata.apache.org/zh-cn/docs/user/sqlreference/dml");
             }
 
             if (recognizer != null && recognizer.isSqlSyntaxSupports()) {
