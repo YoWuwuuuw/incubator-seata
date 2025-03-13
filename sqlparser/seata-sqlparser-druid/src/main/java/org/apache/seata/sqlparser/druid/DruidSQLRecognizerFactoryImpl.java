@@ -35,7 +35,6 @@ class DruidSQLRecognizerFactoryImpl implements SQLRecognizerFactory {
     @Override
     public List<SQLRecognizer> create(String sql, String dbType) {
         List<SQLStatement> asts = SQLUtils.parseStatements(sql, DruidDbTypeAdapter.getAdaptiveDbType(dbType));
-        System.out.println(asts.get(0).getClass().getName());
         if (CollectionUtils.isEmpty(asts)) {
             throw new UnsupportedOperationException("Unsupported SQL: " + sql);
         }
@@ -51,6 +50,7 @@ class DruidSQLRecognizerFactoryImpl implements SQLRecognizerFactory {
             if (ast instanceof SQLInsertStatement) {
                 recognizer = recognizerHolder.getInsertRecognizer(sql, ast);
             } else if (ast instanceof SQLUpdateStatement) {
+                System.out.println("SQLStatement: " + ast.getClass().getName());
                 recognizer = recognizerHolder.getUpdateRecognizer(sql, ast);
             } else if (ast instanceof SQLDeleteStatement) {
                 recognizer = recognizerHolder.getDeleteRecognizer(sql, ast);

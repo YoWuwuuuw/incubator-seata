@@ -128,7 +128,7 @@ public abstract class BaseKingbaseRecognizer extends BaseRecognizer {
             }
 
             @Override
-            public boolean visit(OracleUpdateStatement x) {
+            public boolean visit(SQLUpdateStatement x) {
                 if (x.getTableSource() instanceof OracleSelectSubqueryTableSource) {
                     //just like: "update (select a.id,a.name from a inner join b on a.id = b.id) t set t.name = 'xxx'"
                     throw new NotSupportYetException("not support the sql syntax with join table:" + x
