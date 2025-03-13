@@ -50,7 +50,6 @@ class DruidSQLRecognizerFactoryImpl implements SQLRecognizerFactory {
             if (ast instanceof SQLInsertStatement) {
                 recognizer = recognizerHolder.getInsertRecognizer(sql, ast);
             } else if (ast instanceof SQLUpdateStatement) {
-                System.out.println("SQLStatement: " + ast.getClass().getName());
                 recognizer = recognizerHolder.getUpdateRecognizer(sql, ast);
             } else if (ast instanceof SQLDeleteStatement) {
                 recognizer = recognizerHolder.getDeleteRecognizer(sql, ast);

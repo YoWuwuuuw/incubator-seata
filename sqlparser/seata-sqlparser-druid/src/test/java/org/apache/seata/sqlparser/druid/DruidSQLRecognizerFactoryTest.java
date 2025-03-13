@@ -159,11 +159,11 @@ public class DruidSQLRecognizerFactoryTest {
         Assertions.assertThrows(NotSupportYetException.class, () -> recognizerFactory.create(sql3, JdbcConstants.POLARDBX));
 
         // When dbtype are DM and SQLSERVER, druid cannot parse
-        try {
-            recognizerFactory.create(sql3, JdbcConstants.DM);
-        } catch (Exception e) {
-            //e.printStackTrace();
-        }
+//        try {
+//            recognizerFactory.create(sql3, JdbcConstants.DM);
+//        } catch (Exception e) {
+//            //e.printStackTrace();
+//        }
 
         // druid cannot parse the sql syntax merge into
         String sql4 = "MERGE INTO target_table\n" +
@@ -172,11 +172,11 @@ public class DruidSQLRecognizerFactoryTest {
                 "WHEN NOT MATCHED THEN\n" +
                 "    INSERT (id, name) VALUES (source_table.id, source_table.name);";
 
-        try {
-            recognizerFactory.create(sql4, JdbcConstants.MYSQL);
-        } catch (Exception e) {
-            //e.printStackTrace();
-        }
+//        try {
+//            recognizerFactory.create(sql4, JdbcConstants.MYSQL);
+//        } catch (Exception e) {
+//            //e.printStackTrace();
+//        }
 
         String sql5 = "insert into a select * from b";
         Assertions.assertThrows(NotSupportYetException.class, () -> recognizerFactory.create(sql5, JdbcConstants.MYSQL));
