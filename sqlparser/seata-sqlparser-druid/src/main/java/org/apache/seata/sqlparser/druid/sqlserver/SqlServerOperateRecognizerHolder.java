@@ -61,25 +61,26 @@ public class SqlServerOperateRecognizerHolder implements SQLOperateRecognizerHol
 
         if (tableSource instanceof SQLSubqueryTableSource) {
             return new SqlServerSelectForUpdateRecognizer(sql, ast);
-        } else {
-            List<SQLHint> hints = tableSource.getHints();
-            if (CollectionUtils.isNotEmpty(hints)) {
-                List<String> hintsTexts = hints
-                        .stream()
-                        .map(hint -> {
-                            if (hint instanceof SQLExprHint) {
-                                SQLExpr expr = ((SQLExprHint) hint).getExpr();
-                                return expr instanceof SQLIdentifierExpr ? ((SQLIdentifierExpr) expr).getName() : "";
-                            } else if (hint instanceof SQLCommentHint) {
-                                return ((SQLCommentHint) hint).getText();
-                            }
-                            return "";
-                        }).collect(Collectors.toList());
-                if (hintsTexts.contains("UPDLOCK")) {
-                    return new SqlServerSelectForUpdateRecognizer(sql, ast);
-                }
-            }
-            return null;
         }
+
+        List<SQLHint> hints = tableSource.getHints();
+        if (CollectionUtils.isNotEmpty(hints)) {
+            List<String> hintsTexts = hints
+                    .stream()
+                    .map(hint -> {
+                        if (hint instanceof SQLExprHint) {
+                            SQLExpr expr = ((SQLExprHint) hint).getExpr();
+                            return expr instanceof SQLIdentifierExpr ? ((SQLIdentifierExpr) expr).getName() : "";
+                        } else if (hint instanceof SQLCommentHint) {
+                            return ((SQLCommentHint) hint).getText();
+                        }
+                        return "";
+                    }).collect(Collectors.toList());
+            if (hintsTexts.contains("UPDLOCK")) {
+                return new SqlServerSelectForUpdateRecognizer(sql, ast);
+            }
+        }
+
+        return null;
     }
 }
