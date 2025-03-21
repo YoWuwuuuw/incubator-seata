@@ -33,6 +33,7 @@ import static org.apache.seata.common.DefaultValues.VIRTUAL_NODES_DEFAULT;
 /**
  * The type consistent hash load balance.
  */
+@LoadBalanceMode(LoadBalanceModeConstants.ORIGINAL_MODE)
 @LoadLevel(name = LoadBalanceFactory.CONSISTENT_HASH_LOAD_BALANCE)
 public class ConsistentHashLoadBalance implements LoadBalance {
 

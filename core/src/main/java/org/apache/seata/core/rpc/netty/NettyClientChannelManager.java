@@ -40,6 +40,8 @@ import org.apache.seata.discovery.registry.FileRegistryServiceImpl;
 import org.apache.seata.discovery.registry.RegistryFactory;
 import org.apache.seata.discovery.registry.RegistryService;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.apache.seata.discovery.registry.metadata.ServiceInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -182,7 +184,7 @@ class NettyClientChannelManager {
      * @param failFast
      */
     void doReconnect(String transactionServiceGroup, boolean failFast) {
-        List<String> availList;
+        List<ServiceInstance> availList;
         try {
             availList = getAvailServerList(transactionServiceGroup);
         } catch (Exception e) {
@@ -209,6 +211,7 @@ class NettyClientChannelManager {
             return;
         }
         try {
+            // 修改为处理 ServiceInstance 列表
             doReconnect(availList, transactionServiceGroup);
         } catch (Exception e) {
             if (failFast) {
@@ -224,7 +227,7 @@ class NettyClientChannelManager {
      * @param availList avail list
      * @param transactionServiceGroup transaction service group
      */
-    void doReconnect(List<String> availList, String transactionServiceGroup) {
+    void doReconnect(List<ServiceInstance> availList, String transactionServiceGroup) {
         Set<String> channelAddress = new HashSet<>(availList.size());
         Map<String, Exception> failedMap = new HashMap<>();
         try {
@@ -253,16 +256,25 @@ class NettyClientChannelManager {
                 throw new FrameworkException("can not connect to [" + invalidAddress + "]");
             }
         } finally {
+            Object instance = RegistryFactory.getInstance();
             if (CollectionUtils.isNotEmpty(channelAddress)) {
                 List<InetSocketAddress> aliveAddress = new ArrayList<>(channelAddress.size());
                 for (String address : channelAddress) {
                     String[] array = NetUtil.splitIPPortStr(address);
                     aliveAddress.add(new InetSocketAddress(array[0], Integer.parseInt(array[1])));
                 }
-                RegistryFactory.getInstance().refreshAliveLookup(transactionServiceGroup, aliveAddress);
-            } else {
-                RegistryFactory.getInstance().refreshAliveLookup(transactionServiceGroup, Collections.emptyList());
+
+                if(instance instanceof RegistryService) {
+                    ((RegistryService)instance).refreshAliveLookup(transactionServiceGroup, aliveAddress);
+                } else {
+                    ((MetadataRegistryService)instance).refreshAliveLookup(transactionServiceGroup, aliveAddress);
+                }
             }
+            if(instance instanceof RegistryService) {
+                ((RegistryService)instance).refreshAliveLookup(transactionServiceGroup, Collections.emptyList());
+            }
+
+            ((MetadataRegistryService)instance).refreshAliveLookup(transactionServiceGroup, Collections.emptyList());
         }
     }
 
@@ -296,16 +308,26 @@ class NettyClientChannelManager {
         return channelFromPool;
     }
 
-    private List<String> getAvailServerList(String transactionServiceGroup) throws Exception {
-        List<InetSocketAddress> availInetSocketAddressList = RegistryFactory.getInstance()
-                .lookup(transactionServiceGroup);
-        if (CollectionUtils.isEmpty(availInetSocketAddressList)) {
+    private List<ServiceInstance> getAvailServerList(String transactionServiceGroup) throws Exception {
+        Object instance = RegistryFactory.getInstance();
+        List<ServiceInstance> serviceInstances = null;
+
+        if (instance instanceof RegistryService) {
+            List<InetSocketAddress> inetSocketAddressList = ((RegistryService) instance).lookup(transactionServiceGroup);
+            if (!CollectionUtils.isEmpty(inetSocketAddressList)) {
+                serviceInstances = inetSocketAddressList.stream()
+                        .map(address -> new ServiceInstance(address, null)) // 封装一层，元数据为 null
+                        .collect(Collectors.toList());
+            }
+        } else if (instance instanceof MetadataRegistryService) {
+            serviceInstances = ((MetadataRegistryService) instance).lookup(transactionServiceGroup);
+        }
+
+        if (CollectionUtils.isEmpty(serviceInstances)) {
             return Collections.emptyList();
         }
 
-        return availInetSocketAddressList.stream()
-                .map(NetUtil::toStringAddress)
-                .collect(Collectors.toList());
+        return serviceInstances;
     }
 
     private Channel getExistAliveChannel(Channel rmChannel, String serverAddress) {

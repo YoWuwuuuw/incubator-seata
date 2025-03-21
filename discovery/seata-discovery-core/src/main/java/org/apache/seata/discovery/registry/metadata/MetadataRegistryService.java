@@ -107,7 +107,7 @@ public interface MetadataRegistryService<T> {
      * @return the list
      * @throws Exception the exception
      */
-    List<InetSocketAddress> lookup(String key) throws Exception;
+    List<ServiceInstance> lookup(String key) throws Exception;
 
     /**
      * Close.
@@ -163,22 +163,23 @@ public interface MetadataRegistryService<T> {
      * Intersection of the old and new addresses
      *
      * @param clusterName
-     * @param newAddressed
+     * @param newInstances
      */
-    default void removeOfflineAddressesIfNecessary(String transactionGroupService, String clusterName, Collection<InetSocketAddress> newAddressed) {
+    // TODO:review
+    default void removeOfflineAddressesIfNecessary(String transactionGroupService, String clusterName, Collection<ServiceInstance> newInstances) {
 
         Map<String, List<ServiceInstance>> clusterAddressMap = CURRENT_INSTANCE_MAP.computeIfAbsent(transactionGroupService,
                 key -> new ConcurrentHashMap<>());
 
-        List<ServiceInstance> currentInstances = clusterAddressMap.getOrDefault(clusterName, Collections.emptyList());
-
-        List<ServiceInstance> inetSocketAddressInstances = currentInstances.stream()
-                .filter(instance -> newAddressed.contains(instance.getAddress()))
+        //List<ServiceInstance> currentInstances = clusterAddressMap.getOrDefault(clusterName, Collections.emptyList());
+        List<ServiceInstance> onlineInstances = newInstances.stream()
                 .collect(Collectors.toList());
 
         // prevent empty update
-        if (CollectionUtils.isNotEmpty(inetSocketAddressInstances)) {
-            clusterAddressMap.put(clusterName, inetSocketAddressInstances);
+        if (CollectionUtils.isNotEmpty(onlineInstances)) {
+            clusterAddressMap.put(clusterName, onlineInstances);
+        } else {
+            clusterAddressMap.remove(clusterName);
         }
     }
 

@@ -25,6 +25,7 @@ import org.apache.seata.common.loader.LoadLevel;
  * The type Random load balance.
  *
  */
+@LoadBalanceMode(LoadBalanceModeConstants.ORIGINAL_MODE)
 @LoadLevel(name = LoadBalanceFactory.RANDOM_LOAD_BALANCE)
 public class RandomLoadBalance implements LoadBalance {
 

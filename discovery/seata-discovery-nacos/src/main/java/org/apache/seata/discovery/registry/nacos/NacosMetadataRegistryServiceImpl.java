@@ -1,0 +1,391 @@
+package org.apache.seata.discovery.registry.nacos;
+
+import com.alibaba.nacos.api.NacosFactory;
+import com.alibaba.nacos.api.naming.NamingMaintainService;
+import com.alibaba.nacos.api.naming.NamingService;
+import com.alibaba.nacos.api.naming.listener.EventListener;
+import com.alibaba.nacos.api.naming.listener.NamingEvent;
+import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.alibaba.nacos.api.naming.pojo.Service;
+import org.apache.seata.common.util.CollectionUtils;
+import org.apache.seata.common.util.NetUtil;
+import org.apache.seata.common.util.StringUtils;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
+import org.apache.seata.config.ConfigurationKeys;
+import org.apache.seata.config.exception.ConfigNotFoundException;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.apache.seata.discovery.registry.metadata.ServiceInstance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+public class NacosMetadataRegistryServiceImpl implements MetadataRegistryService<EventListener> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NacosMetadataRegistryServiceImpl.class);
+    private static final String DEFAULT_NAMESPACE = "";
+    private static final String DEFAULT_CLUSTER = "default";
+    private static final String DEFAULT_GROUP = "DEFAULT_GROUP";
+    private static final String DEFAULT_APPLICATION = "seata-server";
+    private static final String PRO_SERVER_ADDR_KEY = "serverAddr";
+    private static final String PRO_NAMESPACE_KEY = "namespace";
+    private static final String REGISTRY_TYPE = "nacos";
+    private static final String REGISTRY_CLUSTER = "cluster";
+    private static final String PRO_APPLICATION_KEY = "application";
+    private static final String PRO_CLIENT_APPLICATION = "clientApplication";
+    private static final String PRO_GROUP_KEY = "group";
+    private static final String USER_NAME = "username";
+    private static final String PASSWORD = "password";
+    private static final String ACCESS_KEY = "accessKey";
+    private static final String SECRET_KEY = "secretKey";
+    private static final String RAM_ROLE_NAME_KEY = "ramRoleName";
+    private static final String SLB_PATTERN = "slbPattern";
+    private static final String CONTEXT_PATH = "contextPath";
+    private static final String USE_PARSE_RULE = "false";
+    private static final String PUBLIC_NAMING_ADDRESS_PREFIX = "public_";
+    private static final String PUBLIC_NAMING_SERVICE_META_IP_KEY = "publicIp";
+    private static final String PUBLIC_NAMING_SERVICE_META_PORT_KEY = "publicPort";
+    private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
+    private static volatile NamingService naming;
+    private static final ConcurrentMap<String, List<EventListener>> LISTENER_SERVICE_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, List<ServiceInstance>> CLUSTER_INSTANCE_MAP = new ConcurrentHashMap<>();
+    private static volatile NacosMetadataRegistryServiceImpl instance;
+    private static volatile NamingMaintainService namingMaintain;
+    private static final Object LOCK_OBJ = new Object();
+    private static final Pattern DEFAULT_SLB_REGISTRY_PATTERN = Pattern.compile("(?!.*internal)(?=.*seata).*mse.aliyuncs.com");
+    private static volatile Boolean useSLBWay;
+
+    private String transactionServiceGroup;
+
+    private NacosMetadataRegistryServiceImpl() {
+        String configForNacosSLB = FILE_CONFIG.getConfig(getNacosUrlPatternOfSLB());
+        Pattern patternOfNacosRegistryForSLB = StringUtils.isBlank(configForNacosSLB)
+                ? DEFAULT_SLB_REGISTRY_PATTERN
+                : Pattern.compile(configForNacosSLB);
+        useSLBWay = patternOfNacosRegistryForSLB.matcher(getNamingProperties().getProperty(PRO_SERVER_ADDR_KEY)).matches();
+    }
+
+    /**
+     * Gets instance.
+     *
+     * @return the instance
+     */
+    static NacosMetadataRegistryServiceImpl getInstance() {
+        if (instance == null) {
+            synchronized (NacosMetadataRegistryServiceImpl.class) {
+                if (instance == null) {
+                    instance = new NacosMetadataRegistryServiceImpl();
+                }
+            }
+        }
+        return instance;
+    }
+
+    @Override
+    public void register(InetSocketAddress address) throws Exception {
+        NetUtil.validAddress(address);
+        getNamingInstance().registerInstance(getServiceName(), getServiceGroup(), getMetadataNacosInstance(address));
+    }
+
+    @Override
+    public void unregister(InetSocketAddress address) throws Exception {
+        NetUtil.validAddress(address);
+        getNamingInstance().deregisterInstance(getServiceName(), getServiceGroup(), getMetadataNacosInstance(address));
+    }
+
+    @Override
+    public void subscribe(String cluster, EventListener listener) throws Exception {
+        List<String> clusters = new ArrayList<>();
+        clusters.add(cluster);
+        LISTENER_SERVICE_MAP.computeIfAbsent(cluster, key -> new ArrayList<>())
+                .add(listener);
+        getNamingInstance().subscribe(getServiceName(), getServiceGroup(), clusters, listener);
+    }
+
+    @Override
+    public void unsubscribe(String cluster, EventListener listener) throws Exception {
+        List<String> clusters = new ArrayList<>();
+        clusters.add(cluster);
+        List<EventListener> subscribeList = LISTENER_SERVICE_MAP.get(cluster);
+        if (subscribeList != null) {
+            List<EventListener> newSubscribeList = subscribeList.stream()
+                    .filter(eventListener -> !eventListener.equals(listener))
+                    .collect(Collectors.toList());
+            LISTENER_SERVICE_MAP.put(cluster, newSubscribeList);
+        }
+        getNamingInstance().unsubscribe(getServiceName(), getServiceGroup(), clusters, listener);
+    }
+
+    @Override
+    public List<ServiceInstance> lookup(String key) throws Exception {
+        transactionServiceGroup = key;
+        String clusterName = getServiceGroup(key);
+        if (clusterName == null) {
+            String missingDataId = PREFIX_SERVICE_ROOT + CONFIG_SPLIT_CHAR + PREFIX_SERVICE_MAPPING + key;
+            throw new ConfigNotFoundException("%s configuration item is required", missingDataId);
+        }
+        if (useSLBWay) {
+            if (LOGGER.isDebugEnabled()) {
+                // TODO:增加一些日志说明
+                LOGGER.debug("look up service address of SLB by nacos");
+            }
+            if (!CLUSTER_INSTANCE_MAP.containsKey(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName)) {
+                Service service = getNamingMaintainInstance().queryService(DEFAULT_APPLICATION, clusterName);
+                String pubnetIp = service.getMetadata().get(PUBLIC_NAMING_SERVICE_META_IP_KEY);
+                String pubnetPort = service.getMetadata().get(PUBLIC_NAMING_SERVICE_META_PORT_KEY);
+                if (StringUtils.isBlank(pubnetIp) || StringUtils.isBlank(pubnetPort)) {
+                    throw new Exception("cannot find service address from nacos naming mata-data");
+                }
+                InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp,
+                        Integer.valueOf(pubnetPort));
+                ServiceInstance serviceInstance = new ServiceInstance(publicAddress, null);
+                List<ServiceInstance> publicAddressList = Arrays.asList(serviceInstance);
+                CLUSTER_INSTANCE_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicAddressList);
+                return publicAddressList;
+            }
+            return CLUSTER_INSTANCE_MAP.get(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName);
+        }
+        if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
+            synchronized (LOCK_OBJ) {
+                if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
+                    List<String> clusters = new ArrayList<>();
+                    clusters.add(clusterName);
+                    List<Instance> firstAllInstances = getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
+                    if (null != firstAllInstances) {
+                        List<ServiceInstance> newAddressList = firstAllInstances.stream()
+                                .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
+                                .map(eachInstance -> {
+                                    Instance instance = eachInstance;
+                                    InetSocketAddress address = new InetSocketAddress(instance.getIp(), instance.getPort());
+                                    Map<String, String> metadata = instance.getMetadata();
+                                    return new ServiceInstance(address, metadata);
+                                })
+                                .collect(Collectors.toList());
+                        CLUSTER_INSTANCE_MAP.put(clusterName, newAddressList);
+                    }
+                    subscribe(clusterName, event -> {
+                        List<Instance> instances = ((NamingEvent) event).getInstances();
+                        if (CollectionUtils.isEmpty(instances) && null != CLUSTER_INSTANCE_MAP.get(clusterName)) {
+                            LOGGER.info("receive empty server list,cluster:{}", clusterName);
+                        } else {
+                            List<ServiceInstance> newAddressList = instances.stream()
+                                    .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
+                                    .map(eachInstance -> {
+                                        Instance instance = eachInstance;
+                                        InetSocketAddress address = new InetSocketAddress(instance.getIp(), instance.getPort());
+                                        Map<String, String> metadata = instance.getMetadata();
+                                        return new ServiceInstance(address, metadata);
+                                    })
+                                    .collect(Collectors.toList());
+                            CLUSTER_INSTANCE_MAP.put(clusterName, newAddressList);
+                            if (StringUtils.isNotEmpty(transactionServiceGroup)) {
+                                removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newAddressList);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+        return CLUSTER_INSTANCE_MAP.get(clusterName);
+    }
+
+    @Override
+    public void close() throws Exception {
+
+    }
+
+    /**
+     * Gets naming instance.
+     *
+     * @return the naming instance
+     * @throws Exception the exception
+     */
+    public static NamingService getNamingInstance() throws Exception {
+        if (naming == null) {
+            synchronized (NacosRegistryServiceImpl.class) {
+                if (naming == null) {
+                    naming = NacosFactory.createNamingService(getNamingProperties());
+                }
+            }
+        }
+        return naming;
+    }
+
+    public static NamingMaintainService getNamingMaintainInstance() throws Exception {
+        if (namingMaintain == null) {
+            synchronized (NacosRegistryServiceImpl.class) {
+                if (namingMaintain == null) {
+                    namingMaintain = NacosFactory.createMaintainService(getNamingProperties());
+                }
+            }
+        }
+        return namingMaintain;
+    }
+
+    private static Properties getNamingProperties() {
+        Properties properties = new Properties();
+        properties.setProperty(ConfigurationKeys.IS_USE_CLOUD_NAMESPACE_PARSING, USE_PARSE_RULE);
+        properties.setProperty(ConfigurationKeys.IS_USE_ENDPOINT_PARSING_RULE, USE_PARSE_RULE);
+        if (System.getProperty(PRO_SERVER_ADDR_KEY) != null) {
+            properties.setProperty(PRO_SERVER_ADDR_KEY, System.getProperty(PRO_SERVER_ADDR_KEY));
+        } else {
+            String address = FILE_CONFIG.getConfig(getNacosAddrFileKey());
+            if (address != null) {
+                properties.setProperty(PRO_SERVER_ADDR_KEY, address);
+            }
+        }
+        if (System.getProperty(PRO_NAMESPACE_KEY) != null) {
+            properties.setProperty(PRO_NAMESPACE_KEY, System.getProperty(PRO_NAMESPACE_KEY));
+        } else {
+            String namespace = FILE_CONFIG.getConfig(getNacosNameSpaceFileKey());
+            if (namespace == null) {
+                namespace = DEFAULT_NAMESPACE;
+            }
+            properties.setProperty(PRO_NAMESPACE_KEY, namespace);
+        }
+        if (!initNacosAuthProperties(properties)) {
+            LOGGER.info("Nacos naming auth properties empty.");
+        }
+        String contextPath = StringUtils.isNotBlank(System.getProperty(CONTEXT_PATH)) ? System.getProperty(CONTEXT_PATH) : FILE_CONFIG.getConfig(getNacosContextPathKey());
+        if (StringUtils.isNotBlank(contextPath)) {
+            properties.setProperty(CONTEXT_PATH, contextPath);
+        }
+        return properties;
+    }
+
+    /**
+     * init nacos auth properties
+     *
+     * username/password > ak/sk > ramRoleName
+     * @param sourceProperties the source properties
+     * @return auth properties
+     */
+    private static boolean initNacosAuthProperties(Properties sourceProperties) {
+        String userName = StringUtils.isNotBlank(System.getProperty(USER_NAME)) ? System.getProperty(USER_NAME) : FILE_CONFIG.getConfig(getNacosUserName());
+        if (StringUtils.isNotBlank(userName)) {
+            String password = StringUtils.isNotBlank(System.getProperty(PASSWORD)) ? System.getProperty(PASSWORD) : FILE_CONFIG.getConfig(getNacosPassword());
+            if (StringUtils.isNotBlank(password)) {
+                sourceProperties.setProperty(USER_NAME, userName);
+                sourceProperties.setProperty(PASSWORD, password);
+                LOGGER.info("Nacos check auth with userName/password.");
+                return true;
+            }
+        } else {
+            String accessKey = StringUtils.isNotBlank(System.getProperty(ACCESS_KEY)) ? System.getProperty(ACCESS_KEY) : FILE_CONFIG.getConfig(getNacosAccessKey());
+            String ramRoleName = StringUtils.isNotBlank(System.getProperty(RAM_ROLE_NAME_KEY)) ? System.getProperty(RAM_ROLE_NAME_KEY) : FILE_CONFIG.getConfig(getNacosRamRoleNameKey());
+            if (StringUtils.isNotBlank(accessKey)) {
+                String secretKey = StringUtils.isNotBlank(System.getProperty(SECRET_KEY)) ? System.getProperty(SECRET_KEY) : FILE_CONFIG.getConfig(getNacosSecretKey());
+                if (StringUtils.isNotBlank(secretKey)) {
+                    sourceProperties.put(ACCESS_KEY, accessKey);
+                    sourceProperties.put(SECRET_KEY, secretKey);
+                    LOGGER.info("Nacos check auth with ak/sk.");
+                    return true;
+                }
+            } else if (StringUtils.isNotBlank(ramRoleName)) {
+                sourceProperties.put(RAM_ROLE_NAME_KEY, ramRoleName);
+                LOGGER.info("Nacos check auth with ram role.");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Instance getMetadataNacosInstance(InetSocketAddress address) {
+        Instance instance = new Instance();
+        instance.setIp(address.getAddress().getHostAddress());
+        instance.setPort(address.getPort());
+        instance.setClusterName(getClusterName());
+        // TODO:这里忽略一些校验：如 metadata 为 null 时应记录日志
+        Map<String, String> metadata = getServerMetadata();
+        instance.setMetadata(metadata);
+
+        return instance;
+    }
+
+    public static Map<String, String> getServerMetadata() {
+        return loadServerMetadata();
+    }
+
+    private static Map<String, String> loadServerMetadata() {
+        // TODO:需要在Configuration中定义能返回Map<String, String>格式的getConfig()方法
+//        return FILE_CONFIG.getConfig(getMetadataFileKey(), null);
+        return null;
+    }
+
+    private static String getMetadataFileKey() {
+        return ConfigurationKeys.SERVER_REGISTRY_METADATA_PREFIX;
+    }
+
+
+    private static String getClusterName() {
+        return FILE_CONFIG.getConfig(getNacosClusterFileKey(), DEFAULT_CLUSTER);
+    }
+
+    private static String getServiceName() {
+        return FILE_CONFIG.getConfig(getNacosApplicationFileKey(), DEFAULT_APPLICATION);
+    }
+
+    private static String getServiceGroup() {
+        return FILE_CONFIG.getConfig(getNacosApplicationGroupKey(), DEFAULT_GROUP);
+    }
+
+    private static String getNacosAddrFileKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_SERVER_ADDR_KEY);
+    }
+
+    private static String getNacosNameSpaceFileKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_NAMESPACE_KEY);
+    }
+
+    private static String getNacosClusterFileKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, REGISTRY_CLUSTER);
+    }
+
+    private static String getNacosApplicationFileKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_APPLICATION_KEY);
+    }
+
+    private static String getNacosApplicationGroupKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_GROUP_KEY);
+    }
+
+    private static String getNacosUserName() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, USER_NAME);
+    }
+
+    private static String getNacosPassword() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PASSWORD);
+    }
+
+    public static String getNacosAccessKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, ACCESS_KEY);
+    }
+
+    public static String getNacosSecretKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, SECRET_KEY);
+    }
+
+    public static String getNacosRamRoleNameKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_CONFIG, REGISTRY_TYPE, RAM_ROLE_NAME_KEY);
+    }
+
+    public static String getClientApplication() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_CLIENT_APPLICATION);
+    }
+
+    private static String getNacosUrlPatternOfSLB() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, SLB_PATTERN);
+    }
+
+    private static String getNacosContextPathKey() {
+        return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, CONTEXT_PATH);
+    }
+
+}
+

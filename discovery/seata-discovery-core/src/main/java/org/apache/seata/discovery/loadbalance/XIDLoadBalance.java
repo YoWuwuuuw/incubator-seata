@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
  * The type xid load balance.
  *
  */
+@LoadBalanceMode(LoadBalanceModeConstants.ORIGINAL_MODE)
 @LoadLevel(name = XID_LOAD_BALANCE)
 public class XIDLoadBalance implements LoadBalance {
     

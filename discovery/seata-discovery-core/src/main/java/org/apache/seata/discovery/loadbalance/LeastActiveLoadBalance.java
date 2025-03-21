@@ -28,6 +28,7 @@ import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.LEAST_AC
  * The type Least Active load balance.
  *
  */
+@LoadBalanceMode(LoadBalanceModeConstants.ORIGINAL_MODE)
 @LoadLevel(name = LEAST_ACTIVE_LOAD_BALANCE)
 public class LeastActiveLoadBalance implements LoadBalance {
 

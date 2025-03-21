@@ -60,6 +60,9 @@ import org.apache.seata.core.rpc.processor.Pair;
 import org.apache.seata.core.rpc.processor.RemotingProcessor;
 import org.apache.seata.discovery.loadbalance.LoadBalanceFactory;
 import org.apache.seata.discovery.registry.RegistryFactory;
+import org.apache.seata.discovery.registry.RegistryService;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.apache.seata.discovery.registry.metadata.ServiceInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -261,9 +264,16 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
         InetSocketAddress address = null;
         try {
             @SuppressWarnings("unchecked")
-            List<InetSocketAddress> inetSocketAddressList =
-                RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
-            address = this.doSelect(inetSocketAddressList, msg);
+            Object instance = RegistryFactory.getInstance();
+            if(instance instanceof RegistryService) {
+                List<InetSocketAddress> inetSocketAddressList =
+                        ((RegistryService)instance).aliveLookup(transactionServiceGroup);
+                address = this.doSelect(inetSocketAddressList, msg);
+            } else {
+                List<ServiceInstance> inetSocketInstanceList =
+                        ((MetadataRegistryService)instance).aliveLookup(transactionServiceGroup);
+                address = this.doSelect(inetSocketInstanceList, msg).getAddress();
+            }
         } catch (Exception ex) {
             LOGGER.error("Select the address failed: {}", ex.getMessage());
         }
@@ -273,7 +283,7 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
         return NetUtil.toStringAddress(address);
     }
 
-    protected InetSocketAddress doSelect(List<InetSocketAddress> list, Object msg) throws Exception {
+    protected <T> T doSelect(List<T> list, Object msg) throws Exception {
         if (CollectionUtils.isNotEmpty(list)) {
             if (list.size() > 1) {
                 return LoadBalanceFactory.getInstance().select(list, getXid(msg));

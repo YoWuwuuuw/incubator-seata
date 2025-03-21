@@ -25,6 +25,7 @@ import org.apache.seata.common.loader.LoadLevel;
  * The type Round robin load balance.
  *
  */
+@LoadBalanceMode(LoadBalanceModeConstants.ORIGINAL_MODE)
 @LoadLevel(name = LoadBalanceFactory.ROUND_ROBIN_LOAD_BALANCE)
 public class RoundRobinLoadBalance implements LoadBalance {
 
