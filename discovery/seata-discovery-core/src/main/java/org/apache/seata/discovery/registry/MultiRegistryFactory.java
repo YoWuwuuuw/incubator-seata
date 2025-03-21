@@ -26,6 +26,8 @@ import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.util.StringUtils;
 import org.apache.seata.config.ConfigurationFactory;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,12 +44,16 @@ public class MultiRegistryFactory {
      *
      * @return the instance list
      */
-    public static List<RegistryService> getInstances() {
+    public static List<Object> getInstances() {
         return MultiRegistryFactoryHolder.INSTANCES;
     }
 
-    private static List<RegistryService> buildRegistryServices() {
-        List<RegistryService> registryServices = new ArrayList<>();
+    private static List<Object> buildRegistryServices() {
+        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(
+                ConfigurationKeys.SERVER_REGISTRY_ENABLE_METADATA, false);
+
+        // get registry type
+        List<Object> registryServices = new ArrayList<>();
         String registryTypeNamesStr =
             ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
                 + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
@@ -58,21 +64,37 @@ public class MultiRegistryFactory {
         if (registryTypeNames.length > 1) {
             LOGGER.info("use multi registry center type: {}", registryTypeNamesStr);
         }
-        for (String registryTypeName : registryTypeNames) {
-            RegistryType registryType;
-            try {
-                registryType = RegistryType.getType(registryTypeName);
-            } catch (Exception exx) {
-                throw new NotSupportYetException("not support registry type: " + registryTypeName);
+
+        if(enableMetadata) {
+            for (String registryTypeName : registryTypeNames) {
+                RegistryType registryType;
+                try {
+                    registryType = RegistryType.getType(registryTypeName);
+                } catch (Exception exx) {
+                    throw new NotSupportYetException("not support registry type: " + registryTypeName);
+                }
+                MetadataRegistryService registryService = EnhancedServiceLoader
+                        .load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+                registryServices.add(registryService);
             }
-            RegistryService registryService = EnhancedServiceLoader
-                .load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
-            registryServices.add(registryService);
+        } else {
+            for (String registryTypeName : registryTypeNames) {
+                RegistryType registryType;
+                try {
+                    registryType = RegistryType.getType(registryTypeName);
+                } catch (Exception exx) {
+                    throw new NotSupportYetException("not support registry type: " + registryTypeName);
+                }
+                RegistryService registryService = EnhancedServiceLoader
+                        .load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+                registryServices.add(registryService);
+            }
         }
+
         return registryServices;
     }
 
     private static class MultiRegistryFactoryHolder {
-        private static final List<RegistryService> INSTANCES = buildRegistryServices();
+        private static final List<Object> INSTANCES = buildRegistryServices();
     }
 }

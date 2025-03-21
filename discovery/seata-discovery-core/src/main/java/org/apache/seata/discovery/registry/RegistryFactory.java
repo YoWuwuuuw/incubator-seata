@@ -16,14 +16,16 @@
  */
 package org.apache.seata.discovery.registry;
 
-import java.util.Objects;
 
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.ConfigurationKeys;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 /**
  * The type Registry factory.
@@ -38,11 +40,15 @@ public class RegistryFactory {
      *
      * @return the instance
      */
-    public static RegistryService getInstance() {
+    public static Object getInstance() {
         return RegistryFactoryHolder.INSTANCE;
     }
 
-    private static RegistryService buildRegistryService() {
+    private static Object buildRegistryService() {
+        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(
+                ConfigurationKeys.CLIENT_REGISTRY_ENABLE_METADATA, false);
+
+        // get registry type
         RegistryType registryType;
         String registryTypeName = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(
             ConfigurationKeys.FILE_ROOT_REGISTRY + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
@@ -53,11 +59,15 @@ public class RegistryFactory {
         } catch (Exception exx) {
             throw new NotSupportYetException("not support registry type: " + registryTypeName);
         }
-        return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
 
+        // distinguish modes
+        if(enableMetadata) {
+            EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+        }
+        return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
     }
 
     private static class RegistryFactoryHolder {
-        private static final RegistryService INSTANCE = buildRegistryService();
+        private static final Object INSTANCE = buildRegistryService();
     }
 }
