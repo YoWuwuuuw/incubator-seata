@@ -25,6 +25,6 @@ import org.apache.seata.discovery.registry.RegistryService;
 public class NamingserverRegistryProvider implements RegistryProvider {
     @Override
     public RegistryService provide() {
-        return NamingserverRegistryServiceImpl.getInstance();
+        return NamingserverMedadataRegistryServiceImpl.getInstance();
     }
 }

@@ -63,14 +63,16 @@ import org.apache.seata.common.util.StringUtils;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.registry.RegistryService;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.apache.seata.discovery.registry.metadata.ServiceInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class NamingserverRegistryServiceImpl implements RegistryService<NamingListener> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NamingserverRegistryServiceImpl.class);
+public class NamingserverMedadataRegistryServiceImpl implements MetadataRegistryService<NamingListener> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NamingserverMedadataRegistryServiceImpl.class);
 
-    public static volatile NamingserverRegistryServiceImpl instance;
+    public static volatile NamingserverMedadataRegistryServiceImpl instance;
     private static final String NAMESPACE_KEY = "namespace";
     private static final String VGROUP_KEY = "vGroup";
     private static final String CLIENT_TERM_KEY = "clientTerm";
@@ -112,12 +114,12 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
     private String namingServerAddressCache;
     private static ConcurrentMap<String /* namingserver address */, AtomicInteger /* Number of Health Check Continues Failures */> AVAILABLE_NAMINGSERVER_MAP = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<String/* vgroup */, List<InetSocketAddress>> VGROUP_ADDRESS_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, List<ServiceInstance>> CLUSTER_INSTANCE_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String/* vgroup */, List<NamingListener>> LISTENER_SERVICE_MAP = new ConcurrentHashMap<>();
     protected static final ScheduledExecutorService
-            SCHEDULED_THREAD_POOL_EXECUTOR = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("seata-namingser-scheduled", THREAD_POOL_NUM, true));
+        SCHEDULED_THREAD_POOL_EXECUTOR = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("seata-namingser-scheduled", THREAD_POOL_NUM, true));
     private static final ExecutorService
-            NOTIFIER_EXECUTOR = new ThreadPoolExecutor(THREAD_POOL_NUM, THREAD_POOL_NUM, Integer.MAX_VALUE, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new NamedThreadFactory("serviceNamingNotifier", THREAD_POOL_NUM));
+        NOTIFIER_EXECUTOR = new ThreadPoolExecutor(THREAD_POOL_NUM, THREAD_POOL_NUM, Integer.MAX_VALUE, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new NamedThreadFactory("serviceNamingNotifier", THREAD_POOL_NUM));
 
     static {
         TOKEN_EXPIRE_TIME_IN_MILLISECONDS = FILE_CONFIG.getLong(getTokenExpireTimeInMillisecondsKey(), 29 * 60 * 1000L);
@@ -127,7 +129,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         Runtime.getRuntime().addShutdownHook(new Thread(SCHEDULED_THREAD_POOL_EXECUTOR::shutdown));
     }
 
-    private NamingserverRegistryServiceImpl() {
+    private NamingserverMedadataRegistryServiceImpl() {
         OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         String heartBeatKey = String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, HEART_BEAT_KEY);
         healthcheckPeriod = FILE_CONFIG.getInt(heartBeatKey, healthcheckPeriod);
@@ -165,12 +167,12 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      *
      * @return the instance
      */
-    static NamingserverRegistryServiceImpl getInstance() {
+    static NamingserverMedadataRegistryServiceImpl getInstance() {
 
         if (instance == null) {
-            synchronized (NamingserverRegistryServiceImpl.class) {
+            synchronized (NamingserverMedadataRegistryServiceImpl.class) {
                 if (instance == null) {
-                    instance = new NamingserverRegistryServiceImpl();
+                    instance = new NamingserverMedadataRegistryServiceImpl();
                 }
             }
         }
@@ -206,6 +208,10 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
             String namespace = instance.getNamespace();
             String clusterName = instance.getClusterName();
             String unit = instance.getUnit();
+
+            Map<String, String> metadata = getServerMetadata();
+            instance.setMetadata((metadata)); // TODO:修改类型
+
             String jsonBody = instance.toJsonString(OBJECT_MAPPER);
             String params = "namespace=" + namespace + "&clusterName=" + clusterName + "&unit=" + unit;
             url += params;
@@ -228,6 +234,20 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
                 LOGGER.error("instance has been registered failed in namingserver {}", url);
             }
         }
+    }
+
+    public static Map<String, String> getServerMetadata() {
+        return loadServerMetadata();
+    }
+
+    private static Map<String, String> loadServerMetadata() {
+        // TODO:需要在Configuration中定义能返回Map<String, String>格式的getConfig()方法
+//        return FILE_CONFIG.getConfig(getMetadataFileKey(), null);
+        return null;
+    }
+
+    private static String getMetadataFileKey() {
+        return org.apache.seata.config.ConfigurationKeys.SERVER_REGISTRY_METADATA_PREFIX;
     }
 
     public boolean doHealthCheck(String url) {
@@ -382,10 +402,8 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      * @return List<InetSocketAddress> available instance list
      * @throws Exception
      */
-
-
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         if (!isSubscribed) {
             // get available instanceList by vGroup
             refreshGroup(key);
@@ -399,11 +417,11 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
             }, key);
         }
 
-        return VGROUP_ADDRESS_MAP.get(key);
+        return CLUSTER_INSTANCE_MAP.get(key);
     }
 
 
-    public List<InetSocketAddress> refreshGroup(String vGroup) throws IOException, RetryableException {
+    public List<ServiceInstance> refreshGroup(String vGroup) throws IOException, RetryableException {
         Map<String, String> paraMap = new HashMap<>();
         String namingAddr = getNamingAddr();
         if (isTokenExpired()) {
@@ -420,27 +438,40 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         try (CloseableHttpResponse response = HttpClientUtil.doGet(url, paraMap, header, 3000)) {
             if (response == null || response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
                 throw new NamingRegistryException("cannot lookup server list in vgroup: " + vGroup + ", http code: "
-                        + response.getStatusLine().getStatusCode());
+                    + response.getStatusLine().getStatusCode());
             }
             String jsonResponse = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // jsonResponse -> MetaResponse
             MetaResponse metaResponse = OBJECT_MAPPER.readValue(jsonResponse, new TypeReference<MetaResponse>() {
             });
             // MetaResponse -> endpoint list
-            List<InetSocketAddress> newAddressList = metaResponse.getClusterList().stream()
+            List<ServiceInstance> newServiceInstances = metaResponse.getClusterList().stream()
                     .flatMap(cluster -> cluster.getUnitData().stream())
                     .flatMap(unit -> unit.getNamingInstanceList().stream()
                             .filter(namingServerNode -> namingServerNode.getRole() == ClusterRole.LEADER
                                     || namingServerNode.getRole() == ClusterRole.MEMBER)
-                            .map(namingInstance -> new InetSocketAddress(namingInstance.getTransaction().getHost(),
-                                    namingInstance.getTransaction().getPort())))
+                            .map(namingInstance -> {
+                                InetSocketAddress address = new InetSocketAddress(namingInstance.getTransaction().getHost(),
+                                        namingInstance.getTransaction().getPort());
+                                // Convert metadata to Map<String, String>
+                                Map<String, Object> rawMetadata = namingInstance.getMetadata();
+                                Map<String, String> metadata = new HashMap<>();
+                                if (rawMetadata != null) {
+                                    rawMetadata.forEach((key, value) -> {
+                                        if (value != null) {
+                                            metadata.put(key, value.toString());
+                                        }
+                                    });
+                                }
+                                return new ServiceInstance(address, metadata);
+                            }))
                     .collect(Collectors.toList());
             if (metaResponse.getTerm() > 0) {
                 term = metaResponse.getTerm();
             }
-            VGROUP_ADDRESS_MAP.put(vGroup, newAddressList);
-            removeOfflineAddressesIfNecessary(vGroup,vGroup,newAddressList);
-            return newAddressList;
+            CLUSTER_INSTANCE_MAP.put(vGroup, newServiceInstances);
+            removeOfflineAddressesIfNecessary(vGroup,vGroup,newServiceInstances);
+            return newServiceInstances;
         } catch (IOException e) {
             LOGGER.error(e.getMessage());
             throw new RemoteException();
@@ -468,11 +499,11 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public List<InetSocketAddress> aliveLookup(String transactionServiceGroup) {
-        Map<String, List<InetSocketAddress>> clusterAddressMap = CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup,
-                k -> new ConcurrentHashMap<>());
+    public List<ServiceInstance> aliveLookup(String transactionServiceGroup) {
+        Map<String, List<ServiceInstance>> clusterAddressMap = CLUSTER_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup,
+            k -> new ConcurrentHashMap<>());
 
-        List<InetSocketAddress> inetSocketAddresses = clusterAddressMap.get(transactionServiceGroup);
+        List<ServiceInstance> inetSocketAddresses = clusterAddressMap.get(transactionServiceGroup);
         if (CollectionUtils.isNotEmpty(inetSocketAddresses)) {
             return inetSocketAddresses;
         }
@@ -483,10 +514,10 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public List<InetSocketAddress> refreshAliveLookup(String transactionServiceGroup,
+    public List<ServiceInstance> refreshAliveLookup(String transactionServiceGroup,
                                                       List<InetSocketAddress> aliveAddress) {
-        Map<String, List<InetSocketAddress>> clusterAddressMap = CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup,
-                key -> new ConcurrentHashMap<>());
+        Map<String, List<ServiceInstance>> clusterAddressMap = CLUSTER_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup,
+            key -> new ConcurrentHashMap<>());
 
 
         return clusterAddressMap.put(transactionServiceGroup, aliveAddress);
@@ -549,7 +580,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         header.put(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
         String response = null;
         try (CloseableHttpResponse httpResponse =
-                     HttpClientUtil.doPost("http://" + tcAddress + "/api/v1/auth/login", param, header, 1000)) {
+            HttpClientUtil.doPost("http://" + tcAddress + "/api/v1/auth/login", param, header, 1000)) {
             if (httpResponse != null) {
                 if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                     response = EntityUtils.toString(httpResponse.getEntity(), StandardCharsets.UTF_8);
@@ -573,7 +604,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
 
     private static String getTokenExpireTimeInMillisecondsKey() {
         return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY,
-                REGISTRY_TYPE, TOKEN_VALID_TIME_MS_KEY);
+            REGISTRY_TYPE, TOKEN_VALID_TIME_MS_KEY);
     }
 
     private static boolean isTokenExpired() {
@@ -586,17 +617,17 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
 
     private static String getUserNameKey() {
         return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY,
-                REGISTRY_TYPE, PRO_USERNAME_KEY);
+            REGISTRY_TYPE, PRO_USERNAME_KEY);
     }
 
     private static String getPassWordKey() {
         return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY,
-                REGISTRY_TYPE, PRO_PASSWORD_KEY);
+            REGISTRY_TYPE, PRO_PASSWORD_KEY);
     }
 
     private static String getMetadataMaxAgeMs() {
         return String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY,
-                REGISTRY_TYPE, META_DATA_MAX_AGE_MS);
+            REGISTRY_TYPE, META_DATA_MAX_AGE_MS);
     }
 
 }

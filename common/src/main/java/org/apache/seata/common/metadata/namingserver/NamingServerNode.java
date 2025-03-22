@@ -18,6 +18,8 @@ package org.apache.seata.common.metadata.namingserver;
 
 import org.apache.seata.common.metadata.Node;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 

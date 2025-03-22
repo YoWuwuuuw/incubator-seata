@@ -47,7 +47,7 @@ import org.apache.seata.core.serializer.SerializerType;
 import org.apache.seata.discovery.registry.FileRegistryServiceImpl;
 import org.apache.seata.discovery.registry.MultiRegistryFactory;
 import org.apache.seata.discovery.registry.RegistryService;
-import org.apache.seata.discovery.registry.namingserver.NamingserverRegistryServiceImpl;
+import org.apache.seata.discovery.registry.namingserver.NamingserverRegistryServiceImpl1;
 import org.apache.seata.server.cluster.raft.processor.PutNodeInfoRequestProcessor;
 import org.apache.seata.server.cluster.raft.serializer.JacksonBoltSerializer;
 import org.apache.seata.server.store.StoreConfig;
@@ -102,7 +102,7 @@ public class RaftServerManager {
                 if (RAFT_MODE) {
                     for (RegistryService<?> instance : MultiRegistryFactory.getInstances()) {
                         if (!(instance instanceof FileRegistryServiceImpl)
-                            && !(instance instanceof NamingserverRegistryServiceImpl)) {
+                            && !(instance instanceof NamingserverRegistryServiceImpl1)) {
                             throw new IllegalArgumentException("Raft store mode not support other Registration Center");
                         }
                     }
