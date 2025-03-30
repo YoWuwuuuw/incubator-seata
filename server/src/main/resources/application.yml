@@ -28,10 +28,18 @@ logging:
     path: ${log.home:${user.home}/logs/seata}
   extend:
     logstash-appender:
+      enabled: false
       destination: 127.0.0.1:4560
     kafka-appender:
-      bootstrap-servers: 127.0.0.1:9092
+      enabled: false
+      bootstrap-servers: 10.21.32.10:9092
       topic: logback_to_logstash
+      producer:
+        acks: 0
+        linger-ms: 1000
+        max-block-ms: 0
+    metric-appender:
+      enabled: false
 
 seata:
   config:
