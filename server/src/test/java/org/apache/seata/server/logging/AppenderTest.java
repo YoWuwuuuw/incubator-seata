@@ -19,7 +19,6 @@ package org.apache.seata.server.logging;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.util.StatusPrinter;
 import com.github.danielwegener.logback.kafka.KafkaAppender;
 import net.logstash.logback.appender.LogstashTcpSocketAppender;
 import org.apache.seata.server.logging.logback.appender.MetricLogbackAppender;
