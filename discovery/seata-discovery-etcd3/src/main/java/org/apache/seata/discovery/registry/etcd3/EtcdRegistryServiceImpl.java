@@ -178,7 +178,9 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                     .collect(Collectors.toSet());
             listenerMap.put(cluster, newSubscribeSet);
         }
+        LOGGER.warn("TEST CI: unsubscribe start to stop");
         watcherMap.remove(cluster).stop();
+        LOGGER.warn("TEST CI: unsubscribe stoped");
     }
 
     @Override

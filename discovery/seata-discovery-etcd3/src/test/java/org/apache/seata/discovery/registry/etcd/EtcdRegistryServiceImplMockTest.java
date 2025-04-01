@@ -50,6 +50,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -234,6 +235,7 @@ public class EtcdRegistryServiceImplMockTest {
                 });
         registryService.subscribe(DEFAULT_TX_GROUP, mockListener);
         latch.await(1, TimeUnit.SECONDS);
+        LoggerFactory.getLogger(EtcdRegistryServiceImplMockTest.class).warn("TEST CI: mock test start to unsubscribe, mockListener:" + mockListener);
         registryService.unsubscribe(DEFAULT_TX_GROUP, mockListener);
     }
 
