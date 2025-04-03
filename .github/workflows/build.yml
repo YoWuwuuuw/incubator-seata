@@ -21,8 +21,7 @@ on:
     branches: [ 2.x, develop, master , test-ci-2.x ]
   pull_request:
     branches: [ 2.x, develop, master , test-ci-2.x ]
-    paths-ignore:
-      - 'changes/**/*.md'
+    types: [opened, reopened, synchronize]
 
 jobs:
   # job 1: Test based on java 8, 17 and 21. Do not checkstyle.
@@ -47,8 +46,6 @@ jobs:
       fail-fast: false
       matrix:
         java: [ 8, 17, 21 ]
-    outputs:
-      failed_java: ${{ steps.set_failed_java.outputs.failed_java }}
     steps:
       # step 1
       - name: "Checkout"
