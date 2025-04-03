@@ -18,9 +18,9 @@ name: "build"
 
 on:
   push:
-    branches: [ 2.x, develop, master , test-ci-2.x ]
+    branches: [ 2.x, develop, master ]
   pull_request:
-    branches: [ 2.x, develop, master , test-ci-2.x ]
+    branches: [ 2.x, develop, master ]
     types: [opened, reopened, synchronize]
     paths-ignore:
       - '**.md'
