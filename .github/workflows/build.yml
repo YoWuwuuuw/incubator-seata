@@ -22,6 +22,8 @@ on:
   pull_request:
     branches: [ 2.x, develop, master , test-ci-2.x ]
     types: [opened, reopened, synchronize]
+    paths-ignore:
+      - '**.md'
 
 jobs:
   # job 1: Test based on java 8, 17 and 21. Do not checkstyle.
