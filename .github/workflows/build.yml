@@ -62,7 +62,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: "Upload PMD Report"
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pmd-report
           path: config/seata-config-redis/target/pmd.xml
