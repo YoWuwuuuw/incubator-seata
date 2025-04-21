@@ -60,6 +60,12 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: ${{ matrix.java }}
+      - name: "Upload PMD Report"
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pmd-report
+          path: config/seata-config-redis/target/pmd.xml
       # step 4
       - name: "Print maven version"
         run: ./mvnw -version
