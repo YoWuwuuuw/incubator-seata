@@ -45,7 +45,7 @@ logging:
       enabled: false
 seata:
   config:
-    # support: nacos 、 consul 、 apollo 、 zk  、 etcd3
+    # support: nacos 、 consul 、 apollo 、 zk  、 etcd3 、 redis
     type: file
     nacos:
       server-addr: 127.0.0.1:8848

@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPubSub;
+import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.Transaction;
 
@@ -115,7 +116,7 @@ public class RedisConfiguration extends AbstractConfiguration {
         redisConfig.setTestOnReturn(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-on-return", false));
         redisConfig.setTestWhileIdle(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-while-idle", false));
 
-        String serverAddr = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "serverAddr");
+        String serverAddr = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "server-addr");
         String[] serverArr = NetUtil.splitIPPortStr(serverAddr);
         String host = serverArr[0];
         int port = Integer.parseInt(serverArr[1]);
@@ -139,7 +140,8 @@ public class RedisConfiguration extends AbstractConfiguration {
         if (maxTotal > 0) {
             redisConfig.setMaxTotal(maxTotal);
         }
-        int maxWait = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-wait", fileConfig.getInt(REDIS_FILEKEY_PREFIX + "timeout", 0));
+        int maxWait = fileConfig.getInt(
+                REDIS_FILEKEY_PREFIX + "max-wait", fileConfig.getInt(REDIS_FILEKEY_PREFIX + "timeout", 0));
         if (maxWait > 0) {
             redisConfig.setMaxWaitMillis(maxWait);
         }
@@ -147,7 +149,8 @@ public class RedisConfiguration extends AbstractConfiguration {
         if (numTestsPerEvictionRun > 0) {
             redisConfig.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
         }
-        int timeBetweenEvictionRunsMillis = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "time-between-eviction-runs-millis", 0);
+        int timeBetweenEvictionRunsMillis =
+                fileConfig.getInt(REDIS_FILEKEY_PREFIX + "time-between-eviction-runs-millis", 0);
         if (timeBetweenEvictionRunsMillis > 0) {
             redisConfig.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
         }
@@ -170,7 +173,6 @@ public class RedisConfiguration extends AbstractConfiguration {
         try (Jedis jedis = jedisPool.getResource()) {
             Map<String, String> configMap = jedis.hgetAll(getConfigKey());
             if (!configMap.isEmpty()) {
-                seataConfig = new Properties();
                 configMap.forEach((key, value) -> seataConfig.setProperty(key, value));
             }
         } catch (Exception e) {
@@ -186,8 +188,8 @@ public class RedisConfiguration extends AbstractConfiguration {
         }
 
         // Time in ConfigFuture, if time out, get() method would return the default value
-        ConfigFuture configFuture = new ConfigFuture(dataId, defaultValue, ConfigFuture.ConfigOperation.GET,
-                timeoutMills);
+        ConfigFuture configFuture =
+                new ConfigFuture(dataId, defaultValue, ConfigFuture.ConfigOperation.GET, timeoutMills);
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
                 String result = jedis.hget(getConfigKey(), dataId);
@@ -207,9 +209,11 @@ public class RedisConfiguration extends AbstractConfiguration {
                 timeoutMills);
 
         configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                jedis.hset(getConfigKey(), dataId, content);
-                jedis.publish(getConfigChannelKey() + ":" + dataId, buildConfigChangeMessage(dataId, content));
+            try (Jedis jedis = jedisPool.getResource(); Pipeline pipeline = jedis.pipelined()) {
+                pipeline.hset(getConfigKey(), dataId, content);
+                pipeline.publish(getConfigChannelKey() + ":" + dataId,
+                        buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
+                pipeline.sync();
 
                 seataConfig.setProperty(dataId, content);
                 configFuture.setResult(Boolean.TRUE);
@@ -238,12 +242,14 @@ public class RedisConfiguration extends AbstractConfiguration {
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
                 String configKey = getConfigKey();
-
                 jedis.watch(configKey);
+
+                // Use a transaction to ensure atomicity: check if the key exists and execute the put operation
                 if (!jedis.hexists(configKey, dataId)) {
                     Transaction transaction = jedis.multi();
                     transaction.hset(configKey, dataId, content);
-                    transaction.publish(getConfigChannelKey() + ":" + dataId, buildConfigChangeMessage(dataId, content));
+                    transaction.publish(getConfigChannelKey() + ":" + dataId,
+                            buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
 
                     List<Object> results = transaction.exec();
 
@@ -269,13 +275,14 @@ public class RedisConfiguration extends AbstractConfiguration {
 
     @Override
     public boolean removeConfig(String dataId, long timeoutMills) {
-        ConfigFuture configFuture = new ConfigFuture(dataId, null, ConfigFuture.ConfigOperation.REMOVE,
-                timeoutMills);
+        ConfigFuture configFuture = new ConfigFuture(dataId, null, ConfigFuture.ConfigOperation.REMOVE, timeoutMills);
 
         configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                jedis.hdel(getConfigKey(), dataId);
-                jedis.publish(getConfigChannelKey() + ":" + dataId, buildConfigChangeMessage(dataId, null));
+            try (Jedis jedis = jedisPool.getResource(); Pipeline pipeline = jedis.pipelined()) {
+                pipeline.hdel(getConfigKey(), dataId);
+                pipeline.publish(getConfigChannelKey() + ":" + dataId,
+                        buildConfigChangeMessage(ConfigOperation.REMOVE, dataId, ""));
+                pipeline.sync();
 
                 seataConfig.remove(dataId);
                 configFuture.setResult(Boolean.TRUE);
@@ -302,9 +309,7 @@ public class RedisConfiguration extends AbstractConfiguration {
 
             subscribeExecutor.execute(() -> {
                 try (Jedis jedis = jedisPool.getResource()) {
-
-                    String channel = getConfigChannelKey() + ":" + dataId;
-                    jedis.subscribe(redisListener, channel);
+                    jedis.subscribe(redisListener, getConfigChannelKey() + ":" + dataId);
                 } catch (Exception e) {
                     LOGGER.error("Failed to subscribe Redis channel: {}", e.getMessage());
                 }
@@ -370,13 +375,33 @@ public class RedisConfiguration extends AbstractConfiguration {
                 return;
             }
 
-            String[] parts = message.split("-", 2);
-            if (parts.length == 2 && parts[0].equals(dataId)) {
-                ConfigurationChangeEvent event = new ConfigurationChangeEvent()
-                        .setDataId(dataId)
-                        .setNewValue(parts[1])
-                        .setNamespace(DEFAULT_GROUP);
-                listener.onProcessEvent(event);
+            String[] parts = message.split("-", 3);
+            if (parts.length >= 2) {
+                try {
+                    ConfigOperation operation = ConfigOperation.valueOf(parts[0].toUpperCase());
+                    String dataId = parts[1];
+                    String content = parts.length > 2 ? parts[2] : null;
+
+                    switch (operation) {
+                        case PUT:
+                            if (content != null) {
+                                seataConfig.setProperty(dataId, content);
+                            }
+                            break;
+                        case REMOVE:
+                            seataConfig.remove(dataId);
+                            content = null;
+                            break;
+                    }
+
+                    ConfigurationChangeEvent event = new ConfigurationChangeEvent()
+                            .setDataId(dataId)
+                            .setNewValue(content)
+                            .setNamespace(DEFAULT_GROUP);
+                    listener.onProcessEvent(event);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error("Invalid operation in Redis message: {}", parts[0]);
+                }
             }
         }
 
@@ -393,9 +418,9 @@ public class RedisConfiguration extends AbstractConfiguration {
     /**
      * Build configuration change message for Redis pub/sub
      */
-    private String buildConfigChangeMessage(String dataId, String content) {
-        // like: dataId-content
-        return String.format("%s-%s", dataId, content);
+    private String buildConfigChangeMessage(ConfigOperation operation, String dataId, String content) {
+        // like: put-dataId-content
+        return String.format("%s-%s-%s", operation.name().toLowerCase(), dataId, content);
     }
 
     private String getConfigKey() {
