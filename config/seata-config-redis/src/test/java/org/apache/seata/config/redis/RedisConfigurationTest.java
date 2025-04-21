@@ -21,7 +21,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationChangeEvent;
 import org.apache.seata.config.ConfigurationChangeListener;
@@ -181,8 +180,7 @@ public class RedisConfigurationTest {
             throws InterruptedException {
         ConfigurationChangeListener listener = new ConfigurationChangeListener() {
             @Override
-            public void onChangeEvent(ConfigurationChangeEvent event) {
-            }
+            public void onChangeEvent(ConfigurationChangeEvent event) {}
 
             @Override
             public void onProcessEvent(ConfigurationChangeEvent event) {

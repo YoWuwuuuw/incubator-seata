@@ -27,7 +27,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.NetUtil;
@@ -205,13 +204,14 @@ public class RedisConfiguration extends AbstractConfiguration {
 
     @Override
     public boolean putConfig(String dataId, String content, long timeoutMills) {
-        ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUT,
-                timeoutMills);
+        ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUT, timeoutMills);
 
         configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource(); Pipeline pipeline = jedis.pipelined()) {
+            try (Jedis jedis = jedisPool.getResource();
+                    Pipeline pipeline = jedis.pipelined()) {
                 pipeline.hset(getConfigKey(), dataId, content);
-                pipeline.publish(getConfigChannelKey() + ":" + dataId,
+                pipeline.publish(
+                        getConfigChannelKey() + ":" + dataId,
                         buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
                 pipeline.sync();
 
@@ -236,8 +236,8 @@ public class RedisConfiguration extends AbstractConfiguration {
             }
         }
 
-        ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUTIFABSENT,
-                timeoutMills);
+        ConfigFuture configFuture =
+                new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUTIFABSENT, timeoutMills);
 
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
@@ -248,7 +248,8 @@ public class RedisConfiguration extends AbstractConfiguration {
                 if (!jedis.hexists(configKey, dataId)) {
                     Transaction transaction = jedis.multi();
                     transaction.hset(configKey, dataId, content);
-                    transaction.publish(getConfigChannelKey() + ":" + dataId,
+                    transaction.publish(
+                            getConfigChannelKey() + ":" + dataId,
                             buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
 
                     List<Object> results = transaction.exec();
@@ -278,9 +279,11 @@ public class RedisConfiguration extends AbstractConfiguration {
         ConfigFuture configFuture = new ConfigFuture(dataId, null, ConfigFuture.ConfigOperation.REMOVE, timeoutMills);
 
         configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource(); Pipeline pipeline = jedis.pipelined()) {
+            try (Jedis jedis = jedisPool.getResource();
+                    Pipeline pipeline = jedis.pipelined()) {
                 pipeline.hdel(getConfigKey(), dataId);
-                pipeline.publish(getConfigChannelKey() + ":" + dataId,
+                pipeline.publish(
+                        getConfigChannelKey() + ":" + dataId,
                         buildConfigChangeMessage(ConfigOperation.REMOVE, dataId, ""));
                 pipeline.sync();
 
@@ -391,6 +394,8 @@ public class RedisConfiguration extends AbstractConfiguration {
                         case REMOVE:
                             seataConfig.remove(dataId);
                             content = null;
+                            break;
+                        default:
                             break;
                     }
 

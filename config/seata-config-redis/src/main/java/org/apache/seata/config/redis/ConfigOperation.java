@@ -21,6 +21,12 @@ package org.apache.seata.config.redis;
  *
  */
 public enum ConfigOperation {
+    /**
+     * PUT
+     */
     PUT,
+    /**
+     * REMOVE
+     */
     REMOVE
 }
