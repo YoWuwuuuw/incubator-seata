@@ -25,8 +25,8 @@ import org.apache.seata.common.loader.LoadLevel;
 import org.apache.seata.common.metadata.ClusterRole;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.core.store.MappingDO;
+import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.MultiRegistryFactory;
-import org.apache.seata.discovery.registry.RegistryService;
 import org.apache.seata.server.cluster.raft.RaftServerManager;
 import org.apache.seata.server.cluster.raft.sync.msg.RaftSyncMsgType;
 import org.apache.seata.server.cluster.raft.sync.msg.RaftVGroupSyncMsg;
@@ -134,7 +134,7 @@ public class RaftVGroupMappingStoreManager implements VGroupMappingStoreManager 
                 Instance node = instance.clone();
                 node.setRole(RaftServerManager.isLeader(group) ? ClusterRole.LEADER : ClusterRole.FOLLOWER);
                 Instance.getInstances().add(node);
-                for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
+                for (BaseRegistryService<?, ?> registryService : MultiRegistryFactory.getInstances()) {
                     registryService.register(node);
                 }
             }

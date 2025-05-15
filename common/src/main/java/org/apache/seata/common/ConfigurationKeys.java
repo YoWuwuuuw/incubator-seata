@@ -172,6 +172,16 @@ public interface ConfigurationKeys {
     String CLIENT_RM_PREFIX = CLIENT_PREFIX + "rm.";
 
     /**
+     * The constant CLIENT_REGISTRY_PREFIX.
+     */
+    String CLIENT_REGISTRY_PREFIX = CLIENT_PREFIX + "registry.";
+
+    /**
+     * The constant CLIENT_REGISTRY_ENABLEMETADATA.
+     */
+    String CLIENT_REGISTRY_ENABLEMETADATA = CLIENT_REGISTRY_PREFIX + "enable-metadata";
+
+    /**
      * The constant CLIENT_ASYNC_COMMIT_BUFFER_LIMIT.
      */
     String CLIENT_ASYNC_COMMIT_BUFFER_LIMIT = CLIENT_RM_PREFIX + "asyncCommitBufferLimit";
@@ -433,7 +443,6 @@ public interface ConfigurationKeys {
      * The constant LOCK_DB_TABLE.
      */
     String LOCK_DB_TABLE = STORE_DB_PREFIX + "lockTable";
-
 
     /**
      * The constant SERVER_RPC_PORT.
@@ -1060,7 +1069,6 @@ public interface ConfigurationKeys {
      */
     String SERVER_RAFT_SSL_CLIENT_KEYSTORE_PASSWORD = SERVER_RAFT_SSL_CLIENT + "keystore.password";
 
-
     /**
      * The constant SERVER_RAFT_SSL_CLIENT_KEYSTORE_TYPE.
      */
@@ -1140,7 +1148,6 @@ public interface ConfigurationKeys {
      * The constant XA_CONNECTION_TWO_PHASE_HOLD_TIMEOUT
      */
     String XA_CONNECTION_TWO_PHASE_HOLD_TIMEOUT = CLIENT_RM_PREFIX + "connectionTwoPhaseHoldTimeoutXA";
-
 
     /**
      * The constant ENABLE_PARALLEL_REQUEST_HANDLE_KEY
@@ -1222,7 +1229,6 @@ public interface ConfigurationKeys {
      */
     String SERVER_REGISTRY_METADATA_EXTERNAL = SERVER_REGISTRY_METADATA_PREFIX + ".external";
 
-
     /**
      * The constant RATE_LIMIT_PREFIX.
      */
@@ -1247,5 +1253,4 @@ public interface ConfigurationKeys {
      * The constant RATE_LIMIT_BUCKET_TOKEN_INITIAL_NUM.
      */
     String RATE_LIMIT_BUCKET_TOKEN_INITIAL_NUM = RATE_LIMIT_PREFIX + ".bucketTokenInitialNum";
-
 }

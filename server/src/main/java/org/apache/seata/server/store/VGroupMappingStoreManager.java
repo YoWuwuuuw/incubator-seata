@@ -19,8 +19,8 @@ package org.apache.seata.server.store;
 import org.apache.seata.common.XID;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.core.store.MappingDO;
+import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.MultiRegistryFactory;
-import org.apache.seata.discovery.registry.RegistryService;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -60,12 +60,11 @@ public interface VGroupMappingStoreManager {
         instance.addMetadata("vGroup", map);
         try {
             InetSocketAddress address = new InetSocketAddress(XID.getIpAddress(), XID.getPort());
-            for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
+            for (BaseRegistryService<?, ?> registryService : MultiRegistryFactory.getInstances()) {
                 registryService.register(address);
             }
         } catch (Exception e) {
             throw new RuntimeException("vGroup mapping relationship notified failed! ", e);
         }
     }
-
 }

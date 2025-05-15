@@ -14,17 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.custom;
+package org.apache.seata.discovery.registry.metadata;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.BaseRegistryService;
-import org.apache.seata.discovery.registry.RegistryFactory;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 
-public class CustomRegistryTest {
-    @Test
-    public void testCustomRegistryLoad() {
-        BaseRegistryService registryService = RegistryFactory.getInstance();
-        Assertions.assertTrue(registryService instanceof CustomRegistryServiceForTest);
-    }
+/**
+ * The interface Registry service for metadata.
+ *
+ * @param <T> the type parameter
+ */
+public interface MetadataRegistryService<T> extends BaseRegistryService<T, ServiceInstance> {
+
+    /**
+     * Service cache for metadata mode
+     */
+    Map<String, Map<String, List<ServiceInstance>>> CURRENT_INSTANT_MAP = new ConcurrentHashMap<>();
 }

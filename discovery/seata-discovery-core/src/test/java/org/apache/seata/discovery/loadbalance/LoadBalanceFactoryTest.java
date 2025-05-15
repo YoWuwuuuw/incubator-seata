@@ -16,8 +16,8 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
+import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.RegistryFactory;
-import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -51,7 +51,7 @@ public class LoadBalanceFactoryTest {
     @Disabled
     public void testGetRegistry(LoadBalance loadBalance) throws Exception {
         Assertions.assertNotNull(loadBalance);
-        RegistryService registryService = RegistryFactory.getInstance();
+        BaseRegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
         InetSocketAddress address2 = new InetSocketAddress("127.0.0.1", 8092);
         registryService.register(address1);
@@ -71,7 +71,7 @@ public class LoadBalanceFactoryTest {
     @MethodSource("instanceProvider")
     @Disabled
     public void testUnRegistry(LoadBalance loadBalance) throws Exception {
-        RegistryService registryService = RegistryFactory.getInstance();
+        BaseRegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
         registryService.unregister(address);
     }
@@ -87,7 +87,7 @@ public class LoadBalanceFactoryTest {
     @Disabled
     public void testSubscribe(LoadBalance loadBalance) throws Exception {
         Assertions.assertNotNull(loadBalance);
-        RegistryService registryService = RegistryFactory.getInstance();
+        BaseRegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
         InetSocketAddress address2 = new InetSocketAddress("127.0.0.1", 8092);
         registryService.register(address1);

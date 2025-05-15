@@ -39,6 +39,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.apache.seata.common.exception.FrameworkErrorCode;
 import org.apache.seata.common.exception.FrameworkException;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
@@ -59,7 +60,9 @@ import org.apache.seata.core.rpc.TransactionMessageHandler;
 import org.apache.seata.core.rpc.processor.Pair;
 import org.apache.seata.core.rpc.processor.RemotingProcessor;
 import org.apache.seata.discovery.loadbalance.LoadBalanceFactory;
+import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.RegistryFactory;
+import org.apache.seata.discovery.registry.RegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +70,6 @@ import static org.apache.seata.common.exception.FrameworkErrorCode.NoAvailableSe
 
 /**
  * The netty remoting client.
- *
  */
 public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting implements RemotingClient {
 
@@ -183,7 +185,6 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             Channel channel = clientChannelManager.acquireChannel(serverAddress);
             return super.sendSync(channel, rpcMessage, timeoutMillis);
         }
-
     }
 
     @Override
@@ -260,10 +261,17 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
     protected String loadBalance(String transactionServiceGroup, Object msg) {
         InetSocketAddress address = null;
         try {
-            @SuppressWarnings("unchecked")
-            List<InetSocketAddress> inetSocketAddressList =
-                RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
-            address = this.doSelect(inetSocketAddressList, msg);
+            BaseRegistryService instance = RegistryFactory.getInstance();
+
+            if (instance instanceof RegistryService) {
+                @SuppressWarnings("unchecked")
+                List<InetSocketAddress> inetSocketAddressList = instance.aliveLookup(transactionServiceGroup);
+                address = this.doSelect(inetSocketAddressList, msg);
+            } else {
+                @SuppressWarnings("unchecked")
+                List<ServiceInstance> instanceAddressList = instance.aliveLookup(transactionServiceGroup);
+                address = this.doSelect4Metadata(instanceAddressList, msg);
+            }
         } catch (Exception ex) {
             LOGGER.error("Select the address failed: {}", ex.getMessage());
         }
@@ -279,6 +287,17 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
                 return LoadBalanceFactory.getInstance().select(list, getXid(msg));
             } else {
                 return list.get(0);
+            }
+        }
+        return null;
+    }
+
+    protected InetSocketAddress doSelect4Metadata(List<ServiceInstance> list, Object msg) throws Exception {
+        if (CollectionUtils.isNotEmpty(list)) {
+            if (list.size() > 1) {
+                return LoadBalanceFactory.getInstance().select(list, getXid(msg)).getAddress();
+            } else {
+                return list.get(0).getAddress();
             }
         }
         return null;
@@ -500,5 +519,4 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             super.close(ctx, future);
         }
     }
-
 }

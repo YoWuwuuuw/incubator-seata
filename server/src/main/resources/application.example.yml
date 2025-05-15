@@ -85,9 +85,11 @@ seata:
   registry:
     # support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa 、 seata
     type: file
+    enable-metadata: false
     preferred-networks: 30.240.*
     metadata:
-      weight: 100
+      weight: 1
+      region:
     seata:
       server-addr: 127.0.0.1:8081
       cluster: default

@@ -14,17 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.custom;
+package org.apache.seata.discovery.registry.metadata;
 
-import org.apache.seata.discovery.registry.BaseRegistryService;
-import org.apache.seata.discovery.registry.RegistryFactory;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-public class CustomRegistryTest {
-    @Test
-    public void testCustomRegistryLoad() {
-        BaseRegistryService registryService = RegistryFactory.getInstance();
-        Assertions.assertTrue(registryService instanceof CustomRegistryServiceForTest);
-    }
+/**
+ * the interface registry provider for metadata mode
+ */
+public interface MetadataRegistryProvider {
+    /**
+     * provide a registry implementation instance
+     * @return MetadataRegistryService
+     */
+    MetadataRegistryService provide();
 }

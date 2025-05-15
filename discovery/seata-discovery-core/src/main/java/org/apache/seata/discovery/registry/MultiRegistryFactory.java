@@ -26,12 +26,12 @@ import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.util.StringUtils;
 import org.apache.seata.config.ConfigurationFactory;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The type multiple Registry factory.
- *
  */
 public class MultiRegistryFactory {
 
@@ -42,14 +42,16 @@ public class MultiRegistryFactory {
      *
      * @return the instance list
      */
-    public static List<RegistryService> getInstances() {
+    public static List<BaseRegistryService<?, ?>> getInstances() {
         return MultiRegistryFactoryHolder.INSTANCES;
     }
 
-    private static List<RegistryService> buildRegistryServices() {
-        List<RegistryService> registryServices = new ArrayList<>();
-        String registryTypeNamesStr =
-            ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
+    private static List<BaseRegistryService<?, ?>> buildRegistryServices() {
+        boolean enableMetadata =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+
+        List<BaseRegistryService<?, ?>> registryServices = new ArrayList<>();
+        String registryTypeNamesStr = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
                 + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
         if (StringUtils.isBlank(registryTypeNamesStr)) {
             registryTypeNamesStr = RegistryType.File.name();
@@ -58,6 +60,7 @@ public class MultiRegistryFactory {
         if (registryTypeNames.length > 1) {
             LOGGER.info("use multi registry center type: {}", registryTypeNamesStr);
         }
+
         for (String registryTypeName : registryTypeNames) {
             RegistryType registryType;
             try {
@@ -65,14 +68,20 @@ public class MultiRegistryFactory {
             } catch (Exception exx) {
                 throw new NotSupportYetException("not support registry type: " + registryTypeName);
             }
-            RegistryService registryService = EnhancedServiceLoader
-                .load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+
+            BaseRegistryService<?, ?> registryService;
+            if (enableMetadata) {
+                registryService = EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+            } else {
+                registryService = EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+            }
             registryServices.add(registryService);
         }
+
         return registryServices;
     }
 
     private static class MultiRegistryFactoryHolder {
-        private static final List<RegistryService> INSTANCES = buildRegistryServices();
+        private static final List<BaseRegistryService<?, ?>> INSTANCES = buildRegistryServices();
     }
 }

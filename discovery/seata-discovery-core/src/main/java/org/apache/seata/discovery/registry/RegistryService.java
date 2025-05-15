@@ -16,10 +16,6 @@
  */
 package org.apache.seata.discovery.registry;
 
-import org.apache.seata.common.metadata.Instance;
-import org.apache.seata.common.util.CollectionUtils;
-import org.apache.seata.config.ConfigurationFactory;
-
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,13 +25,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.apache.seata.common.util.CollectionUtils;
+import org.apache.seata.config.ConfigurationFactory;
 
 /**
  * The interface Registry service.
  *
- * @param <T> the type parameter
+ * @param <T> the type parameter for listener
  */
-public interface RegistryService<T> {
+public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAddress> {
 
     /**
      * The constant PREFIX_SERVICE_MAPPING.
@@ -56,80 +54,6 @@ public interface RegistryService<T> {
      * Service node health check
      */
     Map<String, Map<String, List<InetSocketAddress>>> CURRENT_ADDRESS_MAP = new ConcurrentHashMap<>();
-    /**
-     * Register.
-     *
-     * @param address the address
-     * @throws Exception the exception
-     */
-    @Deprecated
-    void register(InetSocketAddress address) throws Exception;
-
-    /**
-     * Register.
-     *
-     * @param instance the address
-     * @throws Exception the exception
-     */
-    default void register(Instance instance) throws Exception {
-        InetSocketAddress inetSocketAddress =
-            new InetSocketAddress(instance.getTransaction().getHost(), instance.getTransaction().getPort());
-        register(inetSocketAddress);
-    }
-
-    /**
-     * Unregister.
-     *
-     * @param address the address
-     * @throws Exception the exception
-     */
-    @Deprecated
-    void unregister(InetSocketAddress address) throws Exception;
-
-    /**
-     * Unregister.
-     *
-     * @param instance the instance
-     * @throws Exception the exception
-     */
-    default void unregister(Instance instance) throws Exception {
-        InetSocketAddress inetSocketAddress =
-            new InetSocketAddress(instance.getTransaction().getHost(), instance.getTransaction().getPort());
-        unregister(inetSocketAddress);
-    }
-
-    /**
-     * Subscribe.
-     *
-     * @param cluster  the cluster
-     * @param listener the listener
-     * @throws Exception the exception
-     */
-    void subscribe(String cluster, T listener) throws Exception;
-
-    /**
-     * Unsubscribe.
-     *
-     * @param cluster  the cluster
-     * @param listener the listener
-     * @throws Exception the exception
-     */
-    void unsubscribe(String cluster, T listener) throws Exception;
-
-    /**
-     * Lookup list.
-     *
-     * @param key the key
-     * @return the list
-     * @throws Exception the exception
-     */
-    List<InetSocketAddress> lookup(String key) throws Exception;
-
-    /**
-     * Close.
-     * @throws Exception the exception
-     */
-    void close() throws Exception;
 
     /**
      * Get current service group name
@@ -171,11 +95,8 @@ public interface RegistryService<T> {
         return clusterAddressMap.put(clusterName, aliveAddress);
     }
 
-
     /**
-     *
      * remove offline addresses if necessary.
-     *
      * Intersection of the old and new addresses
      *
      * @param clusterName
@@ -197,5 +118,4 @@ public interface RegistryService<T> {
             clusterAddressMap.put(clusterName, inetSocketAddresses);
         }
     }
-
 }

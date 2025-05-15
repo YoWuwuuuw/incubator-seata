@@ -39,8 +39,8 @@ import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.core.rpc.RemotingBootstrap;
+import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.MultiRegistryFactory;
-import org.apache.seata.discovery.registry.RegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -177,7 +177,7 @@ public class NettyServerBootstrap implements RemotingBootstrap {
             if (instance.getTransaction() == null) {
                 Instance.getInstance().setTransaction(new Node.Endpoint(XID.getIpAddress(), XID.getPort(), "netty"));
             }
-            for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
+            for (BaseRegistryService registryService : MultiRegistryFactory.getInstances()) {
                 registryService.register(Instance.getInstance());
             }
             initialized.set(true);
@@ -195,7 +195,7 @@ public class NettyServerBootstrap implements RemotingBootstrap {
                 LOGGER.info("Shutting server down, the listen port: {}", XID.getPort());
             }
             if (initialized.get()) {
-                for (RegistryService registryService : MultiRegistryFactory.getInstances()) {
+                for (BaseRegistryService registryService : MultiRegistryFactory.getInstances()) {
                     registryService.unregister(Instance.getInstance());
                     registryService.close();
                 }
