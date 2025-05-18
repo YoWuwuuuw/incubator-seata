@@ -60,6 +60,7 @@ public class RegistryFactory {
             return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
         }
 
+        // TODO(www):校验无法开启元数据模式的注册中心类型, NotSupportYetException
         return EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
     }
 

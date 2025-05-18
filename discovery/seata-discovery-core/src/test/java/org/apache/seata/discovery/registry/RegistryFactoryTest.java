@@ -1,0 +1,103 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.seata.discovery.registry;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.apache.seata.common.ConfigurationKeys;
+import org.apache.seata.common.exception.NotSupportYetException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The type Registry factory test.
+ */
+public class RegistryFactoryTest {
+
+    private static final String REGISTRY_TYPE_KEY = ConfigurationKeys.FILE_ROOT_REGISTRY
+            + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
+            + ConfigurationKeys.FILE_ROOT_TYPE;
+
+    @AfterEach
+    public void tearDown() {
+        System.clearProperty(REGISTRY_TYPE_KEY);
+        System.clearProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+    }
+
+    /**
+     * Test getInstance with default config.
+     */
+    @Test
+    public void testGetInstanceWithDefaultConfig() {
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
+
+        BaseRegistryService<?, ?> instance = RegistryFactory.getInstance();
+        Assertions.assertNotNull(instance);
+    }
+
+    /**
+     * Test buildRegistryService with blank registry type.
+     */
+    @Test
+    public void testGetInstanceOfBlankRegistryType() throws Throwable {
+        // TODO(www):等pr
+        //        System.setProperty(REGISTRY_TYPE_KEY, "");
+        //
+        //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
+        //        Assertions.assertNotNull(instance);
+    }
+
+    /**
+     * Test buildRegistryService with invalid registry type.
+     */
+    @Test
+    public void testGetInstanceOfInvalidRegistryType() {
+        System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
+
+        Assertions.assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryService());
+    }
+
+    /**
+     * Test buildRegistryService with metadata enabled.
+     */
+    @Test
+    public void testGetInstanceOfMetadataEnabled() throws Throwable {
+        // TODO(www):解决一下core模块无法发现nacos、zk等模块类，无法spi加载 -> 无法测试的问题
+        //        System.setProperty(ENABLE_METADATA_KEY, "true");
+        //        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
+        //
+        //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
+        //        Assertions.assertNotNull(instance);
+        // 这里需要lookup一些元数据出来进行检查
+    }
+
+    /**
+     * Use reflection to call the buildRegistryServices method
+     */
+    private static BaseRegistryService<?, ?> invokeBuildRegistryService() throws Throwable {
+        Method buildMethod = RegistryFactory.class.getDeclaredMethod("buildRegistryService");
+
+        buildMethod.setAccessible(true);
+        try {
+            return (BaseRegistryService<?, ?>) buildMethod.invoke(null);
+        } catch (InvocationTargetException e) {
+            throw e.getTargetException();
+        }
+    }
+}

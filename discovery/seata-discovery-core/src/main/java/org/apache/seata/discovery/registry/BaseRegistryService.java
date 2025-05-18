@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.seata.common.metadata.Instance;
-import org.apache.seata.common.metadata.ServiceInstance;
 
 /**
  * The base interface for all mode registry services.
@@ -90,7 +89,7 @@ public interface BaseRegistryService<T, I> {
      * @return the list
      * @throws Exception the exception
      */
-    List<ServiceInstance> lookup(String key) throws Exception;
+    List<I> lookup(String key) throws Exception;
 
     /**
      * Get current service group name

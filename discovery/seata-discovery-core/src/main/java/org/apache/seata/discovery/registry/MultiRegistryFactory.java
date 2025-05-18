@@ -70,10 +70,11 @@ public class MultiRegistryFactory {
             }
 
             BaseRegistryService<?, ?> registryService;
-            if (enableMetadata) {
-                registryService = EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
-            } else {
+            if (!enableMetadata) {
                 registryService = EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+            } else {
+                // TODO(www):校验无法开启元数据模式的注册中心类型, NotSupportYetException
+                registryService = EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
             }
             registryServices.add(registryService);
         }
