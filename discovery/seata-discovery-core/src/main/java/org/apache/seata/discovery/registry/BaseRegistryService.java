@@ -18,9 +18,12 @@ package org.apache.seata.discovery.registry;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.seata.common.metadata.Instance;
+import org.apache.seata.config.ConfigurationFactory;
 
 /**
  * The base interface for all mode registry services.
@@ -29,6 +32,23 @@ import org.apache.seata.common.metadata.Instance;
  * @param <I> the type parameter for instance
  */
 public interface BaseRegistryService<T, I> {
+
+    /**
+     * The constant PREFIX_SERVICE_MAPPING.
+     */
+    String PREFIX_SERVICE_MAPPING = "vgroupMapping.";
+
+    /**
+     * The constant PREFIX_SERVICE_ROOT.
+     */
+    String PREFIX_SERVICE_ROOT = "service";
+
+    /**
+     * The constant CONFIG_SPLIT_CHAR.
+     */
+    String CONFIG_SPLIT_CHAR = ".";
+
+    Set<String> SERVICE_GROUP_NAME = new HashSet<>();
 
     /**
      * Register.
@@ -78,6 +98,7 @@ public interface BaseRegistryService<T, I> {
 
     /**
      * Close.
+     *
      * @throws Exception the exception
      */
     void close() throws Exception;
@@ -92,38 +113,42 @@ public interface BaseRegistryService<T, I> {
     List<I> lookup(String key) throws Exception;
 
     /**
+     * get the list of available service instances(local cache)
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @return available service instances
+     */
+    List<I> aliveLookup(String transactionServiceGroup);
+
+    /**
+     * Refresh the list of available service instances and update the local cache
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @param aliveAddress            the list of alive service addresses / instances
+     * @return Old available service instances list
+     */
+    List<I> refreshAliveLookup(String transactionServiceGroup, List<I> aliveAddress);
+
+    /**
+     * Remove service instances that have been taken offline
+     *
+     * @param transactionGroupService the transaction group service
+     * @param clusterName             the cluster name
+     * @param newAddressed            the new addresses / instances collection
+     */
+    void removeOfflineAddressesIfNecessary(String transactionGroupService, String clusterName, Collection<I> newAddressed);
+
+    /**
      * Get current service group name
      *
      * @param key service group
      * @return the service group name
      */
-    String getServiceGroup(String key);
-
-    /**
-     * Get alive service instances
-     *
-     * @param transactionServiceGroup the transaction service group
-     * @return the list of alive service instances
-     */
-    List<I> aliveLookup(String transactionServiceGroup);
-
-    /**
-     * Refresh alive service instances
-     *
-     * @param transactionServiceGroup the transaction service group
-     * @param aliveAddress the list of alive service instances
-     * @return the list of refreshed service instances
-     */
-    List<I> refreshAliveLookup(String transactionServiceGroup, List<I> aliveAddress);
-
-    /**
-     * Remove offline addresses if necessary.
-     * Intersection of the old and new addresses
-     *
-     * @param transactionGroupService the transaction group service
-     * @param clusterName the cluster name
-     * @param newAddressed the new addressed collection
-     */
-    void removeOfflineAddressesIfNecessary(
-            String transactionGroupService, String clusterName, Collection<I> newAddressed);
+    default String getServiceGroup(String key) {
+        key = PREFIX_SERVICE_ROOT + CONFIG_SPLIT_CHAR + PREFIX_SERVICE_MAPPING + key;
+        if (!SERVICE_GROUP_NAME.contains(key)) {
+            SERVICE_GROUP_NAME.add(key);
+        }
+        return ConfigurationFactory.getInstance().getConfig(key);
+    }
 }

@@ -17,13 +17,13 @@
 package org.apache.seata.discovery.registry.nacos;
 
 import org.apache.seata.common.loader.LoadLevel;
-import org.apache.seata.discovery.registry.RegistryProvider;
-import org.apache.seata.discovery.registry.RegistryService;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 
 @LoadLevel(name = "Nacos", order = 1)
-public class NacosRegistryProvider implements RegistryProvider {
+public class NacosMetadataRegistryProvider implements MetadataRegistryProvider {
     @Override
-    public RegistryService provide() {
-        return NacosRegistryServiceImpl.getInstance();
+    public MetadataRegistryService provide() {
+        return NacosMetadataRegistryServiceImpl.getInstance();
     }
 }

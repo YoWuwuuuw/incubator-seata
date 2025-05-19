@@ -18,7 +18,6 @@ package org.apache.seata.common;
 
 /**
  * The type Configuration keys.
- *
  */
 public interface ConfigurationKeys {
     /**
@@ -172,6 +171,16 @@ public interface ConfigurationKeys {
     String CLIENT_RM_PREFIX = CLIENT_PREFIX + "rm.";
 
     /**
+     * The constant SERVER__REGISTRY_PREFIX.
+     */
+    String SERVER_REGISTRY_PREFIX = SERVER_PREFIX + "registry.";
+
+    /**
+     * The constant SERVER_REGISTRY_METADATA.
+     */
+    String SERVER_REGISTRY_METADATA = SERVER_REGISTRY_PREFIX + "metadata";
+
+    /**
      * The constant CLIENT_REGISTRY_PREFIX.
      */
     String CLIENT_REGISTRY_PREFIX = CLIENT_PREFIX + "registry.";
@@ -201,7 +210,8 @@ public interface ConfigurationKeys {
     /**
      * The constant CLIENT_LOCK_RETRY_POLICY_BRANCH_ROLLBACK_ON_CONFLICT.
      */
-    String CLIENT_LOCK_RETRY_POLICY_BRANCH_ROLLBACK_ON_CONFLICT = CLIENT_RM_LOCK_PREFIX + "retryPolicyBranchRollbackOnConflict";
+    String CLIENT_LOCK_RETRY_POLICY_BRANCH_ROLLBACK_ON_CONFLICT =
+            CLIENT_RM_LOCK_PREFIX + "retryPolicyBranchRollbackOnConflict";
 
     /**
      * The constant SERVICE_SESSION_RELOAD_READ_SIZE
@@ -1187,12 +1197,14 @@ public interface ConfigurationKeys {
     /**
      *
      */
-    String NAMINGSERVER_REGISTRY_PREFIX = FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + NAMING_SERVER + FILE_CONFIG_SPLIT_CHAR;
+    String NAMINGSERVER_REGISTRY_PREFIX =
+            FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + NAMING_SERVER + FILE_CONFIG_SPLIT_CHAR;
 
     /**
      *
      */
-    String SEATA_NAMINGSERVER_REGISTRY_PREFIX = SEATA_FILE_ROOT_CONFIG + FILE_CONFIG_SPLIT_CHAR + NAMINGSERVER_REGISTRY_PREFIX;
+    String SEATA_NAMINGSERVER_REGISTRY_PREFIX =
+            SEATA_FILE_ROOT_CONFIG + FILE_CONFIG_SPLIT_CHAR + NAMINGSERVER_REGISTRY_PREFIX;
 
     /**
      * The constant REGISTRY_NAMINGSERVER_CLUSTER
@@ -1217,7 +1229,8 @@ public interface ConfigurationKeys {
     /**
      * The constant META_PREFIX
      */
-    String META_PREFIX = SEATA_FILE_ROOT_CONFIG + FILE_CONFIG_SPLIT_CHAR + FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + "metadata.";
+    String META_PREFIX =
+            SEATA_FILE_ROOT_CONFIG + FILE_CONFIG_SPLIT_CHAR + FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + "metadata.";
 
     /**
      * The constant SERVER_REGISTRY_METADATA_PREFIX

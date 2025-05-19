@@ -16,40 +16,43 @@
  */
 package org.apache.seata.discovery.registry.nacos;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
-
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import com.alibaba.nacos.api.naming.listener.NamingEvent;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 import com.alibaba.nacos.api.naming.pojo.Service;
+
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
+
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.common.util.StringUtils;
+import org.apache.seata.config.ConfigurationKeys;
 import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.apache.seata.discovery.registry.RegistryService;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * The type Nacos registry service.
+ * The type Nacos registry service for metadata.
  */
-public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl implements RegistryService<EventListener> {
+public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServiceImpl implements MetadataRegistryService<EventListener> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NacosRegistryServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(NacosMetadataRegistryServiceImpl.class);
 
     private static final ConcurrentMap<String, List<EventListener>> LISTENER_SERVICE_MAP = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<String, List<InetSocketAddress>> CLUSTER_ADDRESS_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, List<ServiceInstance>> CLUSTER_INSTANCE_MAP = new ConcurrentHashMap<>();
 
-    private static volatile NacosRegistryServiceImpl instance;
+    private static volatile NacosMetadataRegistryServiceImpl instance;
 
-    private NacosRegistryServiceImpl() {
+    private NacosMetadataRegistryServiceImpl() {
         initUseSLBWay();
     }
 
@@ -58,11 +61,11 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
      *
      * @return the instance
      */
-    static NacosRegistryServiceImpl getInstance() {
+    static NacosMetadataRegistryServiceImpl getInstance() {
         if (instance == null) {
             synchronized (NacosRegistryServiceImpl.class) {
                 if (instance == null) {
-                    instance = new NacosRegistryServiceImpl();
+                    instance = new NacosMetadataRegistryServiceImpl();
                 }
             }
         }
@@ -72,13 +75,13 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
     @Override
     public void register(InetSocketAddress address) throws Exception {
         NetUtil.validAddress(address);
-        getNamingInstance().registerInstance(getServiceName(), getServiceGroup(), address.getAddress().getHostAddress(), address.getPort(), getClusterName());
+        getNamingInstance().registerInstance(getServiceName(), getServiceGroup(), getMetadataNacosInstance(address));
     }
 
     @Override
     public void unregister(InetSocketAddress address) throws Exception {
         NetUtil.validAddress(address);
-        getNamingInstance().deregisterInstance(getServiceName(), getServiceGroup(), address.getAddress().getHostAddress(), address.getPort(), getClusterName());
+        getNamingInstance().deregisterInstance(getServiceName(), getServiceGroup(), getMetadataNacosInstance(address));
     }
 
     @Override
@@ -105,7 +108,12 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
     }
 
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public void close() throws Exception {
+
+    }
+
+    @Override
+    public List<ServiceInstance> lookup(String key) throws Exception {
         transactionServiceGroup = key;
         String clusterName = getServiceGroup(key);
         if (clusterName == null) {
@@ -116,7 +124,7 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("look up service address of SLB by nacos");
             }
-            if (!CLUSTER_ADDRESS_MAP.containsKey(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName)) {
+            if (!CLUSTER_INSTANCE_MAP.containsKey(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName)) {
                 Service service = getNamingMaintainInstance().queryService(DEFAULT_APPLICATION, clusterName);
                 String pubnetIp = service.getMetadata().get(PUBLIC_NAMING_SERVICE_META_IP_KEY);
                 String pubnetPort = service.getMetadata().get(PUBLIC_NAMING_SERVICE_META_PORT_KEY);
@@ -125,11 +133,12 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                 }
                 InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp,
                         Integer.valueOf(pubnetPort));
-                List<InetSocketAddress> publicAddressList = Arrays.asList(publicAddress);
-                CLUSTER_ADDRESS_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicAddressList);
+                ServiceInstance serviceInstance = new ServiceInstance(publicAddress, null);
+                List<ServiceInstance> publicAddressList = Arrays.asList(serviceInstance);
+                CLUSTER_INSTANCE_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicAddressList);
                 return publicAddressList;
             }
-            return CLUSTER_ADDRESS_MAP.get(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName);
+            return CLUSTER_INSTANCE_MAP.get(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName);
         }
         if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
             synchronized (LOCK_OBJ) {
@@ -138,35 +147,61 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                     clusters.add(clusterName);
                     List<Instance> firstAllInstances = getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
                     if (null != firstAllInstances) {
-                        List<InetSocketAddress> newAddressList = firstAllInstances.stream()
+                        List<ServiceInstance> newInstanceList = firstAllInstances.stream()
                                 .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                .map(eachInstance -> new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
+                                .map(eachInstance -> {
+                                    InetSocketAddress address = new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
+                                    Map<String, String> metadata = eachInstance.getMetadata();
+                                    return new ServiceInstance(address, metadata);
+                                })
                                 .collect(Collectors.toList());
-                        CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
+                        CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
                     }
                     subscribe(clusterName, event -> {
                         List<Instance> instances = ((NamingEvent) event).getInstances();
-                        if (CollectionUtils.isEmpty(instances) && null != CLUSTER_ADDRESS_MAP.get(clusterName)) {
+                        if (CollectionUtils.isEmpty(instances) && null != CLUSTER_INSTANCE_MAP.get(clusterName)) {
                             LOGGER.info("receive empty server list,cluster:{}", clusterName);
                         } else {
-                            List<InetSocketAddress> newAddressList = instances.stream()
+                            List<ServiceInstance> newInstanceList = instances.stream()
                                     .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                    .map(eachInstance -> new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
+                                    .map(eachInstance -> {
+                                        InetSocketAddress address = new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
+                                        Map<String, String> metadata = eachInstance.getMetadata();
+                                        return new ServiceInstance(address, metadata);
+                                    })
                                     .collect(Collectors.toList());
-                            CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
+                            CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
                             if (StringUtils.isNotEmpty(transactionServiceGroup)) {
-                                removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newAddressList);
+                                removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newInstanceList);
                             }
                         }
                     });
                 }
             }
         }
-        return CLUSTER_ADDRESS_MAP.get(clusterName);
+        return CLUSTER_INSTANCE_MAP.get(clusterName);
     }
 
-    @Override
-    public void close() throws Exception {
+    private Instance getMetadataNacosInstance(InetSocketAddress address) {
+        Instance instance = new Instance();
+        instance.setIp(address.getAddress().getHostAddress());
+        instance.setPort(address.getPort());
+        instance.setClusterName(getClusterName());
 
+        Map<String, String> metadata = loadServerMetadata();
+        if (metadata == null) {
+            LOGGER.warn("The metadata schema has been started, but the metadata configuration is empty");
+        }
+
+        instance.setMetadata(metadata);
+        return instance;
+    }
+
+    private Map<String, String> loadServerMetadata() {
+        return FILE_CONFIG.getMap(getMetadataFileKey());
+    }
+
+    private String getMetadataFileKey() {
+        return ConfigurationKeys.SERVER_REGISTRY_METADATA;
     }
 }
