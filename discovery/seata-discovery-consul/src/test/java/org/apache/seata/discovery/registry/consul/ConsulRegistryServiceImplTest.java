@@ -16,10 +16,27 @@
  */
 package org.apache.seata.discovery.registry.consul;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.ecwid.consul.transport.RawResponse;
 import com.ecwid.consul.v1.ConsulClient;
 import com.ecwid.consul.v1.Response;
 import com.ecwid.consul.v1.health.model.HealthService;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
@@ -28,19 +45,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 
 public class ConsulRegistryServiceImplTest {
 
@@ -52,11 +56,13 @@ public class ConsulRegistryServiceImplTest {
 
     @BeforeEach
     public void init() throws Exception {
+        configuration = mock(Configuration.class);
         service = (ConsulRegistryServiceImpl) new ConsulRegistryProvider().provide();
         client = mock(ConsulClient.class);
-        this.setClient(service, client);
 
-        configuration = mock(Configuration.class);
+        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("client");
+        clientField.setAccessible(true);
+        clientField.set(service, client);
     }
 
     @Test
@@ -113,11 +119,92 @@ public class ConsulRegistryServiceImplTest {
         Assertions.assertNull(getMap("notifiers").get(TEST_CLUSTER_NAME));
     }
 
+    @Test
+    public void testClose() throws Exception {
+        ExecutorService executorService = mockExecutorService(true, null);
+        prepareMockNotifier();
+        service.close();
 
-    private void setClient(ConsulRegistryServiceImpl service, ConsulClient client) throws Exception {
+        verifyCloseResults(executorService, false);
+    }
+
+    @Test
+    public void testCloseWithExecutorShutdownFailure() throws Exception {
+        ExecutorService executorService = mockExecutorService(false, null);
+        prepareEmptyNotifiers();
+        service.close();
+        verifyCloseResults(executorService, true);
+        
+        init();
+        executorService = mockExecutorService(false, new InterruptedException("Test exception"));
+        prepareEmptyNotifiers();
+        service.close();
+        verifyCloseResults(executorService, true);
+    }
+
+    private ExecutorService mockExecutorService(boolean awaitTerminationResult,
+                                               InterruptedException exception) throws Exception {
+        ExecutorService executorService = mock(ExecutorService.class);
+        when(executorService.isShutdown()).thenReturn(false);
+        
+        if (exception != null) {
+            when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(exception);
+        } else {
+            when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(awaitTerminationResult);
+        }
+        
+        setExecutorService(executorService);
+        return executorService;
+    }
+
+    /**
+     * Create a ConsulNotifier instance and add it to the notifiers mapping
+     */
+    private void prepareMockNotifier() throws Exception {
+        Class<?> notifierClass = Class.forName("org.apache.seata.discovery.registry.consul.ConsulRegistryServiceImpl$ConsulNotifier");
+        Constructor<?> constructor = notifierClass.getDeclaredConstructor(ConsulRegistryServiceImpl.class, String.class, long.class);
+        constructor.setAccessible(true);
+        Object notifier = constructor.newInstance(service, TEST_CLUSTER_NAME, 1L);
+        
+        ConcurrentMap<String, Object> notifierMap = getMap("notifiers");
+        notifierMap.put(TEST_CLUSTER_NAME, notifier);
+        
+        ConcurrentMap<String, Set<ConsulListener>> listenerMap = getMap("listenerMap");
+        Set<ConsulListener> listeners = new HashSet<>();
+        listeners.add(mock(ConsulListener.class));
+        listenerMap.put(TEST_CLUSTER_NAME, listeners);
+    }
+
+    /**
+     * Prepare an empty notifiers mapping
+     */
+    private void prepareEmptyNotifiers() throws Exception {
+        ConcurrentMap<String, Object> notifierMap = getMap("notifiers");
+        notifierMap.clear();
+    }
+
+    /**
+     * Verify the results of the closure method
+     */
+    private void verifyCloseResults(ExecutorService executorService, boolean expectShutdownNow) throws Exception {
+        ConcurrentMap<String, Object> notifierMap = getMap("notifiers");
+        ConcurrentMap<String, Set<ConsulListener>> listenerMap = getMap("listenerMap");
+        Assertions.assertTrue(notifierMap.isEmpty());
+        Assertions.assertTrue(listenerMap.isEmpty());
+        
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(5, TimeUnit.SECONDS);
+        if (expectShutdownNow) {
+            verify(executorService).shutdownNow();
+        }
+        
         Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("client");
         clientField.setAccessible(true);
-        clientField.set(service, client);
+        Assertions.assertNull(clientField.get(null));
+        
+        Field executorServiceField = ConsulRegistryServiceImpl.class.getDeclaredField("notifierExecutor");
+        executorServiceField.setAccessible(true);
+        Assertions.assertNull(executorServiceField.get(service));
     }
 
     private void setExecutorService(ExecutorService executorService) throws Exception {

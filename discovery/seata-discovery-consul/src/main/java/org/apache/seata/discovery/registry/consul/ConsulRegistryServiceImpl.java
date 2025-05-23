@@ -364,7 +364,39 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
 
     @Override
     public void close() throws Exception {
-        client = null;
-    }
+        // Stop ConsulNotifiers
+        if (notifiers != null && !notifiers.isEmpty()) {
+            for (String cluster : new HashSet<>(notifiers.keySet())) {
+                ConsulNotifier notifier = notifiers.remove(cluster);
+                if (notifier != null) {
+                    notifier.stop();
+                }
+            }
+            if (listenerMap != null) {
+                listenerMap.clear();
+            }
+            if (notifiers != null) {
+                notifiers.clear();
+            }
+        }
 
+        // Shut down the ThreadPoolExecutor
+        if (notifierExecutor != null && !notifierExecutor.isShutdown()) {
+            notifierExecutor.shutdown();
+            try {
+                if (!notifierExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    notifierExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                notifierExecutor.shutdownNow();
+            } finally {
+                notifierExecutor = null;
+            }
+        }
+
+        // Close the Consul client and release the underlying connection
+        if (client != null) {
+            client = null;
+        }
+    }
 }
