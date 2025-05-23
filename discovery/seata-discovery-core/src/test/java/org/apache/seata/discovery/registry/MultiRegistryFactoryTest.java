@@ -31,10 +31,14 @@ import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The type Multi registry factory test.
@@ -71,46 +75,45 @@ public class MultiRegistryFactoryTest {
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
 
         List<RegistryService> instances = MultiRegistryFactory.getInstances();
-        Assertions.assertNotNull(instances);
+        assertFalse(instances.isEmpty());
 
         for (RegistryService service : instances) {
-            Assertions.assertEquals(FileRegistryServiceImpl.class, service.getClass());
+            assertEquals(FileRegistryServiceImpl.class, service.getClass());
         }
     }
 
-    /**
-     * Test buildRegistryServices with multiple tests of the same registry type.
-     */
     @Test
-    public void testGetInstancesWithMultiRegistryTypes() throws Throwable {
-        // Set up two registry centers with capital and small letter
-        String twoRegistryTypes = "File,file";
-        System.setProperty(REGISTRY_TYPE_KEY, twoRegistryTypes);
+    public void testGetInstancesWithSameRegistryTypes() throws Throwable {
+        String sameRegistryType = "File,file";
+        System.setProperty(REGISTRY_TYPE_KEY, sameRegistryType);
         List<RegistryService> instances = invokeBuildRegistryServices();
 
-        Assertions.assertEquals(1, instances.size());
-        Assertions.assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
-        Assertions.assertTrue(getLogs(Level.INFO).isEmpty());
+        assertEquals(1, instances.size());
+        assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
+        assertTrue(getLogs(Level.INFO).isEmpty());
+    }
 
-        // Set up three registry centers with multiple types
-        String threeRegistryTypes = twoRegistryTypes + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.Nacos.name();
-        System.setProperty(REGISTRY_TYPE_KEY, threeRegistryTypes);
-        List<RegistryService> instances1 = invokeBuildRegistryServices();
+    @Test
+    public void testGetInstancesWithDifferentRegistryTypes() throws Throwable {
+        String differentRegistryType = "File,file" + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.Nacos.name();
+        System.setProperty(REGISTRY_TYPE_KEY, differentRegistryType);
+        List<RegistryService> instances = invokeBuildRegistryServices();
 
-        Assertions.assertEquals(2, instances1.size());
-        Assertions.assertEquals(MockNacosRegistryService.class, instances1.get(1).getClass());
-        Assertions.assertEquals("use multi registry center type: [File, Nacos]", getLogs(Level.INFO).get(0));
+        assertEquals(2, instances.size());
+        assertEquals(MockNacosRegistryService.class, instances.get(1).getClass());
+        assertEquals("use multi registry center type: [File, Nacos]", getLogs(Level.INFO).get(0));
     }
 
     /**
      * Test buildRegistryServices with blank registry type.
+     * when the registry type is blank, the default registry type is File
      */
     @Test
     public void testGetInstancesWithBlankRegistryType() throws Throwable {
         System.setProperty(REGISTRY_TYPE_KEY, "");
 
         List<RegistryService> instances = invokeBuildRegistryServices();
-        Assertions.assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
+        assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
     }
 
     /**
@@ -118,9 +121,12 @@ public class MultiRegistryFactoryTest {
      */
     @Test
     public void testGetInstancesWithInvalidRegistryType() {
-        System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
+        String invalidRegistryType = "InvalidRegistryType";
+        System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
 
-        Assertions.assertThrows(NotSupportYetException.class, MultiRegistryFactoryTest::invokeBuildRegistryServices);
+        assertThatThrownBy(MultiRegistryFactoryTest::invokeBuildRegistryServices)
+                .isExactlyInstanceOf(NotSupportYetException.class)
+                .hasMessage("not support registry type: " + invalidRegistryType);
     }
 
     /**

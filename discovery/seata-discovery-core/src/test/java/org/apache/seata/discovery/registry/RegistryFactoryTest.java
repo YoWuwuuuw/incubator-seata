@@ -22,8 +22,10 @@ import java.lang.reflect.Method;
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The type Registry factory test.
@@ -46,7 +48,7 @@ public class RegistryFactoryTest {
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
 
         RegistryService instance = RegistryFactory.getInstance();
-        Assertions.assertEquals(FileRegistryServiceImpl.class, instance.getClass());
+        assertEquals(FileRegistryServiceImpl.class, instance.getClass());
     }
 
     /**
@@ -54,20 +56,24 @@ public class RegistryFactoryTest {
      */
     @Test
     public void testGetInstanceOfInvalidRegistryType() {
-        System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
+        String invalidRegistryType = "InvalidRegistryType";
+        System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
 
-        Assertions.assertThrows(NotSupportYetException.class, RegistryFactoryTest::invokeBuildRegistryService);
+        assertThatThrownBy(RegistryFactoryTest::invokeBuildRegistryService)
+            .isExactlyInstanceOf(NotSupportYetException.class)
+            .hasMessage("not support registry type: " + invalidRegistryType);
     }
 
     /**
      * Test buildRegistryService with blank registry type.
+     * when the registry type is blank, the default registry type is File
      */
     @Test
     public void testGetInstancesWithBlankRegistryType() throws Throwable {
         System.setProperty(REGISTRY_TYPE_KEY, "");
 
         RegistryService instance = invokeBuildRegistryService();
-        Assertions.assertEquals(FileRegistryServiceImpl.class, instance.getClass());
+        assertEquals(FileRegistryServiceImpl.class, instance.getClass());
     }
 
     /**
