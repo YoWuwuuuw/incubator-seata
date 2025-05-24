@@ -19,6 +19,7 @@ package org.apache.seata.config.redis;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -44,7 +45,6 @@ import org.apache.seata.config.ConfigurationChangeEvent;
 import org.apache.seata.config.ConfigurationChangeListener;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -185,7 +185,7 @@ public class RedisConfigurationTest {
     @Test
     public void testGetConfigListeners() throws InterruptedException {
         Set<ConfigurationChangeListener> initialListeners = configuration.getConfigListeners(TEST_DATA_ID);
-        Assertions.assertNull(initialListeners);
+        assertNull(initialListeners);
 
         CountDownLatch latch1 = new CountDownLatch(1);
         ConfigurationChangeListener listener1 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, latch1);
@@ -194,19 +194,19 @@ public class RedisConfigurationTest {
         ConfigurationChangeListener listener2 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, latch2);
 
         Set<ConfigurationChangeListener> listeners = configuration.getConfigListeners(TEST_DATA_ID);
-        Assertions.assertNotNull(listeners);
+        assertNotNull(listeners);
         assertEquals(2, listeners.size());
         assertTrue(listeners.contains(listener1));
         assertTrue(listeners.contains(listener2));
 
         configuration.removeConfigListener(TEST_DATA_ID, listener1);
         listeners = configuration.getConfigListeners(TEST_DATA_ID);
-        Assertions.assertNotNull(listeners);
+        assertNotNull(listeners);
         assertEquals(1, listeners.size());
         assertTrue(listeners.contains(listener2));
 
         Set<ConfigurationChangeListener> nonExistentListeners = configuration.getConfigListeners("nonExistentDataId");
-        Assertions.assertNull(nonExistentListeners);
+        assertNull(nonExistentListeners);
     }
 
     @Test
