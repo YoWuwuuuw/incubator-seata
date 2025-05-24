@@ -18,7 +18,6 @@ package org.apache.seata.config.redis;
 
 /**
  * The enum config change Type for redis pub/sub
- *
  */
 public enum ConfigOperation {
     /**

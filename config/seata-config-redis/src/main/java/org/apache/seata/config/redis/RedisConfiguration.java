@@ -27,6 +27,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.NetUtil;
@@ -53,34 +54,19 @@ public class RedisConfiguration extends AbstractConfiguration {
     private static volatile RedisConfiguration instance;
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisConfiguration.class);
 
-    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
-    private static volatile Properties seataConfig = new Properties();
-
     private static final String DEFAULT_GROUP = "SEATA_GROUP";
     private static final String CONFIG_TYPE = "redis";
-
     private static final String REDIS_FILEKEY_PREFIX = "config.redis.";
     private static final int THREAD_POOL_NUM = 1;
 
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
+    private static volatile Properties seataConfig = new Properties();
     private static volatile JedisPool jedisPool;
 
     private static final ConcurrentMap<String, Set<RedisListener>> CONFIG_LISTENERS_MAP = new ConcurrentHashMap<>();
 
-    private final ExecutorService configExecutor = new ThreadPoolExecutor(
-            THREAD_POOL_NUM,
-            THREAD_POOL_NUM,
-            Integer.MAX_VALUE,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new NamedThreadFactory("redis-config-executor", THREAD_POOL_NUM));
-
-    private final ExecutorService subscribeExecutor = new ThreadPoolExecutor(
-            THREAD_POOL_NUM,
-            THREAD_POOL_NUM,
-            Integer.MAX_VALUE,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new NamedThreadFactory("redis-subscribe-executor", THREAD_POOL_NUM));
+    private final ExecutorService configExecutor;
+    private final ExecutorService subscribeExecutor;
 
     /**
      * Get instance of RedisConfiguration
@@ -99,86 +85,46 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Instantiates a new Redis configuration
+     * Instantiates Redis configuration
      */
     private RedisConfiguration() {
         initRedisPool();
         initSeataConfig();
-    }
 
-    /**
-     * Initialize Redis connection pool with configuration parameters
-     */
-    private void initRedisPool() {
-        GenericObjectPoolConfig redisConfig = new GenericObjectPoolConfig();
-        redisConfig.setTestOnBorrow(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-on-borrow", true));
-        redisConfig.setTestOnReturn(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-on-return", false));
-        redisConfig.setTestWhileIdle(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-while-idle", false));
+        this.configExecutor = new ThreadPoolExecutor(
+                THREAD_POOL_NUM,
+                THREAD_POOL_NUM,
+                Integer.MAX_VALUE,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                new NamedThreadFactory("redis-config-executor", THREAD_POOL_NUM));
 
-        String serverAddr = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "server-addr");
-        String[] serverArr = NetUtil.splitIPPortStr(serverAddr);
-        String host = serverArr[0];
-        int port = Integer.parseInt(serverArr[1]);
+        this.subscribeExecutor = new ThreadPoolExecutor(
+                THREAD_POOL_NUM,
+                THREAD_POOL_NUM,
+                Integer.MAX_VALUE,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                new NamedThreadFactory("redis-subscribe-executor", THREAD_POOL_NUM));
 
-        String password = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "password");
-        int database = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "db", 0);
+        // Register the JVM shutdown hook to release resources
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                shutdownExecutorService(configExecutor);
+                shutdownExecutorService(subscribeExecutor);
 
-        int maxIdle = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-idle", 0);
-        if (maxIdle > 0) {
-            redisConfig.setMaxIdle(maxIdle);
-        }
-        int minIdle = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "min-idle", 0);
-        if (minIdle > 0) {
-            redisConfig.setMinIdle(minIdle);
-        }
-        int maxActive = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-active", 0);
-        if (maxActive > 0) {
-            redisConfig.setMaxTotal(maxActive);
-        }
-        int maxTotal = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-total", 0);
-        if (maxTotal > 0) {
-            redisConfig.setMaxTotal(maxTotal);
-        }
-        int maxWait = fileConfig.getInt(
-                REDIS_FILEKEY_PREFIX + "max-wait", fileConfig.getInt(REDIS_FILEKEY_PREFIX + "timeout", 0));
-        if (maxWait > 0) {
-            redisConfig.setMaxWaitMillis(maxWait);
-        }
-        int numTestsPerEvictionRun = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "num-tests-per-eviction-run", 0);
-        if (numTestsPerEvictionRun > 0) {
-            redisConfig.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
-        }
-        int timeBetweenEvictionRunsMillis =
-                fileConfig.getInt(REDIS_FILEKEY_PREFIX + "time-between-eviction-runs-millis", 0);
-        if (timeBetweenEvictionRunsMillis > 0) {
-            redisConfig.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
-        }
-        int minEvictableIdleTimeMillis = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "min-evictable-idle-time-millis", 0);
-        if (minEvictableIdleTimeMillis > 0) {
-            redisConfig.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
-        }
-
-        if (StringUtils.isNullOrEmpty(password)) {
-            jedisPool = new JedisPool(redisConfig, host, port, Protocol.DEFAULT_TIMEOUT, null, database);
-        } else {
-            jedisPool = new JedisPool(redisConfig, host, port, Protocol.DEFAULT_TIMEOUT, password, database);
-        }
-    }
-
-    /**
-     * Initialize Seata configuration from Redis, loads all configurations into local cache
-     */
-    private void initSeataConfig() {
-        try (Jedis jedis = jedisPool.getResource()) {
-            Map<String, String> configMap = jedis.hgetAll(getConfigKey());
-            if (!configMap.isEmpty()) {
-                configMap.forEach((key, value) -> seataConfig.setProperty(key, value));
+                if (jedisPool != null && !jedisPool.isClosed()) {
+                    jedisPool.close();
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error while shutting down Redis configuration: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            LOGGER.error("Failed to init Redis config: {}", e.getMessage());
-        }
+        }));
     }
 
+    /**
+     * get latest config with timeout and default value
+     */
     @Override
     public String getLatestConfig(String dataId, String defaultValue, long timeoutMills) {
         String value = seataConfig.getProperty(dataId);
@@ -186,9 +132,11 @@ public class RedisConfiguration extends AbstractConfiguration {
             return value;
         }
 
-        // Time in ConfigFuture, if time out, get() method would return the default value
+        // Time in ConfigFuture, if time out, get() would return the default value
         ConfigFuture configFuture =
                 new ConfigFuture(dataId, defaultValue, ConfigFuture.ConfigOperation.GET, timeoutMills);
+
+        // The configuration executor is used to asynchronously retrieve from Redis
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
                 String result = jedis.hget(getConfigKey(), dataId);
@@ -202,13 +150,16 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (String) configFuture.get();
     }
 
+    /**
+     * Write config regardless of whether the configuration already exists
+     */
     @Override
     public boolean putConfig(String dataId, String content, long timeoutMills) {
         ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUT, timeoutMills);
 
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource();
-                    Pipeline pipeline = jedis.pipelined()) {
+                 Pipeline pipeline = jedis.pipelined()) {
                 pipeline.hset(getConfigKey(), dataId, content);
                 pipeline.publish(
                         getConfigChannelKey() + ":" + dataId,
@@ -226,6 +177,9 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (Boolean) configFuture.get();
     }
 
+    /**
+     * write config only when the configuration does not exist
+     */
     @Override
     public boolean putConfigIfAbsent(String dataId, String content, long timeoutMills) {
         if (!seataConfig.isEmpty()) {
@@ -274,13 +228,16 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (Boolean) configFuture.get();
     }
 
+    /**
+     * remove config with timeout
+     */
     @Override
     public boolean removeConfig(String dataId, long timeoutMills) {
         ConfigFuture configFuture = new ConfigFuture(dataId, null, ConfigFuture.ConfigOperation.REMOVE, timeoutMills);
 
         configExecutor.execute(() -> {
             try (Jedis jedis = jedisPool.getResource();
-                    Pipeline pipeline = jedis.pipelined()) {
+                 Pipeline pipeline = jedis.pipelined()) {
                 pipeline.hdel(getConfigKey(), dataId);
                 pipeline.publish(
                         getConfigChannelKey() + ":" + dataId,
@@ -417,6 +374,93 @@ public class RedisConfiguration extends AbstractConfiguration {
         public void unsubscribe() {
             running = false;
             super.unsubscribe();
+        }
+    }
+
+    private void shutdownExecutorService(ExecutorService executorService) {
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /**
+     * Initialize Redis connection pool with configuration parameters
+     */
+    private void initRedisPool() {
+        GenericObjectPoolConfig redisConfig = new GenericObjectPoolConfig();
+        redisConfig.setTestOnBorrow(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-on-borrow", true));
+        redisConfig.setTestOnReturn(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-on-return", false));
+        redisConfig.setTestWhileIdle(fileConfig.getBoolean(REDIS_FILEKEY_PREFIX + "test-while-idle", false));
+
+        String serverAddr = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "server-addr");
+        String[] serverArr = NetUtil.splitIPPortStr(serverAddr);
+        String host = serverArr[0];
+        int port = Integer.parseInt(serverArr[1]);
+
+        String password = fileConfig.getConfig(REDIS_FILEKEY_PREFIX + "password");
+        int database = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "db", 0);
+
+        int maxIdle = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-idle", 0);
+        if (maxIdle > 0) {
+            redisConfig.setMaxIdle(maxIdle);
+        }
+        int minIdle = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "min-idle", 0);
+        if (minIdle > 0) {
+            redisConfig.setMinIdle(minIdle);
+        }
+        int maxActive = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-active", 0);
+        if (maxActive > 0) {
+            redisConfig.setMaxTotal(maxActive);
+        }
+        int maxTotal = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "max-total", 0);
+        if (maxTotal > 0) {
+            redisConfig.setMaxTotal(maxTotal);
+        }
+        int maxWait = fileConfig.getInt(
+                REDIS_FILEKEY_PREFIX + "max-wait", fileConfig.getInt(REDIS_FILEKEY_PREFIX + "timeout", 0));
+        if (maxWait > 0) {
+            redisConfig.setMaxWaitMillis(maxWait);
+        }
+        int numTestsPerEvictionRun = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "num-tests-per-eviction-run", 0);
+        if (numTestsPerEvictionRun > 0) {
+            redisConfig.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
+        }
+        int timeBetweenEvictionRunsMillis =
+                fileConfig.getInt(REDIS_FILEKEY_PREFIX + "time-between-eviction-runs-millis", 0);
+        if (timeBetweenEvictionRunsMillis > 0) {
+            redisConfig.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
+        }
+        int minEvictableIdleTimeMillis = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "min-evictable-idle-time-millis", 0);
+        if (minEvictableIdleTimeMillis > 0) {
+            redisConfig.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
+        }
+
+        if (StringUtils.isNullOrEmpty(password)) {
+            jedisPool = new JedisPool(redisConfig, host, port, Protocol.DEFAULT_TIMEOUT, null, database);
+        } else {
+            jedisPool = new JedisPool(redisConfig, host, port, Protocol.DEFAULT_TIMEOUT, password, database);
+        }
+    }
+
+    /**
+     * Initialize Seata configuration from Redis, loads all configurations into local cache
+     */
+    private void initSeataConfig() {
+        try (Jedis jedis = jedisPool.getResource()) {
+            Map<String, String> configMap = jedis.hgetAll(getConfigKey());
+            if (!configMap.isEmpty()) {
+                configMap.forEach((key, value) -> seataConfig.setProperty(key, value));
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to init Redis config: {}", e.getMessage());
         }
     }
 
