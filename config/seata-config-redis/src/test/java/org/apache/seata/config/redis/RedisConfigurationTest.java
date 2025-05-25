@@ -19,7 +19,6 @@ package org.apache.seata.config.redis;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -113,7 +112,7 @@ public class RedisConfigurationTest {
             jedis.hset(CONFIGKEY, TEST_DATA_ID, TEST_CONTENT);
         }
 
-        // If there is no cache, asynchronously query redis
+        // If there is no cache, query redis
         String result = configuration.getLatestConfig(TEST_DATA_ID, null, TIMEOUT_MILLIS);
         assertEquals(TEST_CONTENT, result);
 
@@ -155,20 +154,25 @@ public class RedisConfigurationTest {
         CountDownLatch latch = new CountDownLatch(1);
         ConfigurationChangeListener listener = addPublishListener(TEST_DATA_ID, TEST_CONTENT, latch);
 
-        // When seataConfig is empty, execute redis transactions -> set and publish
+        // 1.When seataConfig and redis is empty, put config to redis
         boolean success = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_CONTENT, TIMEOUT_MILLIS);
         assertTrue(success);
         assertEquals(TEST_CONTENT, configuration.getLatestConfig(TEST_DATA_ID, null, TIMEOUT_MILLIS));
         assertTrue(latch.await(5, TimeUnit.SECONDS));
 
-        // When local cache is available, return true directly
+        // 2.When local cache is available, return true directly
         boolean secondTry = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_CONTENT, TIMEOUT_MILLIS);
         assertTrue(secondTry);
 
-        // When dataId is new and seataConfig is not empty, -> .putConfig()
+        // 3.When seataConfig is empty and redis is not empty, update the value of redis to seataConfig
         String newDataId = "newTestDataId";
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.hset(CONFIGKEY, newDataId, "alreadyExist");
+        }
+
         boolean thirdTry = configuration.putConfigIfAbsent(newDataId, "newTestContent", TIMEOUT_MILLIS);
         assertTrue(thirdTry);
+        assertEquals("alreadyExist", configuration.getLatestConfig(newDataId, null, TIMEOUT_MILLIS));
 
         cleanupAfterTest(TEST_DATA_ID, listener);
         cleanupAfterTest(newDataId, null);
@@ -209,27 +213,27 @@ public class RedisConfigurationTest {
         jedisPoolField.set(null, mockJedisPool);
 
         // 1.test getLatestConfig
-        String getResult = configuration.getLatestConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
-        assertEquals(TEST_DEFAULT_VALUE, getResult);
+        assertEquals(TEST_DEFAULT_VALUE, configuration.getLatestConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS));
         assertEquals("Failed to get config from Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(0));
 
         // 2.test putConfig
-        boolean putResult = configuration.putConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
-        assertFalse(putResult);
+        assertFalse(configuration.putConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS));
         assertEquals("Failed to put config to Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(1));
 
         // 3.test removeConfig
-        boolean removeResult = configuration.removeConfig(TEST_DATA_ID, TIMEOUT_MILLIS);
-        assertFalse(removeResult);
+        assertFalse(configuration.removeConfig(TEST_DATA_ID, TIMEOUT_MILLIS));
         assertEquals("Failed to remove config from Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(2));
 
         // 4.test putConfigIfAbsent
-        // Clear the cache and make sure that the putConfigIfAbsent goes to the 'try (Jedis jedis = jedisPool.getResource())' branch
         clearSeataConfigCache();
-        boolean putIfAbsentResult = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
-        assertFalse(putIfAbsentResult);
-        verify(mockJedisPool, times(4)).getResource();
+        assertFalse(configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS));
         assertEquals("Failed to put config if absent to Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(3));
+
+        // 5.test addConfigListener
+        addPublishListener(TEST_DATA_ID, TEST_DEFAULT_VALUE, new CountDownLatch(1));
+        assertEquals("Failed to subscribe Redis channel: Simulated Redis connection failure", getLogs(Level.ERROR).get(4));
+
+        verify(mockJedisPool, times(5)).getResource();
 
         // Restore the jedisPool to its original value to ensure that other tests are not affected
         jedisPoolField.set(null, new JedisPool("127.0.0.1", 6379));
@@ -248,7 +252,7 @@ public class RedisConfigurationTest {
     }
 
     /**
-     * Helper to clear entire seataConfig cache
+     * Clear the cache and make sure that the putConfigIfAbsent goes to the 'try (Jedis jedis = jedisPool.getResource())' branch
      */
     private void clearSeataConfigCache() {
         try {

@@ -16,14 +16,13 @@
  */
 package org.apache.seata.config.redis;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -45,7 +44,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Protocol;
-import redis.clients.jedis.Transaction;
 
 /**
  * The type Redis configuration
@@ -57,7 +55,6 @@ public class RedisConfiguration extends AbstractConfiguration {
     private static final String DEFAULT_GROUP = "SEATA_GROUP";
     private static final String CONFIG_TYPE = "redis";
     private static final String REDIS_FILEKEY_PREFIX = "config.redis.";
-    private static final int THREAD_POOL_NUM = 1;
 
     private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
     private static volatile Properties seataConfig = new Properties();
@@ -65,7 +62,6 @@ public class RedisConfiguration extends AbstractConfiguration {
 
     private static final ConcurrentMap<String, Set<RedisListener>> CONFIG_LISTENERS_MAP = new ConcurrentHashMap<>();
 
-    private final ExecutorService configExecutor;
     private final ExecutorService subscribeExecutor;
 
     /**
@@ -91,26 +87,19 @@ public class RedisConfiguration extends AbstractConfiguration {
         initRedisPool();
         initSeataConfig();
 
-        this.configExecutor = new ThreadPoolExecutor(
-                THREAD_POOL_NUM,
-                THREAD_POOL_NUM,
-                Integer.MAX_VALUE,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
-                new NamedThreadFactory("redis-config-executor", THREAD_POOL_NUM));
+        int threadPoolNum = fileConfig.getInt(REDIS_FILEKEY_PREFIX + "thread-pool-num", 50);
 
         this.subscribeExecutor = new ThreadPoolExecutor(
-                THREAD_POOL_NUM,
-                THREAD_POOL_NUM,
+                threadPoolNum,
+                threadPoolNum,
                 Integer.MAX_VALUE,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
-                new NamedThreadFactory("redis-subscribe-executor", THREAD_POOL_NUM));
+                new SynchronousQueue<>(),
+                new NamedThreadFactory("redis-subscribe-executor", threadPoolNum));
 
         // Register the JVM shutdown hook to release resources
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                shutdownExecutorService(configExecutor);
                 shutdownExecutorService(subscribeExecutor);
 
                 if (jedisPool != null && !jedisPool.isClosed()) {
@@ -123,7 +112,7 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * get latest config with timeout and default value
+     * Get latest config with timeout and default value
      */
     @Override
     public String getLatestConfig(String dataId, String defaultValue, long timeoutMills) {
@@ -136,16 +125,13 @@ public class RedisConfiguration extends AbstractConfiguration {
         ConfigFuture configFuture =
                 new ConfigFuture(dataId, defaultValue, ConfigFuture.ConfigOperation.GET, timeoutMills);
 
-        // The configuration executor is used to asynchronously retrieve from Redis
-        configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                String result = jedis.hget(getConfigKey(), dataId);
-                configFuture.setResult(result != null ? result : defaultValue);
-            } catch (Exception e) {
-                LOGGER.error("Failed to get config from Redis: {}", e.getMessage());
-                configFuture.setResult(defaultValue);
-            }
-        });
+        try (Jedis jedis = jedisPool.getResource()) {
+            String result = jedis.hget(getConfigKey(), dataId);
+            configFuture.setResult(result != null ? result : defaultValue);
+        } catch (Exception e) {
+            LOGGER.error("Failed to get config from Redis: {}", e.getMessage());
+            configFuture.setResult(defaultValue);
+        }
 
         return (String) configFuture.get();
     }
@@ -157,100 +143,79 @@ public class RedisConfiguration extends AbstractConfiguration {
     public boolean putConfig(String dataId, String content, long timeoutMills) {
         ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUT, timeoutMills);
 
-        configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource();
-                 Pipeline pipeline = jedis.pipelined()) {
-                pipeline.hset(getConfigKey(), dataId, content);
-                pipeline.publish(
-                        getConfigChannelKey() + ":" + dataId,
-                        buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
-                pipeline.sync();
+        try (Jedis jedis = jedisPool.getResource(); Pipeline pipeline = jedis.pipelined()) {
+            pipeline.hset(getConfigKey(), dataId, content);
+            pipeline.publish(
+                    getConfigChannelKey() + ":" + dataId,
+                    buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
+            pipeline.sync();
 
-                seataConfig.setProperty(dataId, content);
-                configFuture.setResult(Boolean.TRUE);
-            } catch (Exception e) {
-                LOGGER.error("Failed to put config to Redis: {}", e.getMessage());
-                configFuture.setResult(Boolean.FALSE);
-            }
-        });
+            seataConfig.setProperty(dataId, content);
+            configFuture.setResult(Boolean.TRUE);
+        } catch (Exception e) {
+            LOGGER.error("Failed to put config to Redis: {}", e.getMessage());
+            configFuture.setResult(Boolean.FALSE);
+        }
 
         return (Boolean) configFuture.get();
     }
 
     /**
-     * write config only when the configuration does not exist
+     * Write config only when the configuration does not exist
      */
     @Override
     public boolean putConfigIfAbsent(String dataId, String content, long timeoutMills) {
-        if (!seataConfig.isEmpty()) {
-            if (seataConfig.containsKey(dataId)) {
-                return true;
-            } else {
-                return putConfig(dataId, content, timeoutMills);
-            }
+        if (!seataConfig.isEmpty() && seataConfig.containsKey(dataId)) {
+            return true;
         }
 
-        ConfigFuture configFuture =
-                new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUTIFABSENT, timeoutMills);
+        ConfigFuture configFuture = new ConfigFuture(dataId, content, ConfigFuture.ConfigOperation.PUTIFABSENT, timeoutMills);
 
-        configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                String configKey = getConfigKey();
-                jedis.watch(configKey);
+        try (Jedis jedis = jedisPool.getResource()) {
+            String configKey = getConfigKey();
+            Long result = jedis.hsetnx(configKey, dataId, content);
 
-                // Use a transaction to ensure atomicity: check if the key exists and execute the put operation
-                if (!jedis.hexists(configKey, dataId)) {
-                    Transaction transaction = jedis.multi();
-                    transaction.hset(configKey, dataId, content);
-                    transaction.publish(
-                            getConfigChannelKey() + ":" + dataId,
-                            buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
-
-                    List<Object> results = transaction.exec();
-
-                    if (results != null && !results.isEmpty()) {
-                        seataConfig.setProperty(dataId, content);
-                        configFuture.setResult(Boolean.TRUE);
-                    } else {
-                        configFuture.setResult(Boolean.FALSE);
-                    }
-                } else {
-                    configFuture.setResult(Boolean.FALSE);
-                }
-
-                jedis.unwatch();
-            } catch (Exception e) {
-                LOGGER.error("Failed to put config if absent to Redis: {}", e.getMessage());
-                configFuture.setResult(Boolean.FALSE);
+            if (result == 1) {
+                jedis.publish(
+                        getConfigChannelKey() + ":" + dataId,
+                        buildConfigChangeMessage(ConfigOperation.PUT, dataId, content));
+                seataConfig.setProperty(dataId, content);
+                configFuture.setResult(Boolean.TRUE);
+            } else {
+                // If HSETNX returns 0, the key-field already exists in the Redis
+                String existingContent = jedis.hget(configKey, dataId);
+                seataConfig.setProperty(dataId, existingContent);
+                configFuture.setResult(Boolean.TRUE);
             }
-        });
+        } catch (Exception e) {
+            LOGGER.error("Failed to put config if absent to Redis: {}", e.getMessage());
+            configFuture.setResult(Boolean.FALSE);
+        }
 
         return (Boolean) configFuture.get();
     }
 
     /**
-     * remove config with timeout
+     * Remove config with timeout
      */
     @Override
     public boolean removeConfig(String dataId, long timeoutMills) {
         ConfigFuture configFuture = new ConfigFuture(dataId, null, ConfigFuture.ConfigOperation.REMOVE, timeoutMills);
 
-        configExecutor.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource();
-                 Pipeline pipeline = jedis.pipelined()) {
-                pipeline.hdel(getConfigKey(), dataId);
-                pipeline.publish(
-                        getConfigChannelKey() + ":" + dataId,
-                        buildConfigChangeMessage(ConfigOperation.REMOVE, dataId, ""));
-                pipeline.sync();
+        try (Jedis jedis = jedisPool.getResource();
+             Pipeline pipeline = jedis.pipelined()) {
+            pipeline.hdel(getConfigKey(), dataId);
+            pipeline.publish(
+                    getConfigChannelKey() + ":" + dataId,
+                    buildConfigChangeMessage(ConfigOperation.REMOVE, dataId, ""));
+            pipeline.sync();
 
-                seataConfig.remove(dataId);
-                configFuture.setResult(Boolean.TRUE);
-            } catch (Exception e) {
-                LOGGER.error("Failed to remove config from Redis: {}", e.getMessage());
-                configFuture.setResult(Boolean.FALSE);
-            }
-        });
+            seataConfig.remove(dataId);
+            configFuture.setResult(Boolean.TRUE);
+        } catch (Exception e) {
+            LOGGER.error("Failed to remove config from Redis: {}", e.getMessage());
+            configFuture.setResult(Boolean.FALSE);
+        }
 
         return (Boolean) configFuture.get();
     }
@@ -263,9 +228,6 @@ public class RedisConfiguration extends AbstractConfiguration {
 
         try {
             RedisListener redisListener = new RedisListener(dataId, listener);
-            CONFIG_LISTENERS_MAP
-                    .computeIfAbsent(dataId, key -> ConcurrentHashMap.newKeySet())
-                    .add(redisListener);
 
             subscribeExecutor.execute(() -> {
                 try (Jedis jedis = jedisPool.getResource()) {
@@ -365,6 +327,13 @@ public class RedisConfiguration extends AbstractConfiguration {
                     LOGGER.error("Invalid operation in Redis message: {}", parts[0]);
                 }
             }
+        }
+
+        @Override
+        public void onSubscribe(String channel, int subscribedChannels) {
+            CONFIG_LISTENERS_MAP
+                    .computeIfAbsent(dataId, key -> ConcurrentHashMap.newKeySet())
+                    .add(this);
         }
 
         public ConfigurationChangeListener getTargetListener() {
