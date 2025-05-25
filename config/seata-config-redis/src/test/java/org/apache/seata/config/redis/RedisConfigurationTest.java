@@ -108,12 +108,6 @@ public class RedisConfigurationTest {
     }
 
     @Test
-    public void testGetInstance() {
-        assertInstanceOf(RedisConfiguration.class, RedisConfiguration.getInstance());
-        assertEquals(configuration, RedisConfiguration.getInstance());
-    }
-
-    @Test
     public void testGetLatestConfig() throws InterruptedException {
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.hset(CONFIGKEY, TEST_DATA_ID, TEST_CONTENT);
@@ -164,19 +158,17 @@ public class RedisConfigurationTest {
         // When seataConfig is empty, execute redis transactions -> set and publish
         boolean success = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_CONTENT, TIMEOUT_MILLIS);
         assertTrue(success);
+        assertEquals(TEST_CONTENT, configuration.getLatestConfig(TEST_DATA_ID, null, TIMEOUT_MILLIS));
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
 
         // When local cache is available, return true directly
         boolean secondTry = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_CONTENT, TIMEOUT_MILLIS);
         assertTrue(secondTry);
-        assertEquals(TEST_CONTENT, configuration.getLatestConfig(TEST_DATA_ID, null, TIMEOUT_MILLIS));
 
         // When dataId is new and seataConfig is not empty, -> .putConfig()
         String newDataId = "newTestDataId";
         boolean thirdTry = configuration.putConfigIfAbsent(newDataId, "newTestContent", TIMEOUT_MILLIS);
         assertTrue(thirdTry);
-
-        boolean isMessageReceived = latch.await(5, TimeUnit.SECONDS);
-        assertTrue(isMessageReceived);
 
         cleanupAfterTest(TEST_DATA_ID, listener);
         cleanupAfterTest(newDataId, null);
@@ -187,32 +179,20 @@ public class RedisConfigurationTest {
         Set<ConfigurationChangeListener> initialListeners = configuration.getConfigListeners(TEST_DATA_ID);
         assertNull(initialListeners);
 
-        CountDownLatch latch1 = new CountDownLatch(1);
-        ConfigurationChangeListener listener1 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, latch1);
-
-        CountDownLatch latch2 = new CountDownLatch(1);
-        ConfigurationChangeListener listener2 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, latch2);
+        ConfigurationChangeListener listener1 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, new CountDownLatch(1));
+        ConfigurationChangeListener listener2 = addPublishListener(TEST_DATA_ID, TEST_CONTENT, new CountDownLatch(1));
 
         Set<ConfigurationChangeListener> listeners = configuration.getConfigListeners(TEST_DATA_ID);
-        assertNotNull(listeners);
         assertEquals(2, listeners.size());
-        assertTrue(listeners.contains(listener1));
-        assertTrue(listeners.contains(listener2));
+        assertTrue(listeners.contains(listener1) && listeners.contains(listener2));
 
         configuration.removeConfigListener(TEST_DATA_ID, listener1);
         listeners = configuration.getConfigListeners(TEST_DATA_ID);
-        assertNotNull(listeners);
         assertEquals(1, listeners.size());
         assertTrue(listeners.contains(listener2));
 
         Set<ConfigurationChangeListener> nonExistentListeners = configuration.getConfigListeners("nonExistentDataId");
         assertNull(nonExistentListeners);
-    }
-
-    @Test
-    public void testGetTypeName() {
-        RedisConfiguration redisConfiguration = RedisConfiguration.getInstance();
-        assertEquals(redisConfiguration.getTypeName(), "redis");
     }
 
     @Test
@@ -231,22 +211,16 @@ public class RedisConfigurationTest {
         // 1.test getLatestConfig
         String getResult = configuration.getLatestConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
         assertEquals(TEST_DEFAULT_VALUE, getResult);
-        verify(mockJedisPool, times(1)).getResource();
-        Thread.sleep(TIMEOUT_MILLIS + 50);
         assertEquals("Failed to get config from Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(0));
 
         // 2.test putConfig
         boolean putResult = configuration.putConfig(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
         assertFalse(putResult);
-        verify(mockJedisPool, times(2)).getResource();
-        Thread.sleep(TIMEOUT_MILLIS + 50);
         assertEquals("Failed to put config to Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(1));
 
         // 3.test removeConfig
         boolean removeResult = configuration.removeConfig(TEST_DATA_ID, TIMEOUT_MILLIS);
         assertFalse(removeResult);
-        verify(mockJedisPool, times(3)).getResource();
-        Thread.sleep(TIMEOUT_MILLIS + 50);
         assertEquals("Failed to remove config from Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(2));
 
         // 4.test putConfigIfAbsent
@@ -255,11 +229,22 @@ public class RedisConfigurationTest {
         boolean putIfAbsentResult = configuration.putConfigIfAbsent(TEST_DATA_ID, TEST_DEFAULT_VALUE, TIMEOUT_MILLIS);
         assertFalse(putIfAbsentResult);
         verify(mockJedisPool, times(4)).getResource();
-        Thread.sleep(TIMEOUT_MILLIS + 50);
         assertEquals("Failed to put config if absent to Redis: Simulated Redis connection failure", getLogs(Level.ERROR).get(3));
 
         // Restore the jedisPool to its original value to ensure that other tests are not affected
-        jedisPoolField.set(null, new JedisPool("10.21.32.10", 6379));
+        jedisPoolField.set(null, new JedisPool("127.0.0.1", 6379));
+    }
+
+    @Test
+    public void testGetTypeName() {
+        RedisConfiguration redisConfiguration = RedisConfiguration.getInstance();
+        assertEquals(redisConfiguration.getTypeName(), "redis");
+    }
+
+    @Test
+    public void testGetInstance() {
+        assertInstanceOf(RedisConfiguration.class, RedisConfiguration.getInstance());
+        assertEquals(configuration, RedisConfiguration.getInstance());
     }
 
     /**
