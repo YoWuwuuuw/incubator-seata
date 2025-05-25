@@ -47,6 +47,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.slf4j.LoggerFactory;
@@ -107,12 +108,7 @@ public class RedisConfigurationTest {
         watchedLoggers.forEach(Logger::detachAndStopAllAppenders);
     }
 
-    @Test
-    public void testGetInstance() {
-        assertInstanceOf(RedisConfiguration.class, RedisConfiguration.getInstance());
-        assertEquals(configuration, RedisConfiguration.getInstance());
-    }
-
+    @Order(1)
     @Test
     public void testGetLatestConfig() throws InterruptedException {
         try (Jedis jedis = jedisPool.getResource()) {
@@ -130,6 +126,7 @@ public class RedisConfigurationTest {
         cleanupAfterTest(TEST_DATA_ID, null);
     }
 
+    @Order(2)
     @Test
     public void testPutConfig() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
@@ -142,6 +139,7 @@ public class RedisConfigurationTest {
         cleanupAfterTest(TEST_DATA_ID, listener);
     }
 
+    @Order(3)
     @Test
     public void testRemoveConfig() throws InterruptedException {
         configuration.putConfig(TEST_DATA_ID, TEST_CONTENT);
@@ -156,6 +154,7 @@ public class RedisConfigurationTest {
         cleanupAfterTest(TEST_DATA_ID, listener);
     }
 
+    @Order(4)
     @Test
     public void testPutConfigIfAbsent() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
@@ -182,6 +181,7 @@ public class RedisConfigurationTest {
         cleanupAfterTest(newDataId, null);
     }
 
+    @Order(5)
     @Test
     public void testGetConfigListeners() throws InterruptedException {
         Set<ConfigurationChangeListener> initialListeners = configuration.getConfigListeners(TEST_DATA_ID);
@@ -209,12 +209,7 @@ public class RedisConfigurationTest {
         assertNull(nonExistentListeners);
     }
 
-    @Test
-    public void testGetTypeName() {
-        RedisConfiguration redisConfiguration = RedisConfiguration.getInstance();
-        assertEquals(redisConfiguration.getTypeName(), "redis");
-    }
-
+    @Order(6)
     @Test
     public void testAllConfigMethodsWithRedisException() throws Exception {
         JedisPool mockJedisPool = mock(JedisPool.class);
@@ -260,6 +255,18 @@ public class RedisConfigurationTest {
 
         // Restore the jedisPool to its original value to ensure that other tests are not affected
         jedisPoolField.set(null, new JedisPool("10.21.32.10", 6379));
+    }
+
+    @Test
+    public void testGetTypeName() {
+        RedisConfiguration redisConfiguration = RedisConfiguration.getInstance();
+        assertEquals(redisConfiguration.getTypeName(), "redis");
+    }
+
+    @Test
+    public void testGetInstance() {
+        assertInstanceOf(RedisConfiguration.class, RedisConfiguration.getInstance());
+        assertEquals(configuration, RedisConfiguration.getInstance());
     }
 
     /**
