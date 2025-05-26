@@ -21,8 +21,7 @@ description: If you would like to report an issue to Seata, please use this temp
 body:
 - type: markdown
   attributes:
-    value: |
-      Please do not use this issue template to report security vulnerabilities but refer to our [security policy](https://github.com/seata/seata/security/policy).
+    value: Please do not use this issue template to report security vulnerabilities but refer to our [security policy](https://github.com/seata/seata/security/policy).
 
 - type: checkboxes
   attributes:
@@ -30,12 +29,11 @@ body:
     options:
     - label: >
         I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
-    required: true
+      required: true
 
 - type: textarea
   attributes:
     label: Ⅰ. Issue Description
-    description: ""
   validations:
     required: false
 
@@ -53,7 +51,6 @@ body:
 - type: textarea
   attributes:
     label: Ⅲ. Describe what you expected to happen
-    description: ""
   validations:
     required: false
 
