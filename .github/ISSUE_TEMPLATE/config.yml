@@ -14,4 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-blank_issues_enabled: false
+
+blank_issues_enabled: true
