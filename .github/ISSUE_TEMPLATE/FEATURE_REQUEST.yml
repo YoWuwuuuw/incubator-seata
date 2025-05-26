@@ -23,6 +23,7 @@ body:
   attributes:
     value: |
       Please do not use this issue template to report security vulnerabilities but refer to our [security policy](https://github.com/seata/seata/security/policy).
+      **For major feature requests impacting the roadmap**, please submit them to [our Mailing List](mailto:dev@seata.apache.org) for broader discussion!
 
 - type: textarea
   attributes:
