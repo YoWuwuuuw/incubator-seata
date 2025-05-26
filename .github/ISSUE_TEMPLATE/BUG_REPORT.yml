@@ -25,7 +25,6 @@ body:
 
 - type: checkboxes
   attributes:
-    label: "Pre-check"
     options:
     - label: >
         I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
