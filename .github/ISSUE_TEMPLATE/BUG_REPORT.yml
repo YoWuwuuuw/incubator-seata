@@ -19,68 +19,68 @@ name: Bug Report
 description: If you would like to report an issue to Seata, please use this template.
 
 body:
-  - type: markdown
-    attributes:
-      value: |
-        - type: checkboxes
-    attributes:
-      label: Pre-check
-      options:
-        - label: I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
-          required: false
+- type: markdown
+  attributes:
+    value: |
+      - type: checkboxes
+  attributes:
+    label: Pre-check
+    options:
+      - label: I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
+        required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅰ. Issue Description
-      description: ""
-    validations:
-      required: false
+- type: textarea
+  attributes:
+    label: Ⅰ. Issue Description
+    description: ""
+  validations:
+    required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅱ. Describe what happened
-      description: |
-        If there is an exception, please attach the exception trace:
-        ```
-        Just paste your stack trace here!
-        ```
-    validations:
-      required: false
+- type: textarea
+  attributes:
+    label: Ⅱ. Describe what happened
+    description: |
+      If there is an exception, please attach the exception trace:
+      ```
+      Just paste your stack trace here!
+      ```
+  validations:
+    required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅲ. Describe what you expected to happen
-      description: ""
-    validations:
-      required: false
+- type: textarea
+  attributes:
+    label: Ⅲ. Describe what you expected to happen
+    description: ""
+  validations:
+    required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅳ. How to reproduce it (as minimally and precisely as possible)
-      description: |
-        1. xxx
-        2. xxx
-        3. xxx
+- type: textarea
+  attributes:
+    label: Ⅳ. How to reproduce it (as minimally and precisely as possible)
+    description: |
+      1. xxx
+      2. xxx
+      3. xxx
 
-        Minimal yet complete reproducer code (or URL to code):
-    validations:
-      required: false
+      Minimal yet complete reproducer code (or URL to code):
+  validations:
+    required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅴ. Anything else we need to know?
-      description: ""
-    validations:
-      required: false
+- type: textarea
+  attributes:
+    label: Ⅴ. Anything else we need to know?
+    description: ""
+  validations:
+    required: false
 
-  - type: textarea
-    attributes:
-      label: Ⅵ. Environment:
-      description: |
-        - JDK version(e.g. `java -version`):
-        - Seata client/server version:
-        - Database version:
-        - OS(e.g. `uname -a`):
-        - Others:
-    validations:
-      required: false
+- type: textarea
+  attributes:
+    label: Ⅵ. Environment:
+    description: |
+      - JDK version(e.g. `java -version`):
+      - Seata client/server version:
+      - Database version:
+      - OS(e.g. `uname -a`):
+      - Others:
+  validations:
+    required: false
