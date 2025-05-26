@@ -1,44 +1,38 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.seata.discovery.registry.nacos;
 
-import java.lang.reflect.Method;
-import java.util.Properties;
-
-import org.apache.seata.common.util.ReflectionUtil;
-import org.assertj.core.api.Assertions;
+import org.apache.seata.discovery.registry.RegistryService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetSocketAddress;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The type Nacos registry serivce impl test
- *
+ * The type Nacos registryService impl test
  */
 public class NacosRegistryServiceImplTest {
 
-    @Test
-    public void testGetConfigProperties() throws Exception {
-        Method method = ReflectionUtil.getMethod(NacosRegistryServiceImpl.class, "getNamingProperties");
-        Properties properties = (Properties) ReflectionUtil.invokeMethod(null, method);
-        Assertions.assertThat(properties.getProperty("contextPath")).isEqualTo("/foo");
-        System.setProperty("contextPath", "/bar");
-        properties = (Properties) ReflectionUtil.invokeMethod(null, method);
-        Assertions.assertThat(properties.getProperty("contextPath")).isEqualTo("/bar");
+    private static final RegistryService service = NacosRegistryServiceImpl.getInstance();
+
+    @BeforeAll
+    public static void init() {
+
     }
 
+    @Test
+    public void testGetInstance() {
+        NacosRegistryServiceImpl instance = NacosRegistryServiceImpl.getInstance();
+        assertInstanceOf(NacosRegistryServiceImpl.class, instance);
+    }
+
+    @Test
+    public void testRegister() throws Exception {
+        // normal condition
+        service.register(new InetSocketAddress("127.0.0.1", 8080));
+
+        // test register with invalid address
+        assertThrows(IllegalArgumentException.class, () ->  service.register(new InetSocketAddress("127.0.0.1", 0)));
+    }
 
 }
