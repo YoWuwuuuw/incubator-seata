@@ -22,12 +22,15 @@ body:
 - type: markdown
   attributes:
     value: |
-      - type: checkboxes
+      Please do not use this issue template to report security vulnerabilities but refer to our [security policy](https://github.com/seata/seata/security/policy).
+
+- type: checkboxes
   attributes:
     label: Pre-check
     options:
-      - label: I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
-        required: false
+      - label: >
+          I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
+        required: true
 
 - type: textarea
   attributes:
