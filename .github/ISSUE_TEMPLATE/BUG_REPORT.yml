@@ -26,18 +26,17 @@ body:
 
 - type: checkboxes
   attributes:
-    label: Pre-check
+    label: "Pre-check"
     options:
     - label: >
         I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
-    validations:
     required: true
 
 - type: textarea
   attributes:
     label: Ⅰ. Issue Description
     description: ""
-    validations:
+  validations:
     required: false
 
 - type: textarea
@@ -48,14 +47,14 @@ body:
       ```
       Just paste your stack trace here!
       ```
-    validations:
+  validations:
     required: false
 
 - type: textarea
   attributes:
     label: Ⅲ. Describe what you expected to happen
     description: ""
-    validations:
+  validations:
     required: false
 
 - type: textarea
@@ -65,16 +64,16 @@ body:
       1. xxx
       2. xxx
       3. xxx
-  
+
       Minimal yet complete reproducer code (or URL to code):
-    validations:
+  validations:
     required: false
 
 - type: textarea
   attributes:
     label: Ⅴ. Anything else we need to know?
     description: ""
-    validations:
+  validations:
     required: false
 
 - type: textarea
@@ -86,5 +85,5 @@ body:
       - Database version:
       - OS(e.g. `uname -a`):
       - Others:
-    validations:
+  validations:
     required: false
