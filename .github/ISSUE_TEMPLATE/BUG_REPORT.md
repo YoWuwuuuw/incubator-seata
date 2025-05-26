@@ -1,3 +1,10 @@
+---
+name: Bug Report    
+
+about: If you would like to report an issue to Seata, please use this template.
+
+---
+
 <!--
     Licensed to the Apache Software Foundation (ASF) under one or more
     contributor license agreements.  See the NOTICE file distributed with
@@ -14,12 +21,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
----
-name: Bug Report    
 
-about: If you would like to report an issue to Seata, please use this template.
-
----
 <!-- Please do not use this issue template to report security vulnerabilities but refer to our [security policy](https://github.com/seata/seata/security/policy). -->
 
 - [ ] I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
