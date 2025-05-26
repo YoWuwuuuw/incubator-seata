@@ -40,8 +40,9 @@ body:
 - type: textarea
   attributes:
     label: Ⅱ. Describe what happened
-    description: |
+    placeholder: >
       If there is an exception, please attach the exception trace:
+      
       ```
       Just paste your stack trace here!
       ```
@@ -51,14 +52,13 @@ body:
 - type: textarea
   attributes:
     label: Ⅲ. Describe what you expected to happen
-    description: what you expected to happen
   validations:
     required: false
 
 - type: textarea
   attributes:
     label: Ⅳ. How to reproduce it (as minimally and precisely as possible)
-    description: |
+    placeholder: >
       1. xxx
       2. xxx
       3. xxx
@@ -76,11 +76,11 @@ body:
 - type: textarea
   attributes:
     label: Ⅵ. Environment
-    description: |
+    placeholder: >
       - JDK version(e.g. `java -version`):
       - Seata client/server version:
       - Database version:
       - OS(e.g. `uname -a`):
-      - Others:
+      - Others:      
   validations:
     required: false
