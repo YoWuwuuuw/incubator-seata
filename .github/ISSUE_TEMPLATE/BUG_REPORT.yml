@@ -51,7 +51,7 @@ body:
 - type: textarea
   attributes:
     label: Ⅲ. Describe what you expected to happen
-    description: ""
+    description: what you expected to happen
   validations:
     required: false
 
@@ -70,7 +70,6 @@ body:
 - type: textarea
   attributes:
     label: Ⅴ. Anything else we need to know?
-    description: ""
   validations:
     required: false
 
