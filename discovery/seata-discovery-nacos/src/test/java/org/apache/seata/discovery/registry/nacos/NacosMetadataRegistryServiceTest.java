@@ -18,7 +18,8 @@ package org.apache.seata.discovery.registry.nacos;
 
 import com.alibaba.nacos.api.naming.listener.Event;
 import com.alibaba.nacos.api.naming.listener.EventListener;
-import org.apache.seata.discovery.registry.RegistryService;
+import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -36,33 +37,31 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * TODO(www):后续看看sleep(10000)怎么优化
- * The type Nacos registryService impl test
+ * The type Nacos metadataRegistryService impl test
  */
 @EnabledOnOs(OS.LINUX)
-public class NacosRegistryServiceImplTest {
-
+public class NacosMetadataRegistryServiceTest {
     private static final String GROUP_NAME_KEY = "default_tx_group";
     private static final String GROUP_NAME = "default";
     private static final String CLUSTER_NAME = "default";
 
-    private static final RegistryService service = NacosRegistryServiceImpl.getInstance();
+    private static final MetadataRegistryService service = NacosMetadataRegistryServiceImpl.getInstance();
 
     @AfterEach
     public void tearDown() throws Exception {
-        List<InetSocketAddress> lookups = service.lookup(GROUP_NAME_KEY);
+        List<ServiceInstance> lookups = service.lookup(GROUP_NAME_KEY);
 
         if (lookups != null) {
-            for (InetSocketAddress instance : lookups) {
-                service.unregister(instance);
+            for (ServiceInstance instance : lookups) {
+                service.unregister(instance.getAddress());
             }
         }
     }
 
     @Test
     public void testGetInstance() {
-        NacosRegistryServiceImpl instance = NacosRegistryServiceImpl.getInstance();
-        assertInstanceOf(NacosRegistryServiceImpl.class, instance);
+        MetadataRegistryService instance = NacosMetadataRegistryServiceImpl.getInstance();
+        assertInstanceOf(NacosMetadataRegistryServiceImpl.class, instance);
     }
 
     @Test
@@ -73,7 +72,8 @@ public class NacosRegistryServiceImplTest {
         InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
         service.register(inetSocketAddress);
         Thread.sleep(10000); // wait for Nacos loading
-        assertEquals(inetSocketAddress, service.lookup(GROUP_NAME_KEY).get(0));
+        List<ServiceInstance> instances = (List<ServiceInstance>)service.lookup(GROUP_NAME_KEY);
+        assertEquals(inetSocketAddress, instances.get(0).getAddress());
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
 
         /*
@@ -91,7 +91,8 @@ public class NacosRegistryServiceImplTest {
         InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8081);
         service.register(inetSocketAddress1);
         Thread.sleep(10000);
-        assertEquals(inetSocketAddress1, service.lookup(GROUP_NAME_KEY).get(0));
+        List<ServiceInstance> instances1 = (List<ServiceInstance>)service.lookup(GROUP_NAME_KEY);
+        assertEquals(inetSocketAddress1, instances1.get(0).getAddress());
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
     }
@@ -120,7 +121,7 @@ public class NacosRegistryServiceImplTest {
     }
 
     private ConcurrentMap<String, List<EventListener>> getListenersMap() throws Exception {
-        Class<?> clazz = NacosRegistryServiceImpl.class;
+        Class<?> clazz = NacosMetadataRegistryServiceImpl.class;
 
         Field listenerServiceMapField = clazz.getDeclaredField("LISTENER_SERVICE_MAP");
         listenerServiceMapField.setAccessible(true);

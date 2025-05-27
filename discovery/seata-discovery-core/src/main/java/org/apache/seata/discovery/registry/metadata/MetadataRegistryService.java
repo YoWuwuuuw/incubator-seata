@@ -18,6 +18,7 @@ package org.apache.seata.discovery.registry.metadata;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +26,9 @@ import java.util.stream.Collectors;
 
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.CollectionUtils;
+import org.apache.seata.common.util.StringUtils;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationKeys;
 import org.apache.seata.discovery.registry.BaseRegistryService;
 
 /**
@@ -76,6 +80,41 @@ public interface MetadataRegistryService<T> extends BaseRegistryService<T, Servi
 
         if (CollectionUtils.isNotEmpty(instances)) {
             clusterInstancesMap.put(clusterName, instances);
+        }
+    }
+
+    default Map<String, String> loadServerMetadata(Configuration configInstance) {
+        String config = configInstance.getConfig(ConfigurationKeys.FILE_ROOT_PREFIX_REGISTRY + "metadata");
+
+        if (StringUtils.isBlank(config)) {
+            return null;
+        }
+
+        String cleanedConfig = config.trim()
+                .replaceAll("^\\{", "")
+                .replaceAll("\\}$", "")
+                .trim();
+
+        if (cleanedConfig.isEmpty()) {
+            return null;
+        }
+
+        Map<String, String> resultMap = new HashMap<>();
+        try {
+            String[] pairs = cleanedConfig.split("\\s*,\\s*");
+
+            for (String pair : pairs) {
+                String[] keyValue = pair.split("\\s*:\\s*", 2);
+
+                if (keyValue.length == 2) {
+                    String key = keyValue[0].trim();
+                    String value = keyValue[1].trim();
+                    resultMap.put(key, value);
+                }
+            }
+            return resultMap;
+        } catch (Exception e) {
+            return null;
         }
     }
 }

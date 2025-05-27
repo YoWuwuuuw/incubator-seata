@@ -310,30 +310,4 @@ public interface Configuration {
         }
         return System.getProperty(dataId);
     }
-
-    /**
-     * Gets map.
-     *
-     * @param dataId the data id
-     * @return the map
-     */
-    default Map<String, String> getMap(String dataId) {
-        String config = getConfig(dataId);
-        if (StringUtils.isBlank(config)) {
-            return null;
-        }
-
-        Map<String, String> resultMap = new HashMap<>();
-        String[] lines = config.split(System.lineSeparator());
-        for (String line : lines) {
-            if (StringUtils.isNotBlank(line) && line.contains(":")) {
-                String[] parts = line.split(":", 2);
-                String key = parts[0].trim();
-                String value = parts[1].trim();
-                resultMap.put(key, value);
-            }
-        }
-
-        return resultMap;
-    }
 }

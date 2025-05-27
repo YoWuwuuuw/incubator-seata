@@ -34,7 +34,6 @@ import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.common.util.StringUtils;
-import org.apache.seata.config.ConfigurationKeys;
 import org.apache.seata.config.exception.ConfigNotFoundException;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 import org.slf4j.Logger;
@@ -188,20 +187,12 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
         instance.setPort(address.getPort());
         instance.setClusterName(getClusterName());
 
-        Map<String, String> metadata = loadServerMetadata();
+        Map<String, String> metadata = loadServerMetadata(FILE_CONFIG);
         if (metadata == null) {
             LOGGER.warn("The metadata schema has been started, but the metadata configuration is empty");
         }
 
         instance.setMetadata(metadata);
         return instance;
-    }
-
-    private Map<String, String> loadServerMetadata() {
-        return FILE_CONFIG.getMap(getMetadataFileKey());
-    }
-
-    private String getMetadataFileKey() {
-        return ConfigurationKeys.SERVER_REGISTRY_METADATA;
     }
 }

@@ -171,16 +171,6 @@ public interface ConfigurationKeys {
     String CLIENT_RM_PREFIX = CLIENT_PREFIX + "rm.";
 
     /**
-     * The constant SERVER__REGISTRY_PREFIX.
-     */
-    String SERVER_REGISTRY_PREFIX = SERVER_PREFIX + "registry.";
-
-    /**
-     * The constant SERVER_REGISTRY_METADATA.
-     */
-    String SERVER_REGISTRY_METADATA = SERVER_REGISTRY_PREFIX + "metadata";
-
-    /**
      * The constant CLIENT_REGISTRY_PREFIX.
      */
     String CLIENT_REGISTRY_PREFIX = CLIENT_PREFIX + "registry.";
