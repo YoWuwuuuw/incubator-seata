@@ -225,11 +225,19 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
 
     @Override
     public void close() throws Exception {
-        // Stop EtcdLifeKeeper
-        if (lifeKeeper != null) {
-            lifeKeeper.stop();
-            if (lifeKeeperFuture != null) {
-                lifeKeeperFuture.get(3, TimeUnit.SECONDS);
+        // Shut down the ThreadPoolExecutor
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                LOGGER.warn("ExecutorService shutdown interrupted. Forcing shutdown.");
+                executorService.shutdownNow();
+            } finally {
+                executorService = null;
             }
         }
 
@@ -244,32 +252,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
             }
         }
 
-        // Stop the EtcdWatchers (subscription listeners)
-        if (watcherMap != null && !watcherMap.isEmpty()) {
-            for (String cluster : new HashSet<>(watcherMap.keySet())) {
-                EtcdWatcher watcher = watcherMap.remove(cluster);
-                if (watcher != null) {
-                    watcher.stop();
-                }
-            }
-        }
-
-        // Shut down the ThreadPoolExecutor
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-
-            try {
-                // Waiting: lifeKeeper May have a small sleep, watcher may be waiting for the next event
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                LOGGER.warn("ExecutorService shutdown interrupted. Forcing shutdown.");
-                executorService.shutdownNow();
-            } finally {
-                executorService = null;
-            }
-        }
+        RegistryHeartBeats.close(REGISTRY_TYPE);
     }
 
     /**

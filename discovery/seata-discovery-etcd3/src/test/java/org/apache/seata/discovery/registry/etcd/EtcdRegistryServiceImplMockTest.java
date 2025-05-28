@@ -18,6 +18,7 @@ package org.apache.seata.discovery.registry.etcd;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.seata.common.DefaultValues.DEFAULT_TX_GROUP;
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -251,24 +252,22 @@ public class EtcdRegistryServiceImplMockTest {
     public void testClose() throws Exception {
         registryService.close();
 
-        verify(mockClient).close();
-
         verify(executorService).shutdown();
+        verify(mockClient).close();
+        Thread.sleep(10000);
 
         Field clientField = EtcdRegistryServiceImpl.class.getDeclaredField("client");
         clientField.setAccessible(true);
-        Assertions.assertNull(clientField.get(null));
+        assertNull(clientField.get(null));
 
         Field executorServiceField = EtcdRegistryServiceImpl.class.getDeclaredField("executorService");
         executorServiceField.setAccessible(true);
-        Object executorServiceValue = executorServiceField.get(registryService);
-        Assertions.assertNull(executorServiceValue);
+        assertNull(executorServiceField.get(registryService));
     }
 
     private GetResponse createMockGetResponse(List<String> addresses) {
         // Create mock ResponseHeader
-        ResponseHeader mockHeader =
-                ResponseHeader.newBuilder().setRevision(12345L).build();
+        ResponseHeader mockHeader = ResponseHeader.newBuilder().setRevision(12345L).build();
 
         // Create mock KeyValue list
         List<KeyValue> mockKeyValues = addresses.stream()
@@ -280,8 +279,7 @@ public class EtcdRegistryServiceImplMockTest {
                 .collect(Collectors.toList());
 
         // Create mock RangeResponse
-        RangeResponse mockRangeResponse =
-                RangeResponse.newBuilder().setHeader(mockHeader).build();
+        RangeResponse mockRangeResponse = RangeResponse.newBuilder().setHeader(mockHeader).build();
 
         // Create mock GetResponse
         GetResponse mockGetResponse = spy(new GetResponse(mockRangeResponse, ByteSequence.EMPTY));

@@ -47,7 +47,6 @@ import static org.apache.seata.config.ConfigurationKeys.FILE_ROOT_REGISTRY;
 
 /**
  * The type SOFARegistry registry service.
- *
  */
 public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataObserver> {
 
@@ -206,6 +205,9 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
 
     @Override
     public void close() throws Exception {
+        if (registryClient != null) {
+            registryClient = null;
+        }
     }
 
     private static Properties getNamingProperties() {

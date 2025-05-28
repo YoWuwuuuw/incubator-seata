@@ -288,9 +288,39 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
 
     @Override
     public void close() {
-        threadPoolExecutorForSubscribe.shutdown();
-        threadPoolExecutorForUpdateMap.shutdown();
-        RegistryHeartBeats.close();
+        // Shut down the ThreadPoolExecutors
+        if (threadPoolExecutorForSubscribe != null && !threadPoolExecutorForSubscribe.isShutdown()) {
+            threadPoolExecutorForSubscribe.shutdown();
+
+            try {
+                if (!threadPoolExecutorForSubscribe.awaitTermination(5, TimeUnit.SECONDS)) {
+                    threadPoolExecutorForSubscribe.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                LOGGER.warn("ExecutorService threadPoolExecutorForSubscribe shutdown interrupted. Forcing shutdown.");
+                threadPoolExecutorForSubscribe.shutdownNow();
+            } finally {
+                threadPoolExecutorForSubscribe = null;
+            }
+        }
+
+        if (threadPoolExecutorForUpdateMap != null && !threadPoolExecutorForUpdateMap.isShutdown()) {
+            threadPoolExecutorForUpdateMap.shutdown();
+
+            try {
+                if (!threadPoolExecutorForUpdateMap.awaitTermination(5, TimeUnit.SECONDS)) {
+                    threadPoolExecutorForUpdateMap.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                LOGGER.warn("ExecutorService threadPoolExecutorForUpdateMap shutdown interrupted. Forcing shutdown.");
+                threadPoolExecutorForUpdateMap.shutdownNow();
+            } finally {
+                threadPoolExecutorForUpdateMap = null;
+            }
+        }
+
+        RegistryHeartBeats.close(REGISTRY_TYPE);
+
         jedisPool.destroy();
     }
 

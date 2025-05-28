@@ -19,8 +19,10 @@ package org.apache.seata.discovery.registry.redis;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.mockito.MockedStatic;
 import org.mockito.internal.util.collections.Sets;
@@ -33,6 +35,7 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -56,6 +59,7 @@ public class RedisRegisterServiceImplTest {
     }
 
     @Test
+    @Order(1)
     public void testFlow() {
 
         redisRegistryService.register(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
@@ -68,6 +72,7 @@ public class RedisRegisterServiceImplTest {
     }
 
     @Test
+    @Order(2)
     public void testRemoveServerAddressByPushEmptyProtection()
             throws NoSuchFieldException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 
@@ -98,6 +103,20 @@ public class RedisRegisterServiceImplTest {
 
         // test the normal remove situation
         Assertions.assertEquals(0, CLUSTER_ADDRESS_MAP.get("cluster").size());
+    }
+
+    @Test
+    @Order(3)
+    public void testClose() throws Exception {
+        redisRegistryService.close();
+
+        Field executorServiceField1 = RedisRegistryServiceImpl.class.getDeclaredField("threadPoolExecutorForSubscribe");
+        executorServiceField1.setAccessible(true);
+        assertNull(executorServiceField1.get(redisRegistryService));
+
+        Field executorServiceField2 = RedisRegistryServiceImpl.class.getDeclaredField("threadPoolExecutorForUpdateMap");
+        executorServiceField2.setAccessible(true);
+        assertNull(executorServiceField2.get(redisRegistryService));
     }
 
 }
