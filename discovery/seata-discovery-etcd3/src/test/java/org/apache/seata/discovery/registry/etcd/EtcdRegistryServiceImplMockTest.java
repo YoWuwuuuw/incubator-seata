@@ -254,7 +254,6 @@ public class EtcdRegistryServiceImplMockTest {
 
         verify(executorService).shutdown();
         verify(mockClient).close();
-        Thread.sleep(10000);
 
         Field clientField = EtcdRegistryServiceImpl.class.getDeclaredField("client");
         clientField.setAccessible(true);
