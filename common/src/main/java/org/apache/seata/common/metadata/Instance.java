@@ -161,7 +161,6 @@ public class Instance {
         return Objects.equals(control, instance.control) && Objects.equals(transaction, instance.transaction);
     }
 
-
     public String toJsonString(ObjectMapper objectMapper) {
         try {
             return objectMapper.writeValueAsString(this);

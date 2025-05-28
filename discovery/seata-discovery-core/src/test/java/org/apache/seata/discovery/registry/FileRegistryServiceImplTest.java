@@ -16,28 +16,38 @@
  */
 package org.apache.seata.discovery.registry;
 
-import org.junit.jupiter.api.Assertions;
+import org.apache.seata.config.ConfigChangeListener;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
+import org.apache.seata.config.exception.ConfigNotFoundException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 class FileRegistryServiceImplTest {
 
     private static final String TEST_GROUP = "testGroup";
+    private static final String TEST_CLUSTER = "default_tx_group";
 
     private static FileRegistryServiceImpl fileRegistryService;
 
     @BeforeAll
-    static void setUp() {
+    public static void setUp() {
         System.setProperty("service.vgroupMapping.testGroup", TEST_GROUP);
         fileRegistryService = FileRegistryServiceImpl.getInstance();
     }
@@ -46,38 +56,37 @@ class FileRegistryServiceImplTest {
      * Tests the getServiceGroup method to ensure it retrieves the correct service group name
      */
     @Test
-    void testGetServiceGroup() {
+    public void testGetServiceGroup() {
         String result = fileRegistryService.getServiceGroup(TEST_GROUP);
-        Assertions.assertEquals(TEST_GROUP, result);
-        Assertions.assertTrue(RegistryService.SERVICE_GROUP_NAME.contains("service.vgroupMapping.testGroup"));
+        assertEquals(TEST_GROUP, result);
+        assertTrue(RegistryService.SERVICE_GROUP_NAME.contains("service.vgroupMapping.testGroup"));
     }
 
     /**
      * Tests the aliveLookup and refreshAliveLookup methods.
      */
     @Test
-    void testAliveLookupAndRefreshAliveLookup() {
+    public void testAliveLookupAndRefreshAliveLookup() {
         RegistryService.CURRENT_ADDRESS_MAP.clear();
-        List<InetSocketAddress> addresses = Collections.singletonList(new InetSocketAddress("127.0.0.1", 8091));
+        List<InetSocketAddress> addresses = Collections.singletonList(new InetSocketAddress("127.0.0.1", 8080));
 
         // Test empty list
         List<InetSocketAddress> result = fileRegistryService.aliveLookup(TEST_GROUP);
-        System.out.println(result);
-        Assertions.assertTrue(result.isEmpty());
+        assertTrue(result.isEmpty());
 
         // Test data is available
         fileRegistryService.refreshAliveLookup(TEST_GROUP, addresses);
         result = fileRegistryService.aliveLookup(TEST_GROUP);
-        Assertions.assertEquals(addresses, result);
+        assertEquals(addresses, result);
     }
 
     /**
      * Tests the removeOfflineAddressesIfNecessary method when there is no intersection
      */
     @Test
-    void testRemoveOfflineAddressesIfNecessaryWithNoIntersection() {
-        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
-        InetSocketAddress address2 = new InetSocketAddress("127.0.0.2", 8091);
+    public void testRemoveOfflineAddressesIfNecessaryWithNoIntersection() {
+        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8080);
+        InetSocketAddress address2 = new InetSocketAddress("127.0.0.2", 8080);
         List<InetSocketAddress> currentAddresses = Collections.singletonList(address1);
         Collection<InetSocketAddress> newAddresses = Collections.singletonList(address2);
 
@@ -93,9 +102,9 @@ class FileRegistryServiceImplTest {
      * Tests the removeOfflineAddressesIfNecessary method when there is an intersection
      */
     @Test
-    void testRemoveOfflineAddressesIfNecessaryWithIntersection() {
-        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
-        InetSocketAddress address2 = new InetSocketAddress("127.0.0.2", 8091);
+    public void testRemoveOfflineAddressesIfNecessaryWithIntersection() {
+        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8080);
+        InetSocketAddress address2 = new InetSocketAddress("127.0.0.2", 8080);
         List<InetSocketAddress> currentAddresses = Arrays.asList(address1, address2);
         Collection<InetSocketAddress> newAddresses = Collections.singletonList(address1);
 
@@ -106,4 +115,48 @@ class FileRegistryServiceImplTest {
         assertFalse(result.isEmpty());
         assertEquals(newAddresses.toString(), new HashSet<>(result).toString());
     }
-} 
+
+    @Test
+    public void testLookup() throws Exception {
+        List<InetSocketAddress> lookup = fileRegistryService.lookup(TEST_CLUSTER);
+        assertTrue(lookup.get(0).toString().equals("/127.0.0.1:8080"));
+
+        // Set the getServiceGroup() to return null by reflection
+        Configuration mockConfig = Mockito.mock(Configuration.class);
+        when(mockConfig.getConfig("service.vgroupMapping.default_tx_group")).thenReturn(null);
+        Field configField = ConfigurationFactory.class.getDeclaredField("instance");
+        configField.setAccessible(true);
+        Object originalConfigInstance = configField.get(null);
+        configField.set(null, mockConfig);
+
+        try {
+            assertThrows(ConfigNotFoundException.class, () -> fileRegistryService.lookup(TEST_CLUSTER));
+        } finally {
+            // reset ConfigurationFactory.instance
+            configField.set(null, originalConfigInstance);
+        }
+    }
+
+    @Test
+    public void testEmptyMethod() throws Exception {
+        fileRegistryService.register(new InetSocketAddress("127.0.0.1", 8080));
+        fileRegistryService.unregister(new InetSocketAddress("127.0.0.1", 8080));
+
+        ConfigChangeListener configChangeListener = new ConfigChangeListener() {
+            @Override
+            public ExecutorService getExecutor() {
+                return null;
+            }
+
+            @Override
+            public void receiveConfigInfo(String configInfo) {
+
+            }
+        };
+
+        fileRegistryService.subscribe(TEST_CLUSTER, configChangeListener);
+        fileRegistryService.unsubscribe(TEST_CLUSTER, configChangeListener);
+
+        fileRegistryService.close();
+    }
+}

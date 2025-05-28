@@ -29,7 +29,6 @@ import org.apache.seata.config.exception.ConfigNotFoundException;
 
 /**
  * The type File registry service.
- *
  */
 public class FileRegistryServiceImpl implements RegistryService<ConfigChangeListener> {
 
@@ -39,6 +38,7 @@ public class FileRegistryServiceImpl implements RegistryService<ConfigChangeList
     private static final String ENDPOINT_SPLIT_CHAR = ";";
 
     private FileRegistryServiceImpl() {
+
     }
 
     /**
