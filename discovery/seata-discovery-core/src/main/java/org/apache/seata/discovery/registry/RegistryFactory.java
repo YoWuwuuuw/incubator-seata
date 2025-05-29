@@ -44,9 +44,6 @@ public class RegistryFactory {
     }
 
     private static BaseRegistryService<?, ?> buildRegistryService() {
-        boolean enableMetadata =
-                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
-
         RegistryType registryType;
         String registryTypeName = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
                 + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
@@ -58,18 +55,17 @@ public class RegistryFactory {
 
         LOGGER.info("use registry center type: {}", registryTypeName);
 
-        try {
-            registryType = RegistryType.getType(registryTypeName);
-        } catch (Exception exx) {
-            throw new NotSupportYetException("not support registry type: " + registryTypeName);
+        registryType = RegistryType.getType(registryTypeName);
+
+        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        if (enableMetadata) {
+            if (registryType.equals(RegistryType.File) || registryType.equals(RegistryType.Redis)) {
+                throw new NotSupportYetException("metadata mode not support registry type: " + registryType);
+            }
+            return EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
         }
 
-        if (!enableMetadata) {
-            return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
-        }
-
-        // TODO(www):校验无法开启元数据模式的注册中心类型, NotSupportYetException
-        return EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+        return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
     }
 
     private static class RegistryFactoryHolder {

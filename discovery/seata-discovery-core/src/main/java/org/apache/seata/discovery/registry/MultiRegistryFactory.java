@@ -25,6 +25,7 @@ import java.util.TreeSet;
 
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
+import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.util.StringUtils;
 import org.apache.seata.config.ConfigurationFactory;
@@ -50,9 +51,6 @@ public class MultiRegistryFactory {
 
 
     private static List<BaseRegistryService<?, ?>> buildRegistryServices() {
-        boolean enableMetadata =
-                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
-
         List<BaseRegistryService<?, ?>> registryServices = new ArrayList<>();
         String registryTypeNamesStr = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
                 + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
@@ -69,14 +67,16 @@ public class MultiRegistryFactory {
             LOGGER.info("use multi registry center type: {}", registryTypeNames);
         }
 
+        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
         for (String registryTypeName : registryTypeNames) {
             RegistryType registryType = RegistryType.getType(registryTypeName);
 
             BaseRegistryService<?, ?> registryService;
             if (!enableMetadata) {
                 registryService = EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+            } else if(registryType.equals(RegistryType.File) || registryType.equals(RegistryType.Redis)) {
+                throw new NotSupportYetException("metadata mode not support registry type: " + registryType);
             } else {
-                // TODO(www):校验无法开启元数据模式的注册中心类型, NotSupportYetException
                 registryService = EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
             }
             registryServices.add(registryService);

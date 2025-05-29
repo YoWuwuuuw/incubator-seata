@@ -22,7 +22,6 @@ import java.lang.reflect.Method;
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,7 +38,7 @@ public class RegistryFactoryTest {
     @AfterEach
     public void tearDown() {
         System.clearProperty(REGISTRY_TYPE_KEY);
-        System.clearProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "false");
     }
 
     /**
@@ -63,7 +62,6 @@ public class RegistryFactoryTest {
         //
         //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
         //        Assertions.assertNotNull(instance);
-
     }
 
     /**
@@ -87,7 +85,7 @@ public class RegistryFactoryTest {
     public void testGetInstancesWithBlankRegistryType() throws Throwable {
         System.setProperty(REGISTRY_TYPE_KEY, "");
 
-        RegistryService instance = invokeBuildRegistryService();
+        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
         assertEquals(FileRegistryServiceImpl.class, instance.getClass());
 
         // TODO(www):解决一下core模块无法发现nacos、zk等模块类，无法spi加载 -> 无法测试的问题

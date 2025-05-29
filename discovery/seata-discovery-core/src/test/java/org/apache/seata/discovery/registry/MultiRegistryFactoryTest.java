@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -102,7 +101,7 @@ public class MultiRegistryFactoryTest {
     public void testGetInstancesWithDifferentRegistryTypes() throws Throwable {
         String differentRegistryType = "File,file" + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.Nacos.name();
         System.setProperty(REGISTRY_TYPE_KEY, differentRegistryType);
-        List<RegistryService> instances = invokeBuildRegistryServices();
+        List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
 
         assertEquals(2, instances.size());
         assertEquals(MockNacosRegistryService.class, instances.get(1).getClass());
