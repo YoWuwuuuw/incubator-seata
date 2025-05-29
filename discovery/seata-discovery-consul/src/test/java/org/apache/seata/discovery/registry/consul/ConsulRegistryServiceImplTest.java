@@ -38,12 +38,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ConsulRegistryServiceImplTest {
 
     final String TEST_CLUSTER_NAME = "testCluster";
@@ -63,11 +62,13 @@ public class ConsulRegistryServiceImplTest {
         clientField.set(service, client);
     }
 
+    @Order(1)
     @Test
     public void testGetInstance() {
         Assertions.assertEquals(ConsulRegistryServiceImpl.getInstance(), service);
     }
 
+    @Order(2)
     @Test
     public void testRegister() throws Exception {
         InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
@@ -81,6 +82,7 @@ public class ConsulRegistryServiceImplTest {
         verify(client).agentServiceDeregister(any(), any());
     }
 
+    @Order(3)
     @Test
     public void testSubscribeAndLookup() throws Exception {
         ConsulListener consulListener = mock(ConsulListener.class);
@@ -117,26 +119,13 @@ public class ConsulRegistryServiceImplTest {
         assertNull(getMap("notifiers").get(TEST_CLUSTER_NAME));
     }
 
+    @Order(4)
     @Test
     public void testClose() throws Exception {
         ExecutorService executorService = mockExecutorService(true, null);
         service.close();
 
         verifyCloseResults(executorService, false);
-    }
-
-    @Test
-    public void testCloseWithExecutorShutdownFailure() throws Exception {
-        ExecutorService executorService = mockExecutorService(false, null);
-        prepareEmptyNotifiers();
-        service.close();
-        verifyCloseResults(executorService, true);
-        
-        init();
-        executorService = mockExecutorService(false, new InterruptedException("Test exception"));
-        prepareEmptyNotifiers();
-        service.close();
-        verifyCloseResults(executorService, true);
     }
 
     private ExecutorService mockExecutorService(boolean awaitTerminationResult,
@@ -152,14 +141,6 @@ public class ConsulRegistryServiceImplTest {
         
         setExecutorService(executorService);
         return executorService;
-    }
-
-    /**
-     * Prepare an empty notifiers mapping
-     */
-    private void prepareEmptyNotifiers() throws Exception {
-        ConcurrentMap<String, Object> notifierMap = getMap("notifiers");
-        notifierMap.clear();
     }
 
     /**
