@@ -16,29 +16,56 @@
  */
 package org.apache.seata.discovery.registry;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The type Multi registry factory test.
  */
 public class MultiRegistryFactoryTest {
 
-    private static final String REGISTRY_TYPE_KEY = ConfigurationKeys.FILE_ROOT_REGISTRY
-            + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
-            + ConfigurationKeys.FILE_ROOT_TYPE;
+    private static final String REGISTRY_TYPE_KEY =
+            ConfigurationKeys.FILE_ROOT_REGISTRY + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE;
+
+    private final List<Logger> watchedLoggers = new ArrayList<>();
+    private final ListAppender<ILoggingEvent> logWatcher = new ListAppender<>();
+
+    @BeforeEach
+    void setUp() {
+        logWatcher.start();
+
+        Logger logger = ((Logger) LoggerFactory.getLogger(MultiRegistryFactory.class.getName()));
+        logger.addAppender(logWatcher);
+
+        watchedLoggers.add(logger);
+    }
 
     @AfterEach
     public void tearDown() {
         System.clearProperty(REGISTRY_TYPE_KEY);
+        watchedLoggers.forEach(Logger::detachAndStopAllAppenders);
     }
 
     /**
@@ -61,24 +88,37 @@ public class MultiRegistryFactoryTest {
      * Test buildRegistryServices with multi registry types.
      */
     @Test
-    public void testGetInstancesWithMultiRegistryTypes() throws Throwable {
-        // Set up multiple registration center configurations
-        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name() + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.File.name());
-
+    public void testGetInstancesWithSameRegistryTypes() throws Throwable {
+        String sameRegistryType = "File,file";
+        System.setProperty(REGISTRY_TYPE_KEY, sameRegistryType);
         List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
-        Assertions.assertNotNull(instances);
-        Assertions.assertEquals(2, instances.size());
+
+        assertEquals(1, instances.size());
+        assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
+        assertTrue(getLogs(Level.INFO).isEmpty());
+    }
+
+    @Test
+    public void testGetInstancesWithDifferentRegistryTypes() throws Throwable {
+        String differentRegistryType = "File,file" + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.Nacos.name();
+        System.setProperty(REGISTRY_TYPE_KEY, differentRegistryType);
+        List<RegistryService> instances = invokeBuildRegistryServices();
+
+        assertEquals(2, instances.size());
+        assertEquals(MockNacosRegistryService.class, instances.get(1).getClass());
+        assertEquals("use multi registry center type: [File, Nacos]", getLogs(Level.INFO).get(0));
     }
 
     /**
      * Test buildRegistryServices with blank registry type.
+     * when the registry type is blank, the default registry type is File
      */
     @Test
     public void testGetInstancesWithBlankRegistryType() throws Throwable {
         System.setProperty(REGISTRY_TYPE_KEY, "");
 
         List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
-        Assertions.assertNotNull(instances);
+        assertEquals(FileRegistryServiceImpl.class, instances.get(0).getClass());
     }
 
     /**
@@ -86,9 +126,14 @@ public class MultiRegistryFactoryTest {
      */
     @Test
     public void testGetInstancesWithInvalidRegistryType() {
+        String invalidRegistryType = "InvalidRegistryType";
+        System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
         System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
 
         Assertions.assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryServices());
+        assertThatThrownBy(MultiRegistryFactoryTest::invokeBuildRegistryServices)
+                .isExactlyInstanceOf(NotSupportYetException.class)
+                .hasMessage("not support registry type: " + invalidRegistryType);
     }
 
     /**
@@ -107,7 +152,6 @@ public class MultiRegistryFactoryTest {
         //            Assertions.assertNotNull(service);
         //        }
         // 这里需要lookup一些元数据出来进行检查
-
     }
 
     /**
@@ -122,5 +166,13 @@ public class MultiRegistryFactoryTest {
         } catch (InvocationTargetException e) {
             throw e.getTargetException();
         }
+    }
+
+    private List<String> getLogs(Level level) {
+        return logWatcher.list.stream()
+                .filter(event -> event.getLoggerName().endsWith(MultiRegistryFactory.class.getName())
+                        && event.getLevel().equals(level))
+                .map(ILoggingEvent::getFormattedMessage)
+                .collect(Collectors.toList());
     }
 }

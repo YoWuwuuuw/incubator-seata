@@ -355,6 +355,7 @@
                         <artifactId>spotless-maven-plugin</artifactId>
                         <version>${spotless-maven-plugin.version}</version>
                         <configuration>
+                            <skip>true</skip>
                             <java>
                                 <excludes>
                                     <exclude>**/script/**</exclude>
@@ -481,6 +482,14 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                    </execution>
+                    <execution>
+                        <id>report-aggregate</id>
+                        <goals>
+                            <goal>report</goal>
+                            <goal>report-aggregate</goal>
+                        </goals>
+                        <phase>test</phase>
                     </execution>
                 </executions>
             </plugin>

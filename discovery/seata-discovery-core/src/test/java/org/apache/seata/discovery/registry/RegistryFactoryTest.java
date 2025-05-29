@@ -25,14 +25,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 /**
  * The type Registry factory test.
  */
 public class RegistryFactoryTest {
 
-    private static final String REGISTRY_TYPE_KEY = ConfigurationKeys.FILE_ROOT_REGISTRY
-            + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
-            + ConfigurationKeys.FILE_ROOT_TYPE;
+    private static final String REGISTRY_TYPE_KEY =
+            ConfigurationKeys.FILE_ROOT_REGISTRY + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE;
 
     @AfterEach
     public void tearDown() {
@@ -48,7 +50,7 @@ public class RegistryFactoryTest {
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
 
         BaseRegistryService<?, ?> instance = RegistryFactory.getInstance();
-        Assertions.assertNotNull(instance);
+        assertEquals(FileRegistryServiceImpl.class, instance.getClass());
     }
 
     /**
@@ -61,6 +63,7 @@ public class RegistryFactoryTest {
         //
         //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
         //        Assertions.assertNotNull(instance);
+
     }
 
     /**
@@ -68,16 +71,25 @@ public class RegistryFactoryTest {
      */
     @Test
     public void testGetInstanceOfInvalidRegistryType() {
-        System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
+        String invalidRegistryType = "InvalidRegistryType";
+        System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
 
-        Assertions.assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryService());
+        assertThatThrownBy(RegistryFactoryTest::invokeBuildRegistryService)
+            .isExactlyInstanceOf(NotSupportYetException.class)
+            .hasMessage("not support registry type: " + invalidRegistryType);
     }
 
     /**
-     * Test buildRegistryService with metadata enabled.
+     * Test buildRegistryService with blank registry type.
+     * when the registry type is blank, the default registry type is File
      */
     @Test
-    public void testGetInstanceOfMetadataEnabled() throws Throwable {
+    public void testGetInstancesWithBlankRegistryType() throws Throwable {
+        System.setProperty(REGISTRY_TYPE_KEY, "");
+
+        RegistryService instance = invokeBuildRegistryService();
+        assertEquals(FileRegistryServiceImpl.class, instance.getClass());
+
         // TODO(www):解决一下core模块无法发现nacos、zk等模块类，无法spi加载 -> 无法测试的问题
         //        System.setProperty(ENABLE_METADATA_KEY, "true");
         //        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
@@ -88,7 +100,7 @@ public class RegistryFactoryTest {
     }
 
     /**
-     * Use reflection to call the buildRegistryServices method
+     * Use reflection to call the buildRegistryService method
      */
     private static BaseRegistryService<?, ?> invokeBuildRegistryService() throws Throwable {
         Method buildMethod = RegistryFactory.class.getDeclaredMethod("buildRegistryService");
