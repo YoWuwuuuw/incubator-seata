@@ -36,11 +36,14 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 
@@ -111,14 +114,25 @@ public class RedisRegisterServiceImplTest {
     @Test
     @Order(3)
     public void testClose() throws Exception {
-        redisRegistryService.close();
-
         Field executorServiceField1 = RedisRegistryServiceImpl.class.getDeclaredField("threadPoolExecutorForSubscribe");
         executorServiceField1.setAccessible(true);
-        assertNull(executorServiceField1.get(redisRegistryService));
+        ScheduledExecutorService executorService1 = mock(ScheduledExecutorService.class);
+        when(executorService1.isShutdown()).thenReturn(false);
+        when(executorService1.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(new InterruptedException("Test interruption"));
+        executorServiceField1.set(redisRegistryService, executorService1);
 
         Field executorServiceField2 = RedisRegistryServiceImpl.class.getDeclaredField("threadPoolExecutorForUpdateMap");
         executorServiceField2.setAccessible(true);
+        ScheduledExecutorService executorService2 = mock(ScheduledExecutorService.class);
+        when(executorService2.isShutdown()).thenReturn(false);
+        when(executorService2.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(new InterruptedException("Test interruption"));
+        executorServiceField2.set(redisRegistryService, executorService2);
+
+        redisRegistryService.close();
+
+        verify(executorService1).shutdownNow();
+        verify(executorService2).shutdownNow();
+        assertNull(executorServiceField1.get(redisRegistryService));
         assertNull(executorServiceField2.get(redisRegistryService));
     }
 

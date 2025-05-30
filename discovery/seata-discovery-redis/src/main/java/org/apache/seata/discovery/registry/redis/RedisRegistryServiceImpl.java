@@ -52,7 +52,6 @@ import redis.clients.jedis.ScanResult;
 
 /**
  * The type Redis registry service.
- *
  */
 public class RedisRegistryServiceImpl implements RegistryService<RedisListener> {
 
@@ -244,7 +243,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
                 switch (eventType) {
                     case RedisListener.REGISTER:
                         CollectionUtils.computeIfAbsent(CLUSTER_ADDRESS_MAP, clusterName, value -> ConcurrentHashMap.newKeySet(2))
-                            .add(NetUtil.toInetSocketAddress(serverAddr));
+                                .add(NetUtil.toInetSocketAddress(serverAddr));
                         break;
                     case RedisListener.UN_REGISTER:
                         removeServerAddressByPushEmptyProtection(clusterName, serverAddr);
@@ -258,13 +257,12 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     }
 
     /**
-     *
      * if the serverAddr is unique in the address list and
      * the callback cluster is current cluster, then enable push-empty protection
      * Otherwise, remove it.
      *
      * @param notifyCluserName notifyCluserName
-     * @param serverAddr serverAddr
+     * @param serverAddr       serverAddr
      */
     private void removeServerAddressByPushEmptyProtection(String notifyCluserName, String serverAddr) {
 

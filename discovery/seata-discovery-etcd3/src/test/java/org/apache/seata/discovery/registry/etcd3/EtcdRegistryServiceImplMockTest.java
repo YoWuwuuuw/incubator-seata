@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.etcd;
+package org.apache.seata.discovery.registry.etcd3;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.seata.common.DefaultValues.DEFAULT_TX_GROUP;
@@ -59,8 +59,6 @@ import java.util.stream.Collectors;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryProvider;
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryServiceImpl;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -250,17 +248,28 @@ public class EtcdRegistryServiceImplMockTest {
     @Order(6)
     @Test
     public void testClose() throws Exception {
+        // 1.condition: executorService shutdown with exception
+        when(executorService.isShutdown()).thenReturn(false);
+        when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(new InterruptedException("Test interruption"));
         registryService.close();
 
         verify(executorService).shutdown();
+        verify(executorService).shutdownNow();
         verify(mockClient).close();
+
+        Mockito.reset(executorService);
+        Field executorServiceField = EtcdRegistryServiceImpl.class.getDeclaredField("executorService");
+        executorServiceField.setAccessible(true);
+        executorServiceField.set(registryService, executorService);
+
+        // 2.condition: executorService normal shutdown
+        when(executorService.isShutdown()).thenReturn(false);
+        when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(false);
+        registryService.close();
 
         Field clientField = EtcdRegistryServiceImpl.class.getDeclaredField("client");
         clientField.setAccessible(true);
         assertNull(clientField.get(null));
-
-        Field executorServiceField = EtcdRegistryServiceImpl.class.getDeclaredField("executorService");
-        executorServiceField.setAccessible(true);
         assertNull(executorServiceField.get(registryService));
     }
 

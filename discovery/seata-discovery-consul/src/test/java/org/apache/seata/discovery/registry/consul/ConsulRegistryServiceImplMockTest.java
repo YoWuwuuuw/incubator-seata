@@ -38,12 +38,17 @@ import java.util.concurrent.TimeUnit;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ConsulRegistryServiceImplTest {
+public class ConsulRegistryServiceImplMockTest {
 
     final String TEST_CLUSTER_NAME = "testCluster";
 
@@ -122,14 +127,17 @@ public class ConsulRegistryServiceImplTest {
     @Order(4)
     @Test
     public void testClose() throws Exception {
-        ExecutorService executorService = mockExecutorService(true, null);
+        ExecutorService executorService1 = mockExecutorService(false, new InterruptedException("Test interruption"));
+        service.close();
+        verifyCloseResults(executorService1, true);
+
+        ExecutorService executorService = mockExecutorService(false, null);
         service.close();
 
-        verifyCloseResults(executorService, false);
+        verifyCloseResults(executorService, true);
     }
 
-    private ExecutorService mockExecutorService(boolean awaitTerminationResult,
-                                               InterruptedException exception) throws Exception {
+    private ExecutorService mockExecutorService(boolean awaitTerminationResult, InterruptedException exception) throws Exception {
         ExecutorService executorService = mock(ExecutorService.class);
         when(executorService.isShutdown()).thenReturn(false);
         
