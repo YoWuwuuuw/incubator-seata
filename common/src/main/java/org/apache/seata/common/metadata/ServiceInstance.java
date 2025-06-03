@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * entity for packaging inetSocketAddress and metadata
+ * entity for packaging inetSocketAddress and metadata for loadBalance
  */
 public class ServiceInstance {
     private InetSocketAddress address;

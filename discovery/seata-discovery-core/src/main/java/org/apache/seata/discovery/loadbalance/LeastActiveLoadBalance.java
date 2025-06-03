@@ -29,6 +29,7 @@ import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.LEAST_AC
  *
  */
 @LoadLevel(name = LEAST_ACTIVE_LOAD_BALANCE)
+@LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
 public class LeastActiveLoadBalance implements LoadBalance {
 
     @Override

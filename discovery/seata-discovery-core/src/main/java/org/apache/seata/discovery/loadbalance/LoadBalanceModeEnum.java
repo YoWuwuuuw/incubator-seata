@@ -16,22 +16,16 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-
-import org.apache.seata.common.loader.LoadLevel;
-
 /**
- * The type Random load balance.
- *
+ * loadBalance enum
  */
-@LoadLevel(name = LoadBalanceFactory.RANDOM_LOAD_BALANCE)
-@LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
-public class RandomLoadBalance implements LoadBalance {
-
-    @Override
-    public <T> T select(List<T> invokers, String xid) {
-        int length = invokers.size();
-        return invokers.get(ThreadLocalRandom.current().nextInt(length));
-    }
+public enum LoadBalanceModeEnum {
+    /**
+     * METADATA
+     */
+    METADATA,
+    /**
+     * ORIGINAL
+     */
+    ORIGINAL
 }

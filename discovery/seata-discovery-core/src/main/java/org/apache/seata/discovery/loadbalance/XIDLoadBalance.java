@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @LoadLevel(name = XID_LOAD_BALANCE)
+@LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
 public class XIDLoadBalance implements LoadBalance {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(XIDLoadBalance.class);

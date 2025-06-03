@@ -26,6 +26,7 @@ import org.apache.seata.common.loader.LoadLevel;
  *
  */
 @LoadLevel(name = LoadBalanceFactory.ROUND_ROBIN_LOAD_BALANCE)
+@LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
 public class RoundRobinLoadBalance implements LoadBalance {
 
     private final AtomicInteger sequence = new AtomicInteger();
