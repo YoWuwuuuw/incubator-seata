@@ -76,7 +76,7 @@ class HttpDispatchHandlerTest {
 
             channel.writeInbound(request);
 
-            FullHttpResponse response = channel.readOutbound();
+            FullHttpResponse response = waitForResponse(10000);
             assertEquals(HttpResponseStatus.OK, response.status());
             String content = response.content().toString(StandardCharsets.UTF_8);
             assertTrue(content.contains("Processed: testValue"));
@@ -97,7 +97,7 @@ class HttpDispatchHandlerTest {
 
             channel.writeInbound(request);
 
-            FullHttpResponse response = channel.readOutbound();
+            FullHttpResponse response = waitForResponse(10000);
             assertEquals(HttpResponseStatus.NOT_FOUND, response.status());
         }
     }
@@ -116,9 +116,28 @@ class HttpDispatchHandlerTest {
 
             channel.writeInbound(request);
 
-            FullHttpResponse response = channel.readOutbound();
+            FullHttpResponse response = waitForResponse(10000);
             assertEquals(HttpResponseStatus.NOT_FOUND, response.status());
             assertEquals(0, response.content().readableBytes());
         }
+    }
+
+    private FullHttpResponse waitForResponse(long timeoutMs) {
+        long startTime = System.currentTimeMillis();
+        FullHttpResponse response = null;
+
+        while (response == null && (System.currentTimeMillis() - startTime) < timeoutMs) {
+            response = channel.readOutbound();
+            if (response == null) {
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for response", e);
+                }
+            }
+        }
+
+        return response;
     }
 }
