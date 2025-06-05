@@ -63,7 +63,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(NettyServerConfig.getMaxHttpTaskQueueSize()),
             new NamedThreadFactory("HTTPHandlerThread", NettyServerConfig.getMaxHttpPoolSize()),
-            new ThreadPoolExecutor.CallerRunsPolicy()
+            new ThreadPoolExecutor.AbortPolicy()
     );
 
     static {
@@ -84,7 +84,8 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
                 }
             });
         } catch (RejectedExecutionException e) {
-            LOGGER.error("HTTP thread pool is full, rejecting request", e);
+            sendUnavalable(ctx, keepAlive);
+            LOGGER.warn("HTTP thread pool is full, return 503 status code", e);
         }
     }
 
@@ -157,6 +158,16 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     private void sendNotFound(ChannelHandlerContext ctx, boolean keepAlive) {
         FullHttpResponse response = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND, Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+        if (!keepAlive) {
+            ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
+        } else {
+            ctx.writeAndFlush(response);
+        }
+    }
+
+    private void sendUnavalable(ChannelHandlerContext ctx, boolean keepAlive) {
+        FullHttpResponse response = new DefaultFullHttpResponse(
+                HttpVersion.HTTP_1_1, HttpResponseStatus.SERVICE_UNAVAILABLE, Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
         if (!keepAlive) {
             ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
         } else {
