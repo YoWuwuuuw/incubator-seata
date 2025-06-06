@@ -54,7 +54,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing
+     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
      */
     private static final ExecutorService httpHandlerThreads = new ThreadPoolExecutor(
             NettyServerConfig.getMinHttpPoolSize(),
