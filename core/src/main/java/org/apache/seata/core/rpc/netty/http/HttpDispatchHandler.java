@@ -41,6 +41,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+
+import org.apache.seata.common.rpc.http.HttpContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -72,36 +77,47 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws Exception {
-        final boolean keepAlive = HttpUtil.isKeepAlive(httpRequest)
-                && httpRequest.protocolVersion().isKeepAliveDefault();
-
+        boolean keepAlive = HttpUtil.isKeepAlive(httpRequest) && httpRequest.protocolVersion().isKeepAliveDefault();
         try {
             httpHandlerThreads.execute(() -> {
                 try {
                     processHttpRequest(ctx, httpRequest, keepAlive);
                 } catch (Exception e) {
                     LOGGER.error("HTTP request processing error", e);
+                    sendResponse(ctx, null, keepAlive);
                 }
             });
         } catch (RejectedExecutionException e) {
-            sendUnavalable(ctx, keepAlive);
+            sendUnavailable(ctx, keepAlive);
             LOGGER.warn("HTTP thread pool is full, return 503 status code", e);
         }
     }
 
+
+    /*
+    catch (IllegalArgumentException e) {
+            keepAlive = false;
+            LOGGER.error("Illegal argument exception: {}", e.getMessage(), e);
+            response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST,
+                    Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+        } catch (Exception e) {
+            keepAlive = false;
+            LOGGER.error("Exception occurred while processing HTTP request: {}", e.getMessage(), e);
+            response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR,
+                    Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+        }
+     */
     private void processHttpRequest(ChannelHandlerContext ctx, HttpRequest httpRequest, boolean keepAlive) throws Exception {
         QueryStringDecoder queryStringDecoder = new QueryStringDecoder(httpRequest.uri());
         String path = queryStringDecoder.path();
-
         HttpInvocation httpInvocation = ControllerManager.getHttpInvocation(path);
         if (httpInvocation == null) {
             sendNotFound(ctx, keepAlive);
             return;
         }
-
+        HttpContext httpContext = new HttpContext(httpRequest, ctx, keepAlive);
         ObjectNode requestDataNode = OBJECT_MAPPER.createObjectNode();
         requestDataNode.putIfAbsent("param", ParameterParser.convertParamMap(queryStringDecoder.parameters()));
-        requestDataNode.putPOJO("channel", ctx.channel());
 
         if (httpRequest.method() == HttpMethod.POST) {
             HttpPostRequestDecoder httpPostRequestDecoder = null;
@@ -116,8 +132,6 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
                     bodyDataNode.put(attribute.getName(), attribute.getValue());
                 }
                 requestDataNode.putIfAbsent("body", bodyDataNode);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             } finally {
                 if (httpPostRequestDecoder != null) {
                     httpPostRequestDecoder.destroy();
@@ -127,8 +141,13 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
 
         Object httpController = httpInvocation.getController();
         Method handleMethod = httpInvocation.getMethod();
-        Object[] args = ParameterParser.getArgValues(httpInvocation.getParamMetaData(), handleMethod, requestDataNode);
+        Object[] args = ParameterParser.getArgValues(httpInvocation.getParamMetaData(), handleMethod,
+                requestDataNode, httpContext);
         Object result = handleMethod.invoke(httpController, args);
+
+        if (httpContext.isAsync()) {
+            return;
+        }
 
         if (requestDataNode.get("channel") == null) {
             return;
@@ -137,27 +156,38 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
         sendResponse(ctx, result, keepAlive);
     }
 
-    private void sendResponse(ChannelHandlerContext ctx, Object result, boolean keepAlive) throws JsonProcessingException {
-        FullHttpResponse response;
-        if (result != null) {
-            byte[] body = OBJECT_MAPPER.writeValueAsBytes(result);
-            response = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(body));
-            response.headers().set(HttpHeaderNames.CONTENT_LENGTH, body.length);
-        } else {
-            response = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
-        }
-        if (!keepAlive) {
-            ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
-        } else {
-            ctx.writeAndFlush(response);
+    private void sendResponse(ChannelHandlerContext ctx, Object result, boolean keepAlive) {
+        try {
+            FullHttpResponse response;
+            if (result != null) {
+                byte[] body = OBJECT_MAPPER.writeValueAsBytes(result);
+                response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
+                        Unpooled.wrappedBuffer(body));
+                response.headers().set(HttpHeaderNames.CONTENT_LENGTH, body.length);
+            } else {
+                response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
+                        Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+            }
+            if (!keepAlive) {
+                ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
+            } else {
+                ctx.writeAndFlush(response);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Failed to serialize response", e);
+            FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR,
+                    Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+            if (!keepAlive) {
+                ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
+            } else {
+                ctx.writeAndFlush(response);
+            }
         }
     }
 
     private void sendNotFound(ChannelHandlerContext ctx, boolean keepAlive) {
-        FullHttpResponse response = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND, Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
+        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND,
+                Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
         if (!keepAlive) {
             ctx.writeAndFlush(response).addListeners(ChannelFutureListener.CLOSE);
         } else {
@@ -165,7 +195,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
         }
     }
 
-    private void sendUnavalable(ChannelHandlerContext ctx, boolean keepAlive) {
+    private void sendUnavailable(ChannelHandlerContext ctx, boolean keepAlive) {
         FullHttpResponse response = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1, HttpResponseStatus.SERVICE_UNAVAILABLE, Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER));
         if (!keepAlive) {
@@ -175,3 +205,4 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
         }
     }
 }
+
