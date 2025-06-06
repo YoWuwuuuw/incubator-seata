@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.seata.common.rpc.http.HttpContext;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -72,73 +73,74 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) {
-        boolean keepAlive = HttpUtil.isKeepAlive(httpRequest) && httpRequest.protocolVersion().isKeepAliveDefault();
         try {
-            httpHandlerThreads.execute(() -> {
+            boolean keepAlive = HttpUtil.isKeepAlive(httpRequest) && httpRequest.protocolVersion().isKeepAliveDefault();
+            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(httpRequest.uri());
+            String path = queryStringDecoder.path();
+            HttpInvocation httpInvocation = ControllerManager.getHttpInvocation(path);
+
+            if (httpInvocation == null) {
+                sendErrorResponse(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
+                return;
+            }
+
+            HttpContext httpContext = new HttpContext(httpRequest, ctx, keepAlive);
+            ObjectNode requestDataNode = OBJECT_MAPPER.createObjectNode();
+            requestDataNode.putIfAbsent("param", ParameterParser.convertParamMap(queryStringDecoder.parameters()));
+
+            if (httpRequest.method() == HttpMethod.POST) {
+                HttpPostRequestDecoder httpPostRequestDecoder = null;
                 try {
-                    processHttpRequest(ctx, httpRequest, keepAlive);
-                } catch (IllegalArgumentException e) {
-                    LOGGER.error("Illegal argument exception: {}", e.getMessage(), e);
-                    sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, false);
-                } catch (Exception e) {
-                    LOGGER.error("Exception occurred while processing HTTP request: {}", e.getMessage(), e);
-                    sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
-                }
-            });
-        } catch (RejectedExecutionException e) {
-            sendErrorResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, false);
-            LOGGER.error("HTTP thread pool is full: {}", e.getMessage(), e);
-        }
-    }
-
-    private void processHttpRequest(ChannelHandlerContext ctx, HttpRequest httpRequest, boolean keepAlive) throws Exception {
-        QueryStringDecoder queryStringDecoder = new QueryStringDecoder(httpRequest.uri());
-        String path = queryStringDecoder.path();
-        HttpInvocation httpInvocation = ControllerManager.getHttpInvocation(path);
-
-        if (httpInvocation == null) {
-            sendErrorResponse(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
-            return;
-        }
-
-        HttpContext httpContext = new HttpContext(httpRequest, ctx, keepAlive);
-        ObjectNode requestDataNode = OBJECT_MAPPER.createObjectNode();
-        requestDataNode.putIfAbsent("param", ParameterParser.convertParamMap(queryStringDecoder.parameters()));
-
-        if (httpRequest.method() == HttpMethod.POST) {
-            HttpPostRequestDecoder httpPostRequestDecoder = null;
-            try {
-                httpPostRequestDecoder = new HttpPostRequestDecoder(httpRequest);
-                ObjectNode bodyDataNode = OBJECT_MAPPER.createObjectNode();
-                for (InterfaceHttpData interfaceHttpData : httpPostRequestDecoder.getBodyHttpDatas()) {
-                    if (interfaceHttpData.getHttpDataType() != InterfaceHttpData.HttpDataType.Attribute) {
-                        continue;
+                    httpPostRequestDecoder = new HttpPostRequestDecoder(httpRequest);
+                    ObjectNode bodyDataNode = OBJECT_MAPPER.createObjectNode();
+                    for (InterfaceHttpData interfaceHttpData : httpPostRequestDecoder.getBodyHttpDatas()) {
+                        if (interfaceHttpData.getHttpDataType() != InterfaceHttpData.HttpDataType.Attribute) {
+                            continue;
+                        }
+                        Attribute attribute = (Attribute) interfaceHttpData;
+                        bodyDataNode.put(attribute.getName(), attribute.getValue());
                     }
-                    Attribute attribute = (Attribute) interfaceHttpData;
-                    bodyDataNode.put(attribute.getName(), attribute.getValue());
-                }
-                requestDataNode.putIfAbsent("body", bodyDataNode);
-            } finally {
-                if (httpPostRequestDecoder != null) {
-                    httpPostRequestDecoder.destroy();
+                    requestDataNode.putIfAbsent("body", bodyDataNode);
+                } finally {
+                    if (httpPostRequestDecoder != null) {
+                        httpPostRequestDecoder.destroy();
+                    }
                 }
             }
+
+            Object httpController = httpInvocation.getController();
+            Method handleMethod = httpInvocation.getMethod();
+            Object[] args = ParameterParser.getArgValues(httpInvocation.getParamMetaData(), handleMethod,
+                    requestDataNode, httpContext);
+
+            try {
+                httpHandlerThreads.execute(() -> {
+                    try {
+                        Object result = handleMethod.invoke(httpController, args);
+                        if (httpContext.isAsync()) {
+                            return;
+                        }
+
+                        sendResponse(ctx, keepAlive, result);
+                    } catch (IllegalArgumentException e) {
+                        LOGGER.error("Illegal argument exception: {}", e.getMessage(), e);
+                        sendErrorResponse(ctx, HttpResponseStatus.BAD_REQUEST, false);
+                    } catch (Exception e) {
+                        LOGGER.error("Exception occurred while processing HTTP request: {}", e.getMessage(), e);
+                        sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
+                    }
+                });
+            } catch (RejectedExecutionException e) {
+                sendErrorResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, false);
+                LOGGER.error("HTTP thread pool is full: {}", e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Exception occurred while processing HTTP request: {}", e.getMessage(), e);
+            sendErrorResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
         }
-
-        Object httpController = httpInvocation.getController();
-        Method handleMethod = httpInvocation.getMethod();
-        Object[] args = ParameterParser.getArgValues(httpInvocation.getParamMetaData(), handleMethod,
-                requestDataNode, httpContext);
-        Object result = handleMethod.invoke(httpController, args);
-
-        if (httpContext.isAsync()) {
-            return;
-        }
-
-        sendResponse(ctx, result, keepAlive);
     }
 
-    private void sendResponse(ChannelHandlerContext ctx, Object result, boolean keepAlive) throws JsonProcessingException {
+    private void sendResponse(ChannelHandlerContext ctx, boolean keepAlive, Object result) throws JsonProcessingException {
         FullHttpResponse response;
         if (result != null) {
             byte[] body = OBJECT_MAPPER.writeValueAsBytes(result);
