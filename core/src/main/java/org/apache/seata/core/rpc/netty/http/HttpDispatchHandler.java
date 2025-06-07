@@ -67,9 +67,9 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
             new ThreadPoolExecutor.AbortPolicy()
     );
 
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread(httpHandlerThreads::shutdown));
-    }
+//    static {
+//        Runtime.getRuntime().addShutdownHook(new Thread(httpHandlerThreads::shutdown));
+//    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) {
