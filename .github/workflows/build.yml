@@ -91,32 +91,22 @@ jobs:
 
           PMD_REPORT_FILES=$(find . -type f -name "pmd.xml" -print)
 
-          if [ -z "$PMD_REPORT_FILES" ]; then
-            echo "No PMD XML report files (pmd.xml) found in any module's target/ directory."
-            echo "This might be normal if there are no violations across all modules, or if the PMD plugin is not configured to generate XML reports."
-            echo "Also, ensure 'pmd:check' is correctly invoked in the build step."
-          else
-            echo "Found the following PMD XML report files:"
-            echo "$PMD_REPORT_FILES"
-            echo ""
+          FOUND_VIOLATIONS=false
 
-            FOUND_VIOLATIONS=false
-
-            for report_file in $PMD_REPORT_FILES; do
-              # Check whether the report file contains the <violation> tag
-              if grep -q "<violation" "$report_file"; then
-                FOUND_VIOLATIONS=true
-                echo "--- PMD XML Report with Violations for: $report_file ---"
-                cat "$report_file"
-                echo "--------------------------------------------------------"
-                echo ""
-              fi
-            done
-
-            if [ "$FOUND_VIOLATIONS" = false ]; then
-              echo "No PMD XML reports containing violations were found among the generated reports."
-              echo "All modules either passed PMD checks or their reports are empty of violations."
+          for report_file in $PMD_REPORT_FILES; do
+            # Check whether the report file contains the <violation> tag
+            if grep -q "<violation" "$report_file"; then
+              FOUND_VIOLATIONS=true
+              echo "--- PMD XML Report with Violations for: $report_file ---"
+              cat "$report_file"
+              echo "--------------------------------------------------------"
+              echo ""
             fi
+          done
+
+          if [ "$FOUND_VIOLATIONS" = false ]; then
+            echo "No PMD XML reports containing violations were found among the generated reports."
+            echo "All modules either passed PMD checks or their reports are empty of violations."
           fi
         working-directory: ${{ github.workspace }}
       # step 6.3
