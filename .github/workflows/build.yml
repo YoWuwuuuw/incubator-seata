@@ -82,18 +82,25 @@ jobs:
         run: |
           ./mvnw -T 4C clean test \
                  -Dcheckstyle.skip=false -Dpmd.skip=false -Dlicense.skip=false -DredisCaseEnabled=true \
-                 -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn;
+                 -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+          pmd:check;
       - name: "Print PMD Report if exists"
         if: matrix.java == '8' && failure()
         run: |
-          PMD_REPORT_PATH=$(find . -name "pmd.txt" -o -name "pmd.xml" | head -n 1)
-          if [ -f "$PMD_REPORT_PATH" ]; then
-            echo "--- PMD Check Report ---"
-            cat "$PMD_REPORT_PATH"
-            echo "------------------------"
+          if [ -f "core/target/pmd.txt" ]; then
+            echo "--- PMD Check Report (Text Format) ---"
+            cat core/target/pmd.txt
+            echo "--------------------------------------"
+          elif [ -f "core/target/pmd.xml" ]; then
+            echo "--- PMD Check Report (XML Format) ---"
+            cat core/target/pmd.xml
+            echo "-------------------------------------"
           else
-            echo "PMD report file not found, perhaps PMD check did not run or failed prematurely."
+            echo "PMD report file not found at core/target/. Please ensure PMD plugin configuration is correct and report files are generated."
+            echo "Attempting to find any pmd.xml or pmd.txt in the workspace..."
+            find . -name "pmd.xml" -o -name "pmd.txt" -print
           fi
+        working-directory: ${{ github.workspace }}
       # step 6.2
       - name: "Test with Maven and Java${{ matrix.java }}"
         if: matrix.java != '8'
