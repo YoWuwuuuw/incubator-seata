@@ -84,8 +84,10 @@ jobs:
                  -Dcheckstyle.skip=false -Dpmd.skip=false -Dlicense.skip=false -DredisCaseEnabled=true \
                  -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
           pmd:check;
-      - name: "Print PMD Report if exists"
+      - name: "Print PMD Violation Details"
+        if: matrix.java == '8' && always()
         run: |
+          echo "Attempting to print PMD report for module seata-core..."
           if [ -f "core/target/pmd.txt" ]; then
             echo "--- PMD Check Report (Text Format) ---"
             cat core/target/pmd.txt
@@ -95,11 +97,11 @@ jobs:
             cat core/target/pmd.xml
             echo "-------------------------------------"
           else
-            echo "PMD report file not found at core/target/. Please ensure PMD plugin configuration is correct and report files are generated."
-            echo "Attempting to find any pmd.xml or pmd.txt in the workspace..."
+            echo "PMD report file not found at core/target/. This might be normal if there are no violations or the plugin configuration is not set to generate a report on success."
+            echo "Attempting to find any pmd.xml or pmd.txt in the workspace for debugging..."
             find . -name "pmd.xml" -o -name "pmd.txt" -print
           fi
-        working-directory: ${{ github.workspace }}
+          working-directory: ${{ github.workspace }}
       # step 6.2
       - name: "Test with Maven and Java${{ matrix.java }}"
         if: matrix.java != '8'
