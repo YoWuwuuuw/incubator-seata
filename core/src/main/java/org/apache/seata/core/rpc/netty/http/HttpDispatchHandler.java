@@ -55,7 +55,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     /**
      * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
      */
-    private static final ExecutorService httpHandlerThreads = new ThreadPoolExecutor(
+    private static final ExecutorService HTTP_HANDLER_THREADS = new ThreadPoolExecutor(
             NettyServerConfig.getMinHttpPoolSize(),
             NettyServerConfig.getMaxHttpPoolSize(),
             NettyServerConfig.getHttpKeepAliveTime(),
@@ -66,7 +66,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     );
 
     static {
-        Runtime.getRuntime().addShutdownHook(new Thread(httpHandlerThreads::shutdown));
+        Runtime.getRuntime().addShutdownHook(new Thread(HTTP_HANDLER_THREADS::shutdown));
     }
 
     @Override
@@ -112,7 +112,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
                     requestDataNode, httpContext);
 
             try {
-                httpHandlerThreads.execute(() -> {
+                HTTP_HANDLER_THREADS.execute(() -> {
                     try {
                         Object result = handleMethod.invoke(httpController, args);
                         if (httpContext.isAsync()) {
