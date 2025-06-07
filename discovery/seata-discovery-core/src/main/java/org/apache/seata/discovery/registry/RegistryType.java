@@ -23,13 +23,7 @@ import org.apache.seata.common.exception.NotSupportYetException;
  *
  */
 public enum RegistryType {
-    /**
-     * File registry type.
-     */
     File,
-    /**
-     * Raft registry type.
-     */
     Raft,
     /**
      * ZK registry type.
