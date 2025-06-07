@@ -104,7 +104,7 @@ jobs:
             fi
           done
 
-          if [ "$FOUND_VIOLATIONS" = false ]; then
+          if [ "$FOUND_VIOLATIONS" = "false" ]; then
             echo "No PMD XML reports containing violations were found among the generated reports."
             echo "All modules either passed PMD checks or their reports are empty of violations."
           fi
