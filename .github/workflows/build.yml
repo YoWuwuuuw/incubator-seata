@@ -85,7 +85,6 @@ jobs:
                  -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
           pmd:check;
       - name: "Print PMD Report if exists"
-        if: matrix.java == '8' && failure()
         run: |
           if [ -f "core/target/pmd.txt" ]; then
             echo "--- PMD Check Report (Text Format) ---"
