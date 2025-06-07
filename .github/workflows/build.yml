@@ -21,7 +21,7 @@ on:
     branches: [ 2.x, develop, master ]
   pull_request:
     branches: [ 2.x, develop, master ]
-    types: [opened, reopened, synchronize]
+    types: [ opened, reopened, synchronize ]
     paths-ignore:
       - '**.md'
 
@@ -71,11 +71,11 @@ jobs:
         uses: actions/cache/restore@v4
         id: cache-maven-repository
         with:
-         path: ~/.m2/repository
-         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}-${{ env.TODAY }}
-         restore-keys: |
-           ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-           ${{ runner.os }}-maven-
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}-${{ env.TODAY }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            ${{ runner.os }}-maven-
       # step 6.1
       - name: "Test, Check style, Check PMD, Check license with Maven and Java8"
         if: matrix.java == '8'
@@ -83,6 +83,17 @@ jobs:
           ./mvnw -T 4C clean test \
                  -Dcheckstyle.skip=false -Dpmd.skip=false -Dlicense.skip=false -DredisCaseEnabled=true \
                  -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn;
+      - name: "Print PMD Report if exists"
+        if: matrix.java == '8' && failure()
+        run: |
+          PMD_REPORT_PATH=$(find . -name "pmd.txt" -o -name "pmd.xml" | head -n 1)
+          if [ -f "$PMD_REPORT_PATH" ]; then
+            echo "--- PMD Check Report ---"
+            cat "$PMD_REPORT_PATH"
+            echo "------------------------"
+          else
+            echo "PMD report file not found, perhaps PMD check did not run or failed prematurely."
+          fi
       # step 6.2
       - name: "Test with Maven and Java${{ matrix.java }}"
         if: matrix.java != '8'
