@@ -52,9 +52,9 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpDispatchHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-//    /**
-//     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
-//     */
+    /**
+     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
+     */
     private static final ExecutorService httpHandlerThreads = new ThreadPoolExecutor(
             NettyServerConfig.getMinHttpPoolSize(),
             NettyServerConfig.getMaxHttpPoolSize(),
@@ -95,7 +95,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
                         if (interfaceHttpData.getHttpDataType() != InterfaceHttpData.HttpDataType.Attribute) {
                             continue;
                         }
-                        Attribute attribute = (Attribute) interfaceHttpData;
+                        Attribute attribute = (Attribute)interfaceHttpData;
                         bodyDataNode.put(attribute.getName(), attribute.getValue());
                     }
                     requestDataNode.putIfAbsent("body", bodyDataNode);
