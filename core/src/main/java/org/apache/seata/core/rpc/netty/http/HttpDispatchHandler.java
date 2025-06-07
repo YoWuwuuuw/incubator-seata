@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.seata.common.rpc.http.HttpContext;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -67,9 +66,9 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
             new ThreadPoolExecutor.AbortPolicy()
     );
 
-//    static {
-//        Runtime.getRuntime().addShutdownHook(new Thread(httpHandlerThreads::shutdown));
-//    }
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(httpHandlerThreads::shutdown));
+    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) {
@@ -140,7 +139,7 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
         }
     }
 
-    private void sendResponse(ChannelHandlerContext ctx, boolean keepAlive, Object result) throws JsonProcessingException {
+    private void sendResponse(ChannelHandlerContext ctx, boolean keepAlive, Object result) throws Exception {
         FullHttpResponse response;
         if (result != null) {
             byte[] body = OBJECT_MAPPER.writeValueAsBytes(result);
