@@ -16,7 +16,6 @@
  */
 package org.apache.seata.core.rpc.netty.http;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.netty.buffer.Unpooled;
@@ -53,9 +52,9 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpDispatchHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /**
-     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
-     */
+//    /**
+//     * HTTP request processing thread pool, independent of Netty IO threads, to avoid blocking network processing.
+//     */
     private static final ExecutorService httpHandlerThreads = new ThreadPoolExecutor(
             NettyServerConfig.getMinHttpPoolSize(),
             NettyServerConfig.getMaxHttpPoolSize(),
