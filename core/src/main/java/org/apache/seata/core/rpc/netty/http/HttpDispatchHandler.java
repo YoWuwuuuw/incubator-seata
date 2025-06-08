@@ -130,8 +130,8 @@ public class HttpDispatchHandler extends SimpleChannelInboundHandler<HttpRequest
                     }
                 });
             } catch (RejectedExecutionException e) {
-                sendErrorResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, false);
                 LOGGER.error("HTTP thread pool is full: {}", e.getMessage(), e);
+                sendErrorResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, false);
             }
         } catch (Exception e) {
             LOGGER.error("Exception occurred while processing HTTP request: {}", e.getMessage(), e);
