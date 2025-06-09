@@ -82,26 +82,9 @@ jobs:
         run: |
           ./mvnw -T 4C clean test \
                  -Dcheckstyle.skip=false -Dpmd.skip=false -Dlicense.skip=false -DredisCaseEnabled=true \
-                 -e -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
-          pmd:check;
-      - name: "Print PMD Violation Details"
-        if: matrix.java == '8' && always()
-        run: |
-          echo "Attempting to print PMD report for module seata-core..."
-          if [ -f "core/target/pmd.txt" ]; then
-            echo "--- PMD Check Report (Text Format) ---"
-            cat core/target/pmd.txt
-            echo "--------------------------------------"
-          elif [ -f "core/target/pmd.xml" ]; then
-            echo "--- PMD Check Report (XML Format) ---"
-            cat core/target/pmd.xml
-            echo "-------------------------------------"
-          else
-            echo "PMD report file not found at core/target/. This might be normal if there are no violations or the plugin configuration is not set to generate a report on success."
-            echo "Attempting to find any pmd.xml or pmd.txt in the workspace for debugging..."
-            find . -name "pmd.xml" -o -name "pmd.txt" -print
-          fi
-          working-directory: ${{ github.workspace }}
+                 -e -B \
+                 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+                 -Dorg.slf4j.simpleLogger.log.net.sourceforge.pmd=error;
       # step 6.2
       - name: "Test with Maven and Java${{ matrix.java }}"
         if: matrix.java != '8'
