@@ -17,6 +17,7 @@
 package org.apache.seata.discovery.registry;
 
 import org.apache.seata.common.exception.NotSupportYetException;
+import java.util.Set;
 
 /**
  * The enum Registry type.
