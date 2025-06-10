@@ -64,10 +64,10 @@ public class RedisConfiguration extends AbstractConfiguration {
 
     private final ExecutorService subscribeExecutor;
 
-    /**
-     * Get instance of RedisConfiguration
+    /****
+     * Returns the singleton instance of RedisConfiguration, initializing it if necessary.
      *
-     * @return instance
+     * @return the RedisConfiguration singleton instance
      */
     public static RedisConfiguration getInstance() {
         if (instance == null) {
@@ -81,7 +81,9 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Instantiates Redis configuration
+     * Initializes the RedisConfiguration instance by setting up the Redis connection pool, loading configuration data into the local cache, and preparing the thread pool for subscription tasks.
+     *
+     * Also registers a JVM shutdown hook to ensure proper cleanup of resources on application termination.
      */
     private RedisConfiguration() {
         initRedisPool();
@@ -111,8 +113,13 @@ public class RedisConfiguration extends AbstractConfiguration {
         }));
     }
 
-    /**
-     * Get latest config with timeout and default value
+    /****
+     * Retrieves the latest configuration value for the specified dataId, returning a default value if not found or on timeout.
+     *
+     * @param dataId the configuration key to retrieve
+     * @param defaultValue the value to return if the configuration is not found or an error occurs
+     * @param timeoutMills the maximum time in milliseconds to wait for the configuration retrieval
+     * @return the configuration value for the given dataId, or defaultValue if not found or on error
      */
     @Override
     public String getLatestConfig(String dataId, String defaultValue, long timeoutMills) {
@@ -136,8 +143,15 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (String) configFuture.get();
     }
 
-    /**
-     * Write config regardless of whether the configuration already exists
+    /****
+     * Stores or updates a configuration entry in Redis and notifies listeners of the change.
+     *
+     * Writes the specified configuration value for the given dataId to the Redis hash, publishes a change notification on the corresponding Redis channel, and updates the local cache. Returns true if the operation succeeds, false otherwise.
+     *
+     * @param dataId the configuration key to store or update
+     * @param content the configuration value to set
+     * @param timeoutMills the maximum time to wait for the operation to complete, in milliseconds
+     * @return true if the configuration was successfully written to Redis; false otherwise
      */
     @Override
     public boolean putConfig(String dataId, String content, long timeoutMills) {
@@ -160,8 +174,15 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (Boolean) configFuture.get();
     }
 
-    /**
-     * Write config only when the configuration does not exist
+    /****
+     * Writes a configuration entry only if it does not already exist in Redis.
+     *
+     * If the configuration for the specified dataId is absent, stores the provided content in Redis and updates the local cache. If the entry already exists, loads the existing value into the local cache without overwriting it. Publishes a change notification if a new entry is created.
+     *
+     * @param dataId the configuration key to write
+     * @param content the value to store if absent
+     * @param timeoutMills the maximum time to wait for the operation to complete, in milliseconds
+     * @return true if the configuration exists after the operation (either pre-existing or newly written), false if the operation failed
      */
     @Override
     public boolean putConfigIfAbsent(String dataId, String content, long timeoutMills) {
@@ -196,7 +217,11 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Remove config with timeout
+     * Removes a configuration entry for the specified dataId from Redis and the local cache, and publishes a removal notification.
+     *
+     * @param dataId the identifier of the configuration to remove
+     * @param timeoutMills the maximum time to wait for the operation to complete, in milliseconds
+     * @return true if the configuration was successfully removed; false otherwise
      */
     @Override
     public boolean removeConfig(String dataId, long timeoutMills) {
@@ -220,6 +245,14 @@ public class RedisConfiguration extends AbstractConfiguration {
         return (Boolean) configFuture.get();
     }
 
+    /**
+     * Registers a listener to receive notifications for configuration changes on the specified dataId.
+     *
+     * The listener will be notified asynchronously via Redis pub/sub when the configuration for the given dataId is updated or removed.
+     *
+     * @param dataId the configuration key to listen for changes
+     * @param listener the listener to notify of configuration changes
+     */
     @Override
     public void addConfigListener(String dataId, ConfigurationChangeListener listener) {
         if (StringUtils.isBlank(dataId) || listener == null) {
@@ -241,6 +274,15 @@ public class RedisConfiguration extends AbstractConfiguration {
         }
     }
 
+    /**
+     * Unregisters a configuration change listener for the specified dataId.
+     *
+     * Removes the associated Redis subscription and deletes the listener from the internal map.
+     * If no listeners remain for the dataId, cleans up the listener set.
+     *
+     * @param dataId the configuration key to stop listening for changes
+     * @param listener the listener to remove
+     */
     @Override
     public void removeConfigListener(String dataId, ConfigurationChangeListener listener) {
         if (StringUtils.isBlank(dataId) || listener == null) {
@@ -263,6 +305,12 @@ public class RedisConfiguration extends AbstractConfiguration {
         }
     }
 
+    /**
+     * Retrieves the set of configuration change listeners registered for the specified dataId.
+     *
+     * @param dataId the identifier of the configuration item
+     * @return a set of registered {@code ConfigurationChangeListener} instances for the dataId, or {@code null} if none are registered
+     */
     @Override
     public Set<ConfigurationChangeListener> getConfigListeners(String dataId) {
         Set<RedisListener> redisListeners = CONFIG_LISTENERS_MAP.get(dataId);
@@ -273,6 +321,11 @@ public class RedisConfiguration extends AbstractConfiguration {
         return null;
     }
 
+    /**
+     * Returns the configuration type name for this implementation.
+     *
+     * @return the string "redis"
+     */
     @Override
     public String getTypeName() {
         return CONFIG_TYPE;
@@ -286,11 +339,23 @@ public class RedisConfiguration extends AbstractConfiguration {
         private final ConfigurationChangeListener listener;
         private volatile boolean running = true;
 
+        /**
+         * Constructs a RedisListener for a specific configuration dataId and listener.
+         *
+         * @param dataId the identifier of the configuration to listen for changes
+         * @param listener the listener to notify when configuration changes occur
+         */
         public RedisListener(String dataId, ConfigurationChangeListener listener) {
             this.dataId = dataId;
             this.listener = listener;
         }
 
+        /**
+         * Handles incoming Redis pub/sub messages for configuration changes, updates the local cache, and notifies the associated listener.
+         *
+         * @param channel the Redis channel on which the message was received
+         * @param message the message containing the configuration operation, dataId, and content
+         */
         @Override
         public void onMessage(String channel, String message) {
             if (!running) {
@@ -329,6 +394,12 @@ public class RedisConfiguration extends AbstractConfiguration {
             }
         }
 
+        /****
+         * Registers this listener instance in the global map for the specified dataId when a subscription to a Redis channel is established.
+         *
+         * @param channel the Redis channel to which the subscription was made
+         * @param subscribedChannels the number of channels currently subscribed to
+         */
         @Override
         public void onSubscribe(String channel, int subscribedChannels) {
             CONFIG_LISTENERS_MAP
@@ -336,16 +407,29 @@ public class RedisConfiguration extends AbstractConfiguration {
                     .add(this);
         }
 
+        /**
+         * Returns the underlying configuration change listener associated with this RedisListener.
+         *
+         * @return the target ConfigurationChangeListener instance
+         */
         public ConfigurationChangeListener getTargetListener() {
             return this.listener;
         }
 
+        /****
+         * Stops listening for Redis pub/sub messages and unsubscribes from all channels.
+         */
         public void unsubscribe() {
             running = false;
             super.unsubscribe();
         }
     }
 
+    /****
+     * Gracefully shuts down the given executor service, waiting up to 5 seconds for termination before forcing shutdown.
+     *
+     * If interrupted while waiting, the executor is forcibly shut down and the interrupt status is restored.
+     */
     private void shutdownExecutorService(ExecutorService executorService) {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
@@ -361,7 +445,10 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Initialize Redis connection pool with configuration parameters
+     * Initializes the Redis connection pool using configuration parameters from the file-based configuration.
+     *
+     * Reads connection and pool settings such as host, port, authentication, database index, and pooling options,
+     * and creates a JedisPool instance for managing Redis connections.
      */
     private void initRedisPool() {
         GenericObjectPoolConfig redisConfig = new GenericObjectPoolConfig();
@@ -419,8 +506,11 @@ public class RedisConfiguration extends AbstractConfiguration {
         }
     }
 
-    /**
-     * Initialize Seata configuration from Redis, loads all configurations into local cache
+    /****
+     * Loads all configuration entries from Redis into the local cache.
+     *
+     * Retrieves all key-value pairs from the Redis configuration hash and populates the local `seataConfig` properties cache.
+     * Logs an error if the initialization fails.
      */
     private void initSeataConfig() {
         try (Jedis jedis = jedisPool.getResource()) {
@@ -434,18 +524,35 @@ public class RedisConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Build configuration change message for Redis pub/sub
+     * Constructs a configuration change message for Redis pub/sub channels.
+     *
+     * The message format is "operation-dataId-content", where operation is the lowercase name of the configuration operation.
+     *
+     * @param operation the type of configuration operation (e.g., PUT, REMOVE)
+     * @param dataId the identifier of the configuration entry
+     * @param content the content associated with the configuration change
+     * @return the formatted configuration change message
      */
     private String buildConfigChangeMessage(ConfigOperation operation, String dataId, String content) {
         // like: put-dataId-content
         return String.format("%s-%s-%s", operation.name().toLowerCase(), dataId, content);
     }
 
+    /**
+     * Returns the Redis hash key used for storing configuration entries.
+     *
+     * @return the Redis key in the format "seata:config:SEATA_GROUP"
+     */
     private String getConfigKey() {
         // like: seata:config:SEATA_GROUP
         return "seata:config:" + DEFAULT_GROUP;
     }
 
+    /**
+     * Returns the Redis pub/sub channel key used for configuration change notifications.
+     *
+     * @return the Redis channel key in the format "seata:config:channel:SEATA_GROUP"
+     */
     private String getConfigChannelKey() {
         // like: seata:config:channel:SEATA_GROUP
         return "seata:config:channel:" + DEFAULT_GROUP;

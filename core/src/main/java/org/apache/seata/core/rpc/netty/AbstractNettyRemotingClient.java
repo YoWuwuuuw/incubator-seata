@@ -729,6 +729,13 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             super.exceptionCaught(ctx, cause);
         }
 
+        /**
+         * Handles the channel close event by logging the closure and invoking the superclass implementation.
+         *
+         * @param ctx the channel handler context
+         * @param future the close operation promise
+         * @throws Exception if an error occurs during channel closure
+         */
         @Override
         public void close(ChannelHandlerContext ctx, ChannelPromise future) throws Exception {
             if (LOGGER.isInfoEnabled()) {

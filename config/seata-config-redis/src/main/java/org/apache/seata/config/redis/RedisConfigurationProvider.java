@@ -22,6 +22,11 @@ import org.apache.seata.config.ConfigurationProvider;
 
 @LoadLevel(name = "Redis", order = 1)
 public class RedisConfigurationProvider implements ConfigurationProvider {
+    /****
+     * Returns the singleton instance of the Redis-based configuration.
+     *
+     * @return the RedisConfiguration instance
+     */
     @Override
     public Configuration provide() {
         return RedisConfiguration.getInstance();
