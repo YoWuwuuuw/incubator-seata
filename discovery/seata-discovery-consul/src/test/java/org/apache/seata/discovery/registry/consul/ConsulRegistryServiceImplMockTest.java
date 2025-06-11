@@ -17,6 +17,7 @@
 package org.apache.seata.discovery.registry.consul;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -140,13 +141,13 @@ public class ConsulRegistryServiceImplMockTest {
     private ExecutorService mockExecutorService(boolean awaitTerminationResult, InterruptedException exception) throws Exception {
         ExecutorService executorService = mock(ExecutorService.class);
         when(executorService.isShutdown()).thenReturn(false);
-        
+
         if (exception != null) {
             when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(exception);
         } else {
             when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(awaitTerminationResult);
         }
-        
+
         setExecutorService(executorService);
         return executorService;
     }
@@ -161,9 +162,10 @@ public class ConsulRegistryServiceImplMockTest {
             verify(executorService).shutdownNow();
         }
 
-        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("client");
+        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("notifiers");
         clientField.setAccessible(true);
-        assertNull(clientField.get(null));
+        ConcurrentMap notifiers = (ConcurrentMap)clientField.get(service);
+        assertTrue(notifiers.isEmpty());
 
         Field executorServiceField = ConsulRegistryServiceImpl.class.getDeclaredField("notifierExecutor");
         executorServiceField.setAccessible(true);
