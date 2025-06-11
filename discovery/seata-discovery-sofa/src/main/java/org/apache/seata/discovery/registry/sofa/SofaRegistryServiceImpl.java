@@ -205,9 +205,7 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
 
     @Override
     public void close() throws Exception {
-        if (registryClient != null) {
-            registryClient = null;
-        }
+
     }
 
     private static Properties getNamingProperties() {

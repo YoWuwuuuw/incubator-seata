@@ -364,6 +364,9 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
 
     @Override
     public void close() throws Exception {
+        notifiers.values().forEach(ConsulNotifier::stop);
+        notifiers.clear();
+
         // Shut down the ThreadPoolExecutor
         if (notifierExecutor != null && !notifierExecutor.isShutdown()) {
             notifierExecutor.shutdown();
@@ -376,11 +379,6 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
             } finally {
                 notifierExecutor = null;
             }
-        }
-
-        // Close the Consul client and release the underlying connection
-        if (client != null) {
-            client = null;
         }
 
         RegistryHeartBeats.close(REGISTRY_TYPE);
