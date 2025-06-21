@@ -36,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * TODO(www):后续看看sleep(10000)怎么优化
  * The type Nacos registryService impl test
  */
 @EnabledOnOs(OS.LINUX)

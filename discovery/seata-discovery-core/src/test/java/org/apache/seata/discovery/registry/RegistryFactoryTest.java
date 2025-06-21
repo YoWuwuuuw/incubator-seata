@@ -21,11 +21,14 @@ import java.lang.reflect.Method;
 
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.exception.NotSupportYetException;
+import org.apache.seata.discovery.registry.mock.MockNacosMetadataRegistryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The type Registry factory test.
@@ -57,11 +60,10 @@ public class RegistryFactoryTest {
      */
     @Test
     public void testGetInstanceOfBlankRegistryType() throws Throwable {
-        // TODO(www):等pr
-        //        System.setProperty(REGISTRY_TYPE_KEY, "");
-        //
-        //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
-        //        Assertions.assertNotNull(instance);
+        System.setProperty(REGISTRY_TYPE_KEY, "");
+
+        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
+        assertInstanceOf(FileRegistryServiceImpl.class, instance);
     }
 
     /**
@@ -78,23 +80,29 @@ public class RegistryFactoryTest {
     }
 
     /**
-     * Test buildRegistryService with blank registry type.
-     * when the registry type is blank, the default registry type is File
+     * Test buildRegistryService with metadata enabled.
      */
     @Test
-    public void testGetInstancesWithBlankRegistryType() throws Throwable {
-        System.setProperty(REGISTRY_TYPE_KEY, "");
+    public void testGetInstanceWithMetadataEnabled() throws Throwable {
+        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
 
         BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
-        assertEquals(FileRegistryServiceImpl.class, instance.getClass());
+        assertInstanceOf(MockNacosMetadataRegistryService.class, instance);
+    }
 
-        // TODO(www):解决一下core模块无法发现nacos、zk等模块类，无法spi加载 -> 无法测试的问题
-        //        System.setProperty(ENABLE_METADATA_KEY, "true");
-        //        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
-        //
-        //        BaseRegistryService<?, ?> instance = invokeBuildRegistryService();
-        //        Assertions.assertNotNull(instance);
-        // 这里需要lookup一些元数据出来进行检查
+    /**
+     * Test buildRegistryService with metadata enabled but not support.
+     */
+    @Test
+    public void testGetNotSupportInstancesWithMetadataEnabled() {
+        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
+        assertThrows(NotSupportYetException.class, RegistryFactoryTest::invokeBuildRegistryService);
+
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Redis.name());
+        assertThrows(NotSupportYetException.class, RegistryFactoryTest::invokeBuildRegistryService);
     }
 
     /**

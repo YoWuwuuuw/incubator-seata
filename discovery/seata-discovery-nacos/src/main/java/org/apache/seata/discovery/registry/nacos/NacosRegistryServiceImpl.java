@@ -147,7 +147,6 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                     subscribe(clusterName, event -> {
                         List<Instance> instances = ((NamingEvent) event).getInstances();
                         if (CollectionUtils.isEmpty(instances) && null != CLUSTER_ADDRESS_MAP.get(clusterName)) {
-                            // TODO(www)：这里的info级别是否太低？
                             LOGGER.info("receive empty server list,cluster:{}", clusterName);
                         } else {
                             List<InetSocketAddress> newAddressList = instances.stream()

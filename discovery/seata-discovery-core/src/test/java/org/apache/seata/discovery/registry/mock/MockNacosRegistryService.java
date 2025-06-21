@@ -14,7 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry;
+package org.apache.seata.discovery.registry.mock;
+
+import org.apache.seata.discovery.registry.RegistryService;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

@@ -30,14 +30,16 @@ import java.util.stream.Collectors;
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.exception.NotSupportYetException;
+import org.apache.seata.discovery.registry.mock.MockNacosRegistryService;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -64,6 +66,7 @@ public class MultiRegistryFactoryTest {
     @AfterEach
     public void tearDown() {
         System.clearProperty(REGISTRY_TYPE_KEY);
+        System.clearProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
         watchedLoggers.forEach(Logger::detachAndStopAllAppenders);
     }
 
@@ -76,15 +79,15 @@ public class MultiRegistryFactoryTest {
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
 
         List<BaseRegistryService<?, ?>> instances = MultiRegistryFactory.getInstances();
-        Assertions.assertNotNull(instances);
+        assertNotNull(instances);
 
         for (BaseRegistryService<?, ?> service : instances) {
-            Assertions.assertNotNull(service);
+            assertNotNull(service);
         }
     }
 
     /**
-     * Test buildRegistryServices with multi registry types.
+     * Test buildRegistryServices with multi registry types(same).
      */
     @Test
     public void testGetInstancesWithSameRegistryTypes() throws Throwable {
@@ -97,6 +100,9 @@ public class MultiRegistryFactoryTest {
         assertTrue(getLogs(Level.INFO).isEmpty());
     }
 
+    /**
+     * Test buildRegistryServices with multi registry types(different).
+     */
     @Test
     public void testGetInstancesWithDifferentRegistryTypes() throws Throwable {
         String differentRegistryType = "File,file" + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.Nacos.name();
@@ -129,7 +135,7 @@ public class MultiRegistryFactoryTest {
         System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
         System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
 
-        Assertions.assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryServices());
+        assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryServices());
         assertThatThrownBy(MultiRegistryFactoryTest::invokeBuildRegistryServices)
                 .isExactlyInstanceOf(NotSupportYetException.class)
                 .hasMessage("not support registry type: " + invalidRegistryType);
@@ -139,18 +145,29 @@ public class MultiRegistryFactoryTest {
      * Test buildRegistryServices with metadata enabled.
      */
     @Test
-    public void testGetInstancesWithMetadataEnabled() {
-        // TODO(www):解决一下core模块无法发现nacos、zk等模块类，无法spi加载 -> 无法测试的问题
-        //        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
-        //        System.setProperty(REGISTRY_TYPE_KEY,
-        //                RegistryType.Nacos.name() + Constants.REGISTRY_TYPE_SPLIT_CHAR + RegistryType.File.name());
-        //
-        //        List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
-        //        Assertions.assertNotNull(instances);
-        //        for (BaseRegistryService<?, ?> service : instances) {
-        //            Assertions.assertNotNull(service);
-        //        }
-        // 这里需要lookup一些元数据出来进行检查
+    public void testGetInstancesWithMetadataEnabled() throws Throwable {
+        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
+
+        List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
+        assertNotNull(instances);
+        for (BaseRegistryService<?, ?> service : instances) {
+            assertNotNull(service);
+        }
+    }
+
+    /**
+     * Test buildRegistryServices with metadata enabled but not support.
+     */
+    @Test
+    public void testGetNotSupportInstancesWithMetadataEnabled() {
+        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
+        assertThrows(NotSupportYetException.class, MultiRegistryFactoryTest::invokeBuildRegistryServices);
+
+        System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Redis.name());
+        assertThrows(NotSupportYetException.class, MultiRegistryFactoryTest::invokeBuildRegistryServices);
     }
 
     /**
