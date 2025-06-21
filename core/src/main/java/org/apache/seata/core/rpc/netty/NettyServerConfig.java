@@ -74,7 +74,6 @@ public class NettyServerConfig extends NettyBaseConfig {
      */
     public static final Class<? extends ServerChannel> SERVER_CHANNEL_CLAZZ = NettyBaseConfig.SERVER_CHANNEL_CLAZZ;
 
-
     /**
      * Gets server selector threads.
      *
@@ -99,9 +98,7 @@ public class NettyServerConfig extends NettyBaseConfig {
      * @return the boolean
      */
     public static boolean enableEpoll() {
-        return NettyBaseConfig.SERVER_CHANNEL_CLAZZ.equals(EpollServerSocketChannel.class)
-                && Epoll.isAvailable();
-
+        return NettyBaseConfig.SERVER_CHANNEL_CLAZZ.equals(EpollServerSocketChannel.class) && Epoll.isAvailable();
     }
 
     /**
@@ -267,7 +264,8 @@ public class NettyServerConfig extends NettyBaseConfig {
      * @return the string
      */
     public String getWorkerThreadPrefix() {
-        return CONFIG.getConfig(ConfigurationKeys.WORKER_THREAD_PREFIX,
+        return CONFIG.getConfig(
+                ConfigurationKeys.WORKER_THREAD_PREFIX,
                 enableEpoll() ? EPOLL_WORKER_THREAD_PREFIX : DEFAULT_NIO_WORKER_THREAD_PREFIX);
     }
 
@@ -277,8 +275,7 @@ public class NettyServerConfig extends NettyBaseConfig {
      * @return the string
      */
     public String getExecutorThreadPrefix() {
-        return CONFIG.getConfig(ConfigurationKeys.SERVER_EXECUTOR_THREAD_PREFIX,
-                DEFAULT_EXECUTOR_THREAD_PREFIX);
+        return CONFIG.getConfig(ConfigurationKeys.SERVER_EXECUTOR_THREAD_PREFIX, DEFAULT_EXECUTOR_THREAD_PREFIX);
     }
 
     /**

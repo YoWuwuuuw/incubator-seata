@@ -45,7 +45,6 @@ import static org.apache.seata.common.DefaultValues.DEFAULT_WRITE_BUFFER_HIGH_WA
 import static org.apache.seata.common.DefaultValues.DEFAULT_WRITE_BUFFER_LOW_WATER_MARK;
 import static org.apache.seata.spring.boot.autoconfigure.StarterConstants.TRANSPORT_PREFIX;
 
-
 @Component
 @ConfigurationProperties(prefix = TRANSPORT_PREFIX)
 public class TransportProperties {
@@ -144,7 +143,6 @@ public class TransportProperties {
     private int maxServerPoolSize = DEFAULT_MAX_SERVER_POOL_SIZE;
     private int maxTaskQueueSize = DEFAULT_MAX_TASK_QUEUE_SIZE;
     private int keepAliveTime = DEFAULT_KEEP_ALIVE_TIME;
-
 
     public String getType() {
         return type;
