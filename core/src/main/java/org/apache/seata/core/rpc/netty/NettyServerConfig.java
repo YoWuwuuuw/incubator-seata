@@ -25,6 +25,14 @@ import org.apache.seata.core.constants.ConfigurationKeys;
 import static org.apache.seata.common.DefaultValues.DEFAULT_BOSS_THREAD_PREFIX;
 import static org.apache.seata.common.DefaultValues.DEFAULT_BOSS_THREAD_SIZE;
 import static org.apache.seata.common.DefaultValues.DEFAULT_EXECUTOR_THREAD_PREFIX;
+import static org.apache.seata.common.DefaultValues.DEFAULT_HTTP_POOL_KEEP_ALIVE_TIME;
+import static org.apache.seata.common.DefaultValues.DEFAULT_KEEP_ALIVE_TIME;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MAX_HTTP_POOL_SIZE;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MAX_HTTP_TASK_QUEUE_SIZE;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MAX_SERVER_POOL_SIZE;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MAX_TASK_QUEUE_SIZE;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MIN_HTTP_POOL_SIZE;
+import static org.apache.seata.common.DefaultValues.DEFAULT_MIN_SERVER_POOL_SIZE;
 import static org.apache.seata.common.DefaultValues.DEFAULT_NIO_WORKER_THREAD_PREFIX;
 import static org.apache.seata.common.DefaultValues.DEFAULT_RPC_TC_REQUEST_TIMEOUT;
 import static org.apache.seata.common.DefaultValues.DEFAULT_SERVER_CHANNEL_MAX_IDLE_TIME_SECONDS;
@@ -65,16 +73,16 @@ public class NettyServerConfig extends NettyBaseConfig {
             ConfigurationKeys.TRANSPORT_PREFIX + "serverWorkerThreads", String.valueOf(WORKER_THREAD_SIZE)));
 
     // Seata and Grpc Protocol Thread Pool
-    private static int minServerPoolSize = CONFIG.getInt(ConfigurationKeys.MIN_SERVER_POOL_SIZE, 50);
-    private static int maxServerPoolSize = CONFIG.getInt(ConfigurationKeys.MAX_SERVER_POOL_SIZE, 500);
-    private static int maxTaskQueueSize = CONFIG.getInt(ConfigurationKeys.MAX_TASK_QUEUE_SIZE, 20000);
-    private static int keepAliveTime = CONFIG.getInt(ConfigurationKeys.KEEP_ALIVE_TIME, 500);
+    private static int minServerPoolSize = CONFIG.getInt(ConfigurationKeys.MIN_SERVER_POOL_SIZE, DEFAULT_MIN_SERVER_POOL_SIZE);
+    private static int maxServerPoolSize = CONFIG.getInt(ConfigurationKeys.MAX_SERVER_POOL_SIZE, DEFAULT_MAX_SERVER_POOL_SIZE);
+    private static int maxTaskQueueSize = CONFIG.getInt(ConfigurationKeys.MAX_TASK_QUEUE_SIZE, DEFAULT_MAX_TASK_QUEUE_SIZE);
+    private static int keepAliveTime = CONFIG.getInt(ConfigurationKeys.KEEP_ALIVE_TIME, DEFAULT_KEEP_ALIVE_TIME);
 
     // HTTP Protocol Thread Pool
-    private static int minHttpPoolSize = CONFIG.getInt(ConfigurationKeys.MIN_HTTP_POOL_SIZE, 10);
-    private static int maxHttpPoolSize = CONFIG.getInt(ConfigurationKeys.MAX_HTTP_POOL_SIZE, 100);
-    private static int maxHttpTaskQueueSize = CONFIG.getInt(ConfigurationKeys.MAX_HTTP_TASK_QUEUE_SIZE, 1000);
-    private static int httpKeepAliveTime = CONFIG.getInt(ConfigurationKeys.HTTP_POOL_KEEP_ALIVE_TIME, 500);
+    private static int minHttpPoolSize = CONFIG.getInt(ConfigurationKeys.MIN_HTTP_POOL_SIZE, DEFAULT_MIN_HTTP_POOL_SIZE);
+    private static int maxHttpPoolSize = CONFIG.getInt(ConfigurationKeys.MAX_HTTP_POOL_SIZE, DEFAULT_MAX_HTTP_POOL_SIZE);
+    private static int maxHttpTaskQueueSize = CONFIG.getInt(ConfigurationKeys.MAX_HTTP_TASK_QUEUE_SIZE, DEFAULT_MAX_HTTP_TASK_QUEUE_SIZE);
+    private static int httpKeepAliveTime = CONFIG.getInt(ConfigurationKeys.HTTP_POOL_KEEP_ALIVE_TIME, DEFAULT_HTTP_POOL_KEEP_ALIVE_TIME);
 
     // Branch Result Thread Pool
     private static int minBranchResultPoolSize = Integer.parseInt(System.getProperty(
