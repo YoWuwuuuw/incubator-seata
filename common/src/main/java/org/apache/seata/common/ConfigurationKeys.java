@@ -181,6 +181,16 @@ public interface ConfigurationKeys {
     String CLIENT_REGISTRY_ENABLEMETADATA = CLIENT_REGISTRY_PREFIX + "enable-metadata";
 
     /**
+     * The constant CLIENT_REGISTRY_PREFIX.
+     */
+    String SERVER_REGISTRY_PREFIX = SERVER_PREFIX + "registry.";
+
+    /**
+     * The constant CLIENT_REGISTRY_ENABLEMETADATA.
+     */
+    String SERVER_REGISTRY_ENABLEMETADATA = SERVER_REGISTRY_PREFIX + "enable-metadata";
+
+    /**
      * The constant CLIENT_ASYNC_COMMIT_BUFFER_LIMIT.
      */
     String CLIENT_ASYNC_COMMIT_BUFFER_LIMIT = CLIENT_RM_PREFIX + "asyncCommitBufferLimit";

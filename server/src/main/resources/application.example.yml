@@ -85,11 +85,7 @@ seata:
   registry:
     # support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa 、 seata
     type: file
-    enable-metadata: false
     preferred-networks: 30.240.*
-    metadata:
-      weight: 1
-      region:
     seata:
       server-addr: 127.0.0.1:8081
       cluster: default
@@ -160,6 +156,9 @@ seata:
     enableParallelRequestHandle: true
     applicationDataLimitCheck: true
     applicationDataLimit: 64000
+    registry:
+      enable-metadata: false
+      metadata: '{"weight":1, "region":"south"}'
     recovery:
       committing-retry-period: 1000
       async-committing-retry-period: 1000

@@ -67,7 +67,7 @@ public class MultiRegistryFactory {
             LOGGER.info("use multi registry center type: {}", registryTypeNames);
         }
 
-        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA);
         for (String registryTypeName : registryTypeNames) {
             RegistryType registryType = RegistryType.getType(registryTypeName);
 
