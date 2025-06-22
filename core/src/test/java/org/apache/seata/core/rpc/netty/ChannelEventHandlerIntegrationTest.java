@@ -16,9 +16,6 @@
  */
 package org.apache.seata.core.rpc.netty;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -35,11 +32,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.EventExecutor;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.Iterator;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,10 +39,19 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 @ExtendWith(MockitoExtension.class)
 class ChannelEventHandlerIntegrationTest {
 
-    private static final int SERVER_PORT = 8091;
+    private static final int SERVER_PORT = 8919;
     private static final String SERVER_HOST = "127.0.0.1";
     private static final int TIMEOUT_SECONDS = 5;
 
@@ -82,14 +83,14 @@ class ChannelEventHandlerIntegrationTest {
 
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap
-            .group(bossGroup, workerGroup)
-            .channel(NioServerSocketChannel.class)
-            .childHandler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                protected void initChannel(SocketChannel ch) {
-                    ch.pipeline().addLast(new IdleStateHandler(1, 0, 0, TimeUnit.SECONDS));
-                }
-            });
+                .group(bossGroup, workerGroup)
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                        ch.pipeline().addLast(new IdleStateHandler(1, 0, 0, TimeUnit.SECONDS));
+                    }
+                });
 
         serverChannel = serverBootstrap.bind(SERVER_PORT).sync().channel();
     }
@@ -118,36 +119,36 @@ class ChannelEventHandlerIntegrationTest {
         idleEventLatch = new CountDownLatch(1);
 
         lenient()
-            .doAnswer(invocation -> {
-                channelActiveLatch.countDown();
-                return null;
-            })
-            .when(mockRemotingClient)
-            .onChannelActive(any(Channel.class));
+                .doAnswer(invocation -> {
+                    channelActiveLatch.countDown();
+                    return null;
+                })
+                .when(mockRemotingClient)
+                .onChannelActive(any(Channel.class));
 
         lenient()
-            .doAnswer(invocation -> {
-                channelInactiveLatch.countDown();
-                return null;
-            })
-            .when(mockRemotingClient)
-            .onChannelInactive(any(Channel.class));
+                .doAnswer(invocation -> {
+                    channelInactiveLatch.countDown();
+                    return null;
+                })
+                .when(mockRemotingClient)
+                .onChannelInactive(any(Channel.class));
 
         lenient()
-            .doAnswer(invocation -> {
-                exceptionCaughtLatch.countDown();
-                return null;
-            })
-            .when(mockRemotingClient)
-            .onChannelException(any(Channel.class), any(Throwable.class));
+                .doAnswer(invocation -> {
+                    exceptionCaughtLatch.countDown();
+                    return null;
+                })
+                .when(mockRemotingClient)
+                .onChannelException(any(Channel.class), any(Throwable.class));
 
         lenient()
-            .doAnswer(invocation -> {
-                idleEventLatch.countDown();
-                return null;
-            })
-            .when(mockRemotingClient)
-            .onChannelIdle(any(Channel.class));
+                .doAnswer(invocation -> {
+                    idleEventLatch.countDown();
+                    return null;
+                })
+                .when(mockRemotingClient)
+                .onChannelIdle(any(Channel.class));
     }
 
     @AfterEach
@@ -165,8 +166,8 @@ class ChannelEventHandlerIntegrationTest {
         connectClient();
 
         assertTrue(
-            channelActiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
-            "Channel activation event was not detected");
+                channelActiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                "Channel activation event was not detected");
 
         verify(mockRemotingClient).onChannelActive(channelCaptor.capture());
         Channel capturedChannel = channelCaptor.getValue();
@@ -187,8 +188,8 @@ class ChannelEventHandlerIntegrationTest {
         clientChannel.close().sync();
 
         assertTrue(
-            channelInactiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
-            "Channel deactivation event was not detected");
+                channelInactiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                "Channel deactivation event was not detected");
 
         verify(mockRemotingClient).onChannelInactive(any(Channel.class));
     }
@@ -200,14 +201,14 @@ class ChannelEventHandlerIntegrationTest {
         DefaultChannelGroup serverChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
         serverChannels.addAll(collectServerChannels(workerGroup));
         Channel serverSideClientChannel = serverChannels.stream()
-            .filter(ch -> ch.isActive() && ch.remoteAddress() != null)
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Failed to find client channel on server side"));
+                .filter(ch -> ch.isActive() && ch.remoteAddress() != null)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Failed to find client channel on server side"));
 
         serverSideClientChannel.close().sync();
         assertTrue(
-            channelInactiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
-            "Channel inactive event was not detected on client side when server closed the connection");
+                channelInactiveLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                "Channel inactive event was not detected on client side when server closed the connection");
         verify(mockRemotingClient).onChannelInactive(any(Channel.class));
     }
 
@@ -265,16 +266,16 @@ class ChannelEventHandlerIntegrationTest {
                 SingleThreadEventLoop eventLoop = (SingleThreadEventLoop) executor;
 
                 executor.submit(() -> {
-                        Iterator<Channel> it = eventLoop.registeredChannelsIterator();
-                        while (it.hasNext()) {
-                            Channel ch = it.next();
-                            if (ch.isActive() && ch instanceof SocketChannel) {
-                                channels.add(ch);
+                            Iterator<Channel> it = eventLoop.registeredChannelsIterator();
+                            while (it.hasNext()) {
+                                Channel ch = it.next();
+                                if (ch.isActive() && ch instanceof SocketChannel) {
+                                    channels.add(ch);
+                                }
                             }
-                        }
-                        return null;
-                    })
-                    .sync();
+                            return null;
+                        })
+                        .sync();
             }
         }
         return channels;

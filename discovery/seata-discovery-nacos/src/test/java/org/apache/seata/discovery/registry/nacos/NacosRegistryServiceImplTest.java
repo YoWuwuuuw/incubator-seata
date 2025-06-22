@@ -20,6 +20,8 @@ import com.alibaba.nacos.api.naming.listener.Event;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.AfterEach;
+import org.apache.seata.common.util.ReflectionUtil;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -34,6 +36,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * The type Nacos registryService impl test
@@ -116,6 +123,27 @@ public class NacosRegistryServiceImplTest {
         assertTrue(getListenersMap().get(GROUP_NAME).contains(eventListener));
         service.unsubscribe(CLUSTER_NAME, eventListener);
         assertFalse(getListenersMap().get(GROUP_NAME).contains(eventListener));
+    }
+
+    @Test
+    public void testClose() throws Exception {
+        NacosRegistryServiceImpl instance = NacosRegistryServiceImpl.getInstance();
+        NacosRegistryServiceImpl.getNamingInstance();
+
+        Field useSLBWayField = NacosRegistryServiceImpl.class.getDeclaredField("useSLBWay");
+        useSLBWayField.setAccessible(true);
+        useSLBWayField.set(instance, true);
+        NacosRegistryServiceImpl.getNamingMaintainInstance();
+
+        instance.close();
+
+        Field namingField = NacosRegistryServiceImpl.class.getDeclaredField("naming");
+        namingField.setAccessible(true);
+        assertNull(namingField.get(null));
+
+        Field namingMaintainField = NacosRegistryServiceImpl.class.getDeclaredField("namingMaintain");
+        namingMaintainField.setAccessible(true);
+        assertNull(namingMaintainField.get(null));
     }
 
     private ConcurrentMap<String, List<EventListener>> getListenersMap() throws Exception {

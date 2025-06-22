@@ -16,10 +16,10 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
+import org.apache.seata.common.loader.LoadLevel;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.seata.common.loader.LoadLevel;
 
 /**
  * The type Round robin load balance.
@@ -46,5 +46,4 @@ public class RoundRobinLoadBalance implements LoadBalance {
             }
         }
     }
-
 }

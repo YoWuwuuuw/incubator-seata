@@ -24,6 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.alibaba.nacos.api.NacosFactory;
+import com.alibaba.nacos.api.naming.NamingMaintainService;
+import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import com.alibaba.nacos.api.naming.listener.NamingEvent;
 import com.alibaba.nacos.api.naming.pojo.Instance;
@@ -36,6 +39,15 @@ import org.apache.seata.discovery.registry.RegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The type Nacos registry service.
@@ -72,21 +84,32 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
     @Override
     public void register(InetSocketAddress address) throws Exception {
         NetUtil.validAddress(address);
-        getNamingInstance().registerInstance(getServiceName(), getServiceGroup(), address.getAddress().getHostAddress(), address.getPort(), getClusterName());
+        getNamingInstance()
+                .registerInstance(
+                        getServiceName(),
+                        getServiceGroup(),
+                        address.getAddress().getHostAddress(),
+                        address.getPort(),
+                        getClusterName());
     }
 
     @Override
     public void unregister(InetSocketAddress address) throws Exception {
         NetUtil.validAddress(address);
-        getNamingInstance().deregisterInstance(getServiceName(), getServiceGroup(), address.getAddress().getHostAddress(), address.getPort(), getClusterName());
+        getNamingInstance()
+                .deregisterInstance(
+                        getServiceName(),
+                        getServiceGroup(),
+                        address.getAddress().getHostAddress(),
+                        address.getPort(),
+                        getClusterName());
     }
 
     @Override
     public void subscribe(String cluster, EventListener listener) throws Exception {
         List<String> clusters = new ArrayList<>();
         clusters.add(cluster);
-        LISTENER_SERVICE_MAP.computeIfAbsent(cluster, key -> new ArrayList<>())
-                .add(listener);
+        LISTENER_SERVICE_MAP.computeIfAbsent(cluster, key -> new ArrayList<>()).add(listener);
         getNamingInstance().subscribe(getServiceName(), getServiceGroup(), clusters, listener);
     }
 
@@ -123,8 +146,7 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                 if (StringUtils.isBlank(pubnetIp) || StringUtils.isBlank(pubnetPort)) {
                     throw new Exception("cannot find service address from nacos naming mata-data");
                 }
-                InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp,
-                        Integer.valueOf(pubnetPort));
+                InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp, Integer.valueOf(pubnetPort));
                 List<InetSocketAddress> publicAddressList = Arrays.asList(publicAddress);
                 CLUSTER_ADDRESS_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicAddressList);
                 return publicAddressList;
@@ -136,11 +158,13 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                 if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
                     List<String> clusters = new ArrayList<>();
                     clusters.add(clusterName);
-                    List<Instance> firstAllInstances = getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
+                    List<Instance> firstAllInstances =
+                            getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
                     if (null != firstAllInstances) {
                         List<InetSocketAddress> newAddressList = firstAllInstances.stream()
                                 .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                .map(eachInstance -> new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
+                                .map(eachInstance ->
+                                        new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
                                 .collect(Collectors.toList());
                         CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
                     }
@@ -151,7 +175,8 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
                         } else {
                             List<InetSocketAddress> newAddressList = instances.stream()
                                     .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                    .map(eachInstance -> new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
+                                    .map(eachInstance ->
+                                            new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()))
                                     .collect(Collectors.toList());
                             CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
                             if (StringUtils.isNotEmpty(transactionServiceGroup)) {
@@ -167,6 +192,24 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl i
 
     @Override
     public void close() throws Exception {
+        if (naming != null) {
+            try {
+                naming.shutDown();
+            } catch (Exception e) {
+                LOGGER.warn("Error while shutting down Nacos NamingService", e);
+            } finally {
+                naming = null;
+            }
+        }
 
+        if (useSLBWay && namingMaintain != null) {
+            try {
+                namingMaintain.shutDown();
+            } catch (Exception e) {
+                LOGGER.warn("Error while shutting down Nacos NamingMaintainService", e);
+            } finally {
+                namingMaintain = null;
+            }
+        }
     }
 }

@@ -19,15 +19,17 @@ package org.apache.seata.discovery.registry;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+class ConfigurationFactoryTest {
 
-class FileRegistryProviderTest {
+    class FileRegistryProviderTest {
 
-    @Test
-    void testProvide() {
-        RegistryProvider provider = new FileRegistryProvider();
-        RegistryService<?> service = provider.provide();
+        @Test
+        void testProvide() {
+            RegistryProvider provider = new FileRegistryProvider();
+            RegistryService<?> service = provider.provide();
 
-        Assertions.assertNotNull(service);
-        Assertions.assertInstanceOf(FileRegistryServiceImpl.class, service);
+            Assertions.assertNotNull(service);
+            Assertions.assertInstanceOf(FileRegistryServiceImpl.class, service);
+        }
     }
-} 
+}

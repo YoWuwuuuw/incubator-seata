@@ -14,19 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.etcd;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.seata.common.DefaultValues.DEFAULT_TX_GROUP;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+package org.apache.seata.discovery.registry.etcd3;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
@@ -43,21 +31,9 @@ import io.etcd.jetcd.lease.LeaseTimeToLiveResponse;
 import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.options.PutOption;
 import io.etcd.jetcd.options.WatchOption;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryProvider;
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryServiceImpl;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -70,6 +46,30 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.seata.common.DefaultValues.DEFAULT_TX_GROUP;
+import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EtcdRegistryServiceImplMockTest {
@@ -132,6 +132,7 @@ public class EtcdRegistryServiceImplMockTest {
         System.setProperty(EtcdRegistryServiceImpl.TEST_ENDPONT, "");
     }
 
+    @Order(1)
     @Test
     public void testRegister() throws Exception {
         long leaseId = 1L;
@@ -170,6 +171,7 @@ public class EtcdRegistryServiceImplMockTest {
         verify(executorService, times(1)).submit(any(Callable.class));
     }
 
+    @Order(2)
     @Test
     public void testUnregister() throws Exception {
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
@@ -184,8 +186,8 @@ public class EtcdRegistryServiceImplMockTest {
         verify(mockKVClient, times(1)).delete(any());
     }
 
+    @Order(3)
     @Test
-    @Order(1)
     public void testLookup() throws Exception {
         List<String> services = Arrays.asList("127.0.0.1:8091", "127.0.0.1:8092", "127.0.0.1:8093");
         GetResponse mockGetResponse = createMockGetResponse(services);
@@ -213,6 +215,64 @@ public class EtcdRegistryServiceImplMockTest {
         }
     }
 
+    @Order(4)
+    @Test
+    public void testSubscribe() throws Exception {
+        Watch.Listener mockListener = mock(Watch.Listener.class);
+        registryService.subscribe(CLUSTER_NAME, mockListener);
+
+        // verify watcher task is submitted
+        verify(executorService, times(1)).submit(any(Runnable.class));
+    }
+
+    @Order(5)
+    @Test
+    public void testUnsubscribe() throws Exception {
+        Watch.Listener mockListener = mock(Watch.Listener.class);
+        CountDownLatch latch = new CountDownLatch(1);
+
+        when(mockWatchClient.watch(any(), any(WatchOption.class), any(Watch.Listener.class)))
+                .thenAnswer(invocation -> {
+                    latch.countDown();
+                    return mockWatcher;
+                });
+
+        registryService.subscribe(DEFAULT_TX_GROUP, mockListener);
+        latch.await(1, TimeUnit.SECONDS);
+
+        registryService.unsubscribe(DEFAULT_TX_GROUP, mockListener);
+        assertEquals(0, latch.getCount(), "Latch should be 0");
+    }
+
+    @Order(6)
+    @Test
+    public void testClose() throws Exception {
+        // 1.condition: executorService shutdown with exception
+        when(executorService.isShutdown()).thenReturn(false);
+        when(executorService.awaitTermination(5, TimeUnit.SECONDS))
+                .thenThrow(new InterruptedException("Test interruption"));
+        registryService.close();
+
+        verify(executorService).shutdown();
+        verify(executorService).shutdownNow();
+        verify(mockClient).close();
+
+        Mockito.reset(executorService);
+        Field executorServiceField = EtcdRegistryServiceImpl.class.getDeclaredField("executorService");
+        executorServiceField.setAccessible(true);
+        executorServiceField.set(registryService, executorService);
+
+        // 2.condition: executorService normal shutdown
+        when(executorService.isShutdown()).thenReturn(false);
+        when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(false);
+        registryService.close();
+
+        Field clientField = EtcdRegistryServiceImpl.class.getDeclaredField("client");
+        clientField.setAccessible(true);
+        assertNull(clientField.get(null));
+        assertNull(executorServiceField.get(registryService));
+    }
+
     private GetResponse createMockGetResponse(List<String> addresses) {
         // Create mock ResponseHeader
         ResponseHeader mockHeader =
@@ -235,32 +295,5 @@ public class EtcdRegistryServiceImplMockTest {
         GetResponse mockGetResponse = spy(new GetResponse(mockRangeResponse, ByteSequence.EMPTY));
         when(mockGetResponse.getKvs()).thenReturn(mockKeyValues);
         return mockGetResponse;
-    }
-
-    @Test
-    public void testSubscribe() throws Exception {
-        Watch.Listener mockListener = mock(Watch.Listener.class);
-        registryService.subscribe(CLUSTER_NAME, mockListener);
-
-        // verify watcher task is submitted
-        verify(executorService, times(1)).submit(any(Runnable.class));
-    }
-
-    @Test
-    public void testUnsubscribe() throws Exception {
-        Watch.Listener mockListener = mock(Watch.Listener.class);
-        CountDownLatch latch = new CountDownLatch(1);
-
-        when(mockWatchClient.watch(any(), any(WatchOption.class), any(Watch.Listener.class)))
-                .thenAnswer(invocation -> {
-                    latch.countDown();
-                    return mockWatcher;
-                });
-
-        registryService.subscribe(DEFAULT_TX_GROUP, mockListener);
-        latch.await(1, TimeUnit.SECONDS);
-
-        registryService.unsubscribe(DEFAULT_TX_GROUP, mockListener);
-        assertEquals(0, latch.getCount(), "Latch should be 0");
     }
 }

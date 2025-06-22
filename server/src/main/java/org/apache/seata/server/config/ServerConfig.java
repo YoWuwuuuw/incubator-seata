@@ -14,23 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.etcd;
+package org.apache.seata.server.config;
 
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryProvider;
-import org.apache.seata.discovery.registry.etcd3.EtcdRegistryServiceImpl;
-import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * the type etcd registry provider test
- */
-public class EtcdRegistryProviderTest {
-    /**
-     * test provide
-     */
-    @Test
-    public void testProvide() {
-        assertThat(new EtcdRegistryProvider().provide()).isInstanceOf(EtcdRegistryServiceImpl.class);
+@Configuration
+public class ServerConfig {
+    @Bean
+    public ServerProperties emptyServerProperties() {
+        return new ServerProperties();
     }
 }

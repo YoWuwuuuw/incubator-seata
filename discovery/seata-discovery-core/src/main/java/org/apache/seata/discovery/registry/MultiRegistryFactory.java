@@ -16,13 +16,6 @@
  */
 package org.apache.seata.discovery.registry;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
-
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.exception.NotSupportYetException;
@@ -32,6 +25,13 @@ import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * The type multiple Registry factory.

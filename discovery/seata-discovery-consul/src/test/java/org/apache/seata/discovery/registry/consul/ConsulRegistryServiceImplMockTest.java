@@ -25,7 +25,10 @@ import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -35,14 +38,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
-public class ConsulRegistryServiceImplTest {
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class ConsulRegistryServiceImplMockTest {
 
     final String TEST_CLUSTER_NAME = "testCluster";
 
@@ -52,18 +58,22 @@ public class ConsulRegistryServiceImplTest {
 
     @BeforeEach
     public void init() throws Exception {
+        configuration = mock(Configuration.class);
         service = (ConsulRegistryServiceImpl) new ConsulRegistryProvider().provide();
         client = mock(ConsulClient.class);
-        this.setClient(service, client);
 
-        configuration = mock(Configuration.class);
+        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("client");
+        clientField.setAccessible(true);
+        clientField.set(service, client);
     }
 
+    @Order(1)
     @Test
     public void testGetInstance() {
         Assertions.assertEquals(ConsulRegistryServiceImpl.getInstance(), service);
     }
 
+    @Order(2)
     @Test
     public void testRegister() throws Exception {
         InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
@@ -77,6 +87,7 @@ public class ConsulRegistryServiceImplTest {
         verify(client).agentServiceDeregister(any(), any());
     }
 
+    @Order(3)
     @Test
     public void testSubscribeAndLookup() throws Exception {
         ConsulListener consulListener = mock(ConsulListener.class);
@@ -93,8 +104,11 @@ public class ConsulRegistryServiceImplTest {
         Assertions.assertNotNull(getMap("notifiers").get(TEST_CLUSTER_NAME));
         verify(executorService).submit(any(Runnable.class));
 
-        try (MockedStatic<ConfigurationFactory> configurationFactoryMockedStatic = Mockito.mockStatic(ConfigurationFactory.class)) {
-            configurationFactoryMockedStatic.when(ConfigurationFactory::getInstance).thenReturn(configuration);
+        try (MockedStatic<ConfigurationFactory> configurationFactoryMockedStatic =
+                Mockito.mockStatic(ConfigurationFactory.class)) {
+            configurationFactoryMockedStatic
+                    .when(ConfigurationFactory::getInstance)
+                    .thenReturn(configuration);
 
             // normal condition
             when(configuration.getConfig(any())).thenReturn(TEST_CLUSTER_NAME);
@@ -110,14 +124,55 @@ public class ConsulRegistryServiceImplTest {
         }
 
         service.unsubscribe(TEST_CLUSTER_NAME, consulListener);
-        Assertions.assertNull(getMap("notifiers").get(TEST_CLUSTER_NAME));
+        assertNull(getMap("notifiers").get(TEST_CLUSTER_NAME));
     }
 
+    @Order(4)
+    @Test
+    public void testClose() throws Exception {
+        ExecutorService executorService1 = mockExecutorService(false, new InterruptedException("Test interruption"));
+        service.close();
+        verifyCloseResults(executorService1, true);
 
-    private void setClient(ConsulRegistryServiceImpl service, ConsulClient client) throws Exception {
-        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("client");
+        ExecutorService executorService = mockExecutorService(false, null);
+        service.close();
+
+        verifyCloseResults(executorService, true);
+    }
+
+    private ExecutorService mockExecutorService(boolean awaitTerminationResult, InterruptedException exception)
+            throws Exception {
+        ExecutorService executorService = mock(ExecutorService.class);
+        when(executorService.isShutdown()).thenReturn(false);
+
+        if (exception != null) {
+            when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(exception);
+        } else {
+            when(executorService.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(awaitTerminationResult);
+        }
+
+        setExecutorService(executorService);
+        return executorService;
+    }
+
+    /**
+     * Verify the results of the closure method
+     */
+    private void verifyCloseResults(ExecutorService executorService, boolean expectShutdownNow) throws Exception {
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(5, TimeUnit.SECONDS);
+        if (expectShutdownNow) {
+            verify(executorService).shutdownNow();
+        }
+
+        Field clientField = ConsulRegistryServiceImpl.class.getDeclaredField("notifiers");
         clientField.setAccessible(true);
-        clientField.set(service, client);
+        ConcurrentMap notifiers = (ConcurrentMap) clientField.get(service);
+        assertTrue(notifiers.isEmpty());
+
+        Field executorServiceField = ConsulRegistryServiceImpl.class.getDeclaredField("notifierExecutor");
+        executorServiceField.setAccessible(true);
+        assertNull(executorServiceField.get(service));
     }
 
     private void setExecutorService(ExecutorService executorService) throws Exception {

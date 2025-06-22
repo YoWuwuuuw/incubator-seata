@@ -14,14 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 server:
-  port: 7091
-
+  port: 8091
 spring:
   application:
     name: seata-server
-
+  main:
+    web-application-type: none
 logging:
   config: classpath:logback-spring.xml
   file:
@@ -54,7 +53,7 @@ seata:
   store:
     # support: file 、 db 、 redis 、 raft
     mode: file
-#    server:
-#      service-port: 8091 #If not configured, the default is '${server.port} + 1000'
-#      enable-metadata: false
-#      metadata: '{"weight":1, "region":"south"}' #Configured with metadata string in json format
+  #  server:
+  #    service-port: 8091 #If not configured, the default is '${server.port} + 1000'
+  #    enable-metadata: false
+  #    metadata: '{"weight":1, "region":"south"}' #Configured with metadata string in json format
