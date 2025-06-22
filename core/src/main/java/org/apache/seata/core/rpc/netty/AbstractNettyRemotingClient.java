@@ -323,7 +323,9 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
     protected InetSocketAddress doSelect4Metadata(List<ServiceInstance> list, Object msg) throws Exception {
         if (CollectionUtils.isNotEmpty(list)) {
             if (list.size() > 1) {
-                return LoadBalanceFactory.getInstance().select(list, getXid(msg)).getAddress();
+                return LoadBalanceFactory.getInstance()
+                        .select(list, getXid(msg))
+                        .getAddress();
             } else {
                 return list.get(0).getAddress();
             }

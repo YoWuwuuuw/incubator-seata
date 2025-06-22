@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class NacosRegistryProviderTest {
-    
+
     @Test
     public void testProvide() {
         RegistryProvider provider = new NacosRegistryProvider();

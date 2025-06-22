@@ -24,29 +24,19 @@ import java.util.List;
 public class MockNacosMetadataRegistryService implements MetadataRegistryService {
 
     @Override
-    public void register(InetSocketAddress address) throws Exception {
-
-    }
+    public void register(InetSocketAddress address) throws Exception {}
 
     @Override
-    public void unregister(InetSocketAddress address) throws Exception {
-
-    }
+    public void unregister(InetSocketAddress address) throws Exception {}
 
     @Override
-    public void subscribe(String cluster, Object listener) throws Exception {
-
-    }
+    public void subscribe(String cluster, Object listener) throws Exception {}
 
     @Override
-    public void unsubscribe(String cluster, Object listener) throws Exception {
-
-    }
+    public void unsubscribe(String cluster, Object listener) throws Exception {}
 
     @Override
-    public void close() throws Exception {
-
-    }
+    public void close() throws Exception {}
 
     @Override
     public List lookup(String key) throws Exception {

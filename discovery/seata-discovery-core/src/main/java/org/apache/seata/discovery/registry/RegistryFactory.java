@@ -16,8 +16,6 @@
  */
 package org.apache.seata.discovery.registry;
 
-import java.util.Objects;
-
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.exception.NotSupportYetException;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
@@ -47,8 +45,10 @@ public class RegistryFactory {
 
     private static BaseRegistryService<?, ?> buildRegistryService() {
         RegistryType registryType;
-        String registryTypeName = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
-                + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
+        String registryTypeName =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
+                        + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
+                        + ConfigurationKeys.FILE_ROOT_TYPE);
 
         // If blank, use default configuration
         if (StringUtils.isBlank(registryTypeName)) {
@@ -59,15 +59,22 @@ public class RegistryFactory {
 
         registryType = RegistryType.getType(registryTypeName);
 
-        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        boolean enableMetadata =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
         if (enableMetadata) {
             if (registryType.equals(RegistryType.File) || registryType.equals(RegistryType.Redis)) {
                 throw new NotSupportYetException("metadata mode not support registry type: " + registryType);
             }
-            return EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+            return EnhancedServiceLoader.load(
+                            MetadataRegistryProvider.class,
+                            Objects.requireNonNull(registryType).name())
+                    .provide();
         }
 
-        return EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+        return EnhancedServiceLoader.load(
+                        RegistryProvider.class,
+                        Objects.requireNonNull(registryType).name())
+                .provide();
     }
 
     private static class RegistryFactoryHolder {

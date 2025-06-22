@@ -62,18 +62,26 @@ public abstract class AbstractNacosRegistryServiceImpl {
     protected static volatile NamingService naming;
     protected static volatile NamingMaintainService namingMaintain;
     protected static final Object LOCK_OBJ = new Object();
-    protected static final Pattern DEFAULT_SLB_REGISTRY_PATTERN = Pattern.compile("(?!.*internal)(?=.*seata).*mse.aliyuncs.com");
+    protected static final Pattern DEFAULT_SLB_REGISTRY_PATTERN =
+            Pattern.compile("(?!.*internal)(?=.*seata).*mse.aliyuncs.com");
     protected static volatile Boolean useSLBWay;
 
     protected String transactionServiceGroup;
 
     protected void initUseSLBWay() {
-        String configForNacosSLB = FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, SLB_PATTERN));
+        String configForNacosSLB = FILE_CONFIG.getConfig(String.join(
+                ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                ConfigurationKeys.FILE_ROOT_REGISTRY,
+                REGISTRY_TYPE,
+                SLB_PATTERN));
 
-        Pattern patternOfNacosRegistryForSLB = StringUtils.isBlank(configForNacosSLB) ? DEFAULT_SLB_REGISTRY_PATTERN : Pattern.compile(configForNacosSLB);
+        Pattern patternOfNacosRegistryForSLB = StringUtils.isBlank(configForNacosSLB)
+                ? DEFAULT_SLB_REGISTRY_PATTERN
+                : Pattern.compile(configForNacosSLB);
 
-        useSLBWay = patternOfNacosRegistryForSLB.matcher(getNamingProperties().getProperty(PRO_SERVER_ADDR_KEY)).matches();
+        useSLBWay = patternOfNacosRegistryForSLB
+                .matcher(getNamingProperties().getProperty(PRO_SERVER_ADDR_KEY))
+                .matches();
     }
 
     /**
@@ -123,8 +131,11 @@ public abstract class AbstractNacosRegistryServiceImpl {
         if (System.getProperty(PRO_SERVER_ADDR_KEY) != null) {
             properties.setProperty(PRO_SERVER_ADDR_KEY, System.getProperty(PRO_SERVER_ADDR_KEY));
         } else {
-            String address = FILE_CONFIG.getConfig(
-                    String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_SERVER_ADDR_KEY));
+            String address = FILE_CONFIG.getConfig(String.join(
+                    ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                    ConfigurationKeys.FILE_ROOT_REGISTRY,
+                    REGISTRY_TYPE,
+                    PRO_SERVER_ADDR_KEY));
             if (address != null) {
                 properties.setProperty(PRO_SERVER_ADDR_KEY, address);
             }
@@ -133,8 +144,11 @@ public abstract class AbstractNacosRegistryServiceImpl {
         if (System.getProperty(PRO_NAMESPACE_KEY) != null) {
             properties.setProperty(PRO_NAMESPACE_KEY, System.getProperty(PRO_NAMESPACE_KEY));
         } else {
-            String namespace = FILE_CONFIG.getConfig(
-                    String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_NAMESPACE_KEY));
+            String namespace = FILE_CONFIG.getConfig(String.join(
+                    ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                    ConfigurationKeys.FILE_ROOT_REGISTRY,
+                    REGISTRY_TYPE,
+                    PRO_NAMESPACE_KEY));
 
             if (namespace == null) {
                 namespace = DEFAULT_NAMESPACE;
@@ -146,8 +160,13 @@ public abstract class AbstractNacosRegistryServiceImpl {
             LOGGER.info("Nacos naming auth properties empty.");
         }
 
-        String contextPath = StringUtils.isNotBlank(System.getProperty(CONTEXT_PATH)) ? System.getProperty(CONTEXT_PATH) : FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, CONTEXT_PATH));
+        String contextPath = StringUtils.isNotBlank(System.getProperty(CONTEXT_PATH))
+                ? System.getProperty(CONTEXT_PATH)
+                : FILE_CONFIG.getConfig(String.join(
+                        ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                        ConfigurationKeys.FILE_ROOT_REGISTRY,
+                        REGISTRY_TYPE,
+                        CONTEXT_PATH));
 
         if (StringUtils.isNotBlank(contextPath)) {
             properties.setProperty(CONTEXT_PATH, contextPath);
@@ -163,12 +182,22 @@ public abstract class AbstractNacosRegistryServiceImpl {
      * @return whether auth properties are set
      */
     protected static boolean initNacosAuthProperties(Properties sourceProperties) {
-        String userName = StringUtils.isNotBlank(System.getProperty(USER_NAME)) ? System.getProperty(USER_NAME) : FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, USER_NAME));
+        String userName = StringUtils.isNotBlank(System.getProperty(USER_NAME))
+                ? System.getProperty(USER_NAME)
+                : FILE_CONFIG.getConfig(String.join(
+                        ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                        ConfigurationKeys.FILE_ROOT_REGISTRY,
+                        REGISTRY_TYPE,
+                        USER_NAME));
 
         if (StringUtils.isNotBlank(userName)) {
-            String password = StringUtils.isNotBlank(System.getProperty(PASSWORD)) ? System.getProperty(PASSWORD) : FILE_CONFIG.getConfig(
-                    String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PASSWORD));
+            String password = StringUtils.isNotBlank(System.getProperty(PASSWORD))
+                    ? System.getProperty(PASSWORD)
+                    : FILE_CONFIG.getConfig(String.join(
+                            ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                            ConfigurationKeys.FILE_ROOT_REGISTRY,
+                            REGISTRY_TYPE,
+                            PASSWORD));
 
             if (StringUtils.isNotBlank(password)) {
                 sourceProperties.setProperty(USER_NAME, userName);
@@ -178,14 +207,29 @@ public abstract class AbstractNacosRegistryServiceImpl {
                 return true;
             }
         } else {
-            String accessKey = StringUtils.isNotBlank(System.getProperty(ACCESS_KEY)) ? System.getProperty(ACCESS_KEY) : FILE_CONFIG.getConfig(
-                    String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, ACCESS_KEY));
-            String ramRoleName = StringUtils.isNotBlank(System.getProperty(RAM_ROLE_NAME_KEY)) ? System.getProperty(RAM_ROLE_NAME_KEY) : FILE_CONFIG.getConfig(
-                    String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_CONFIG, REGISTRY_TYPE, RAM_ROLE_NAME_KEY));
+            String accessKey = StringUtils.isNotBlank(System.getProperty(ACCESS_KEY))
+                    ? System.getProperty(ACCESS_KEY)
+                    : FILE_CONFIG.getConfig(String.join(
+                            ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                            ConfigurationKeys.FILE_ROOT_REGISTRY,
+                            REGISTRY_TYPE,
+                            ACCESS_KEY));
+            String ramRoleName = StringUtils.isNotBlank(System.getProperty(RAM_ROLE_NAME_KEY))
+                    ? System.getProperty(RAM_ROLE_NAME_KEY)
+                    : FILE_CONFIG.getConfig(String.join(
+                            ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                            ConfigurationKeys.FILE_ROOT_CONFIG,
+                            REGISTRY_TYPE,
+                            RAM_ROLE_NAME_KEY));
 
             if (StringUtils.isNotBlank(accessKey)) {
-                String secretKey = StringUtils.isNotBlank(System.getProperty(SECRET_KEY)) ? System.getProperty(SECRET_KEY) : FILE_CONFIG.getConfig(
-                        String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, SECRET_KEY));
+                String secretKey = StringUtils.isNotBlank(System.getProperty(SECRET_KEY))
+                        ? System.getProperty(SECRET_KEY)
+                        : FILE_CONFIG.getConfig(String.join(
+                                ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                                ConfigurationKeys.FILE_ROOT_REGISTRY,
+                                REGISTRY_TYPE,
+                                SECRET_KEY));
 
                 if (StringUtils.isNotBlank(secretKey)) {
                     sourceProperties.put(ACCESS_KEY, accessKey);
@@ -205,16 +249,31 @@ public abstract class AbstractNacosRegistryServiceImpl {
 
     protected static String getClusterName() {
         return FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, REGISTRY_CLUSTER), DEFAULT_CLUSTER);
+                String.join(
+                        ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                        ConfigurationKeys.FILE_ROOT_REGISTRY,
+                        REGISTRY_TYPE,
+                        REGISTRY_CLUSTER),
+                DEFAULT_CLUSTER);
     }
 
     protected static String getServiceName() {
         return FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_APPLICATION_KEY), DEFAULT_APPLICATION);
+                String.join(
+                        ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                        ConfigurationKeys.FILE_ROOT_REGISTRY,
+                        REGISTRY_TYPE,
+                        PRO_APPLICATION_KEY),
+                DEFAULT_APPLICATION);
     }
 
     protected static String getServiceGroup() {
         return FILE_CONFIG.getConfig(
-                String.join(ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR, ConfigurationKeys.FILE_ROOT_REGISTRY, REGISTRY_TYPE, PRO_GROUP_KEY), DEFAULT_GROUP);
+                String.join(
+                        ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR,
+                        ConfigurationKeys.FILE_ROOT_REGISTRY,
+                        REGISTRY_TYPE,
+                        PRO_GROUP_KEY),
+                DEFAULT_GROUP);
     }
 }

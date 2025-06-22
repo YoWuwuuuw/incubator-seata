@@ -20,6 +20,14 @@ import com.alibaba.nacos.api.naming.listener.EventListener;
 import com.alibaba.nacos.api.naming.listener.NamingEvent;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 import com.alibaba.nacos.api.naming.pojo.Service;
+import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.common.util.CollectionUtils;
+import org.apache.seata.common.util.NetUtil;
+import org.apache.seata.common.util.StringUtils;
+import org.apache.seata.config.exception.ConfigNotFoundException;
+import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -30,19 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import org.apache.seata.common.metadata.ServiceInstance;
-import org.apache.seata.common.util.CollectionUtils;
-import org.apache.seata.common.util.NetUtil;
-import org.apache.seata.common.util.StringUtils;
-import org.apache.seata.config.exception.ConfigNotFoundException;
-import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * The type Nacos registry service for metadata.
  */
-public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServiceImpl implements MetadataRegistryService<EventListener> {
+public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServiceImpl
+        implements MetadataRegistryService<EventListener> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NacosMetadataRegistryServiceImpl.class);
 
@@ -87,8 +87,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
     public void subscribe(String cluster, EventListener listener) throws Exception {
         List<String> clusters = new ArrayList<>();
         clusters.add(cluster);
-        LISTENER_SERVICE_MAP.computeIfAbsent(cluster, key -> new ArrayList<>())
-                .add(listener);
+        LISTENER_SERVICE_MAP.computeIfAbsent(cluster, key -> new ArrayList<>()).add(listener);
         getNamingInstance().subscribe(getServiceName(), getServiceGroup(), clusters, listener);
     }
 
@@ -107,9 +106,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
     }
 
     @Override
-    public void close() throws Exception {
-
-    }
+    public void close() throws Exception {}
 
     @Override
     public List<ServiceInstance> lookup(String key) throws Exception {
@@ -130,8 +127,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
                 if (StringUtils.isBlank(pubnetIp) || StringUtils.isBlank(pubnetPort)) {
                     throw new Exception("cannot find service address from nacos naming mata-data");
                 }
-                InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp,
-                        Integer.valueOf(pubnetPort));
+                InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp, Integer.valueOf(pubnetPort));
                 ServiceInstance serviceInstance = new ServiceInstance(publicAddress, null);
                 List<ServiceInstance> publicAddressList = Arrays.asList(serviceInstance);
                 CLUSTER_INSTANCE_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicAddressList);
@@ -144,12 +140,14 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
                 if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
                     List<String> clusters = new ArrayList<>();
                     clusters.add(clusterName);
-                    List<Instance> firstAllInstances = getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
+                    List<Instance> firstAllInstances =
+                            getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
                     if (null != firstAllInstances) {
                         List<ServiceInstance> newInstanceList = firstAllInstances.stream()
                                 .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
                                 .map(eachInstance -> {
-                                    InetSocketAddress address = new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
+                                    InetSocketAddress address =
+                                            new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
                                     Map<String, String> metadata = eachInstance.getMetadata();
                                     return new ServiceInstance(address, metadata);
                                 })
@@ -164,14 +162,16 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
                             List<ServiceInstance> newInstanceList = instances.stream()
                                     .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
                                     .map(eachInstance -> {
-                                        InetSocketAddress address = new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
+                                        InetSocketAddress address =
+                                                new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
                                         Map<String, String> metadata = eachInstance.getMetadata();
                                         return new ServiceInstance(address, metadata);
                                     })
                                     .collect(Collectors.toList());
                             CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
                             if (StringUtils.isNotEmpty(transactionServiceGroup)) {
-                                removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newInstanceList);
+                                removeOfflineAddressesIfNecessary(
+                                        transactionServiceGroup, clusterName, newInstanceList);
                             }
                         }
                     });

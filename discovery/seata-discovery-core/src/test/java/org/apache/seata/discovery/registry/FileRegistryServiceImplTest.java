@@ -91,7 +91,8 @@ class FileRegistryServiceImplTest {
         Collection<InetSocketAddress> newAddresses = Collections.singletonList(address2);
 
         fileRegistryService.refreshAliveLookup(TEST_GROUP, currentAddresses);
-        fileRegistryService.removeOfflineAddressesIfNecessary(TEST_GROUP, fileRegistryService.getServiceGroup(TEST_GROUP), newAddresses);
+        fileRegistryService.removeOfflineAddressesIfNecessary(
+                TEST_GROUP, fileRegistryService.getServiceGroup(TEST_GROUP), newAddresses);
 
         List<InetSocketAddress> result = fileRegistryService.aliveLookup(TEST_GROUP);
         assertFalse(result.isEmpty());
@@ -109,7 +110,8 @@ class FileRegistryServiceImplTest {
         Collection<InetSocketAddress> newAddresses = Collections.singletonList(address1);
 
         fileRegistryService.refreshAliveLookup(TEST_GROUP, currentAddresses);
-        fileRegistryService.removeOfflineAddressesIfNecessary(TEST_GROUP, fileRegistryService.getServiceGroup(TEST_GROUP), newAddresses);
+        fileRegistryService.removeOfflineAddressesIfNecessary(
+                TEST_GROUP, fileRegistryService.getServiceGroup(TEST_GROUP), newAddresses);
 
         List<InetSocketAddress> result = fileRegistryService.aliveLookup(TEST_GROUP);
         assertFalse(result.isEmpty());
@@ -149,9 +151,7 @@ class FileRegistryServiceImplTest {
             }
 
             @Override
-            public void receiveConfigInfo(String configInfo) {
-
-            }
+            public void receiveConfigInfo(String configInfo) {}
         };
 
         fileRegistryService.subscribe(TEST_CLUSTER, configChangeListener);

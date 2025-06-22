@@ -43,7 +43,6 @@ public class LoadBalanceFactory {
 
     public static final String WEIGHT_RANDOM_LOAD_BALANCE = "WeightRandomLoadBalance";
 
-
     /**
      * Get instance.
      *
@@ -57,8 +56,10 @@ public class LoadBalanceFactory {
     }
 
     private static void validateLoadBalanceMode(LoadBalance loadBalance) {
-        LoadBalanceModeEnum strategyModeEnum = loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
-        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        LoadBalanceModeEnum strategyModeEnum =
+                loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
+        boolean enableMetadata =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
 
         if (enableMetadata && !strategyModeEnum.equals(LoadBalanceModeEnum.METADATA)) {
             throw new IllegalStateException("Non-metadata load balancing strategy cannot be used in the metadata mode");

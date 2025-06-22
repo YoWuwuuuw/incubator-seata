@@ -16,14 +16,14 @@
  */
 package org.apache.seata.discovery.registry;
 
+import org.apache.seata.common.metadata.Instance;
+import org.apache.seata.config.ConfigurationFactory;
+
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import org.apache.seata.common.metadata.Instance;
-import org.apache.seata.config.ConfigurationFactory;
 
 /**
  * The base interface for all mode registry services.
@@ -136,7 +136,8 @@ public interface BaseRegistryService<T, I> {
      * @param clusterName             the cluster name
      * @param newAddressed            the new addresses / instances collection
      */
-    void removeOfflineAddressesIfNecessary(String transactionGroupService, String clusterName, Collection<I> newAddressed);
+    void removeOfflineAddressesIfNecessary(
+            String transactionGroupService, String clusterName, Collection<I> newAddressed);
 
     /**
      * Get current service group name

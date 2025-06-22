@@ -16,17 +16,6 @@
  */
 package org.apache.seata.discovery.registry.nacos;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
-
-import com.alibaba.nacos.api.NacosFactory;
-import com.alibaba.nacos.api.naming.NamingMaintainService;
-import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import com.alibaba.nacos.api.naming.listener.NamingEvent;
 import com.alibaba.nacos.api.naming.pojo.Instance;
@@ -43,16 +32,15 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * The type Nacos registry service.
  */
-public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl implements RegistryService<EventListener> {
+public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl
+        implements RegistryService<EventListener> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NacosRegistryServiceImpl.class);
 

@@ -30,12 +30,9 @@ import org.apache.seata.discovery.registry.BaseRegistryService;
 import org.apache.seata.discovery.registry.FileRegistryServiceImpl;
 import org.apache.seata.discovery.registry.RegistryFactory;
 import org.apache.seata.discovery.registry.RegistryService;
-import org.apache.commons.pool.impl.GenericKeyedObjectPool;
-import org.apache.seata.discovery.registry.RegistryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -282,7 +279,8 @@ class NettyClientChannelManager {
                 BaseRegistryService instance = RegistryFactory.getInstance();
 
                 if (instance instanceof RegistryService) {
-                    instance.refreshAliveLookup(transactionServiceGroup, ServiceInstance.convertToInetSocketAddressList(aliveAddress));
+                    instance.refreshAliveLookup(
+                            transactionServiceGroup, ServiceInstance.convertToInetSocketAddressList(aliveAddress));
                 } else {
                     instance.refreshAliveLookup(transactionServiceGroup, aliveAddress);
                 }
@@ -330,7 +328,8 @@ class NettyClientChannelManager {
         if (instance instanceof RegistryService) {
             availInetSocketAddressList = instance.lookup(transactionServiceGroup);
         } else {
-            availInetSocketAddressList = ServiceInstance.convertToServiceInstanceList(instance.lookup(transactionServiceGroup));
+            availInetSocketAddressList =
+                    ServiceInstance.convertToServiceInstanceList(instance.lookup(transactionServiceGroup));
         }
 
         if (CollectionUtils.isEmpty(availInetSocketAddressList)) {

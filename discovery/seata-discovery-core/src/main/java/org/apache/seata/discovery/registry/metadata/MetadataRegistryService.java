@@ -16,6 +16,13 @@
  */
 package org.apache.seata.discovery.registry.metadata;
 
+import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.common.util.CollectionUtils;
+import org.apache.seata.common.util.StringUtils;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationKeys;
+import org.apache.seata.discovery.registry.BaseRegistryService;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,13 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import org.apache.seata.common.metadata.ServiceInstance;
-import org.apache.seata.common.util.CollectionUtils;
-import org.apache.seata.common.util.StringUtils;
-import org.apache.seata.config.Configuration;
-import org.apache.seata.config.ConfigurationKeys;
-import org.apache.seata.discovery.registry.BaseRegistryService;
 
 /**
  * The interface Registry service for metadata.
@@ -90,10 +90,8 @@ public interface MetadataRegistryService<T> extends BaseRegistryService<T, Servi
             return null;
         }
 
-        String cleanedConfig = config.trim()
-                .replaceAll("^\\{", "")
-                .replaceAll("\\}$", "")
-                .trim();
+        String cleanedConfig =
+                config.trim().replaceAll("^\\{", "").replaceAll("\\}$", "").trim();
 
         if (cleanedConfig.isEmpty()) {
             return null;

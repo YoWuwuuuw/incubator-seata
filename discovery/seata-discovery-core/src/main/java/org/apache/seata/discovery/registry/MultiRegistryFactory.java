@@ -49,11 +49,12 @@ public class MultiRegistryFactory {
         return MultiRegistryFactoryHolder.INSTANCES;
     }
 
-
     private static List<BaseRegistryService<?, ?>> buildRegistryServices() {
         List<BaseRegistryService<?, ?>> registryServices = new ArrayList<>();
-        String registryTypeNamesStr = ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
-                + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR + ConfigurationKeys.FILE_ROOT_TYPE);
+        String registryTypeNamesStr =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getConfig(ConfigurationKeys.FILE_ROOT_REGISTRY
+                        + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
+                        + ConfigurationKeys.FILE_ROOT_TYPE);
 
         // If blank, use default configuration
         if (StringUtils.isBlank(registryTypeNamesStr)) {
@@ -67,17 +68,24 @@ public class MultiRegistryFactory {
             LOGGER.info("use multi registry center type: {}", registryTypeNames);
         }
 
-        boolean enableMetadata = ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA);
+        boolean enableMetadata =
+                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA);
         for (String registryTypeName : registryTypeNames) {
             RegistryType registryType = RegistryType.getType(registryTypeName);
 
             BaseRegistryService<?, ?> registryService;
             if (!enableMetadata) {
-                registryService = EnhancedServiceLoader.load(RegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
-            } else if(registryType.equals(RegistryType.File) || registryType.equals(RegistryType.Redis)) {
+                registryService = EnhancedServiceLoader.load(
+                                RegistryProvider.class,
+                                Objects.requireNonNull(registryType).name())
+                        .provide();
+            } else if (registryType.equals(RegistryType.File) || registryType.equals(RegistryType.Redis)) {
                 throw new NotSupportYetException("metadata mode not support registry type: " + registryType);
             } else {
-                registryService = EnhancedServiceLoader.load(MetadataRegistryProvider.class, Objects.requireNonNull(registryType).name()).provide();
+                registryService = EnhancedServiceLoader.load(
+                                MetadataRegistryProvider.class,
+                                Objects.requireNonNull(registryType).name())
+                        .provide();
             }
             registryServices.add(registryService);
         }

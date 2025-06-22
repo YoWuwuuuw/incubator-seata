@@ -29,4 +29,4 @@ public class MockNacosMetadataRegistryProvider implements MetadataRegistryProvid
     public MetadataRegistryService provide() {
         return new MockNacosMetadataRegistryService();
     }
-} 
+}

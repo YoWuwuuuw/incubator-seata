@@ -20,8 +20,6 @@ import com.alibaba.nacos.api.naming.listener.Event;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.AfterEach;
-import org.apache.seata.common.util.ReflectionUtil;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -34,13 +32,9 @@ import java.util.concurrent.ConcurrentMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Properties;
-
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * The type Nacos registryService impl test
@@ -74,8 +68,8 @@ public class NacosRegistryServiceImplTest {
     @Test
     public void testAll() throws Exception {
         /*
-            1.The first time lookup is called, if the cluster does not have listener, it will add listener
-         */
+           1.The first time lookup is called, if the cluster does not have listener, it will add listener
+        */
         InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
         service.register(inetSocketAddress);
         Thread.sleep(10000); // wait for Nacos loading
@@ -83,17 +77,17 @@ public class NacosRegistryServiceImplTest {
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
 
         /*
-            2.When there is only one instance register(), and that instance unregister(),
-            lookup will always return the previous cached list instead of updating the cache to empty
-         */
+           2.When there is only one instance register(), and that instance unregister(),
+           lookup will always return the previous cached list instead of updating the cache to empty
+        */
         service.unregister(inetSocketAddress);
         Thread.sleep(10000);
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
 
         /*
-            3.If there is a new instance register, which triggers the listener onEvent(),
-            then lookup () returns the actual instance
-         */
+           3.If there is a new instance register, which triggers the listener onEvent(),
+           then lookup () returns the actual instance
+        */
         InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8081);
         service.register(inetSocketAddress1);
         Thread.sleep(10000);
@@ -115,9 +109,7 @@ public class NacosRegistryServiceImplTest {
     public void testUnSubscribe() throws Exception {
         EventListener eventListener = new EventListener() {
             @Override
-            public void onEvent(Event event) {
-
-            }
+            public void onEvent(Event event) {}
         };
         service.subscribe(CLUSTER_NAME, eventListener);
         assertTrue(getListenersMap().get(GROUP_NAME).contains(eventListener));
