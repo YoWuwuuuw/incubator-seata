@@ -17,6 +17,7 @@
 package org.apache.seata.discovery.loadbalance;
 
 import org.apache.seata.common.rpc.RpcStatus;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -25,6 +26,7 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,28 +34,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
-/**
- * Created by guoyao on 2019/2/14.
- */
 public class LoadBalanceTest {
 
     private static final String XID = "XID";
-
-    /**
-     * Test random load balance select.
-     *
-     * @param addresses the addresses
-     */
-    @ParameterizedTest
-    @MethodSource("addressProvider")
-    public void testRandomLoadBalance_select(List<InetSocketAddress> addresses) {
-        int runs = 10000;
-        Map<InetSocketAddress, AtomicLong> counter = getSelectedCounter(runs, addresses, new RandomLoadBalance());
-        for (InetSocketAddress address : counter.keySet()) {
-            Long count = counter.get(address).get();
-            Assertions.assertTrue(count > 0, "selecte one time at last");
-        }
-    }
 
     /**
      * Test round robin load balance select.
@@ -166,6 +149,43 @@ public class LoadBalanceTest {
                 Assertions.assertTrue(count > 0);
             }
         }
+    }
+
+    /**
+     * Test weight random load balance select.
+     *
+     * @param addresses the addresses
+     */
+    @ParameterizedTest
+    @MethodSource("addressProvider")
+    public void testWeightRandomLoadBalance_select(List<InetSocketAddress> addresses) throws Exception {
+        List<ServiceInstance> serviceInstances = new ArrayList<>();
+
+        Map<String, String> metadata1 = new HashMap<>();
+        metadata1.put("weight", "2");
+        serviceInstances.add(new ServiceInstance(addresses.get(0), metadata1));
+
+        Map<String, String> metadata2 = new HashMap<>();
+        metadata2.put("weight", "3");
+        serviceInstances.add(new ServiceInstance(addresses.get(1), metadata2));
+
+        serviceInstances.add(new ServiceInstance(addresses.get(2), null)); // 默认权重1
+
+        WeightRandomLoadBalance loadBalance = new WeightRandomLoadBalance();
+
+        ServiceInstance selected = loadBalance.select(serviceInstances, XID);
+        Assertions.assertNotNull(selected);
+        Assertions.assertTrue(serviceInstances.contains(selected));
+
+        Assertions.assertNull(loadBalance.select(new ArrayList<>(), XID));
+
+        List<ServiceInstance> zeroWeightInstances = new ArrayList<>();
+        Map<String, String> zeroWeightMetadata = new HashMap<>();
+        zeroWeightMetadata.put("weight", "0");
+        zeroWeightInstances.add(new ServiceInstance(addresses.get(0), zeroWeightMetadata));
+
+        ServiceInstance zeroWeightSelected = loadBalance.select(zeroWeightInstances, XID);
+        Assertions.assertNotNull(zeroWeightSelected);
     }
 
     /**

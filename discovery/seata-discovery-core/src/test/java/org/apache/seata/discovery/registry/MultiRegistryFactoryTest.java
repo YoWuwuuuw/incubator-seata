@@ -66,7 +66,7 @@ public class MultiRegistryFactoryTest {
     @AfterEach
     public void tearDown() {
         System.clearProperty(REGISTRY_TYPE_KEY);
-        System.clearProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+        System.clearProperty(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA);
         watchedLoggers.forEach(Logger::detachAndStopAllAppenders);
     }
 
@@ -148,7 +148,7 @@ public class MultiRegistryFactoryTest {
      */
     @Test
     public void testGetInstancesWithMetadataEnabled() throws Throwable {
-        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+        System.setProperty(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA, "true");
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.Nacos.name());
 
         List<BaseRegistryService<?, ?>> instances = invokeBuildRegistryServices();
@@ -163,7 +163,7 @@ public class MultiRegistryFactoryTest {
      */
     @Test
     public void testGetNotSupportInstancesWithMetadataEnabled() {
-        System.setProperty(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, "true");
+        System.setProperty(ConfigurationKeys.SERVER_REGISTRY_ENABLEMETADATA, "true");
 
         System.setProperty(REGISTRY_TYPE_KEY, RegistryType.File.name());
         assertThrows(NotSupportYetException.class, MultiRegistryFactoryTest::invokeBuildRegistryServices);

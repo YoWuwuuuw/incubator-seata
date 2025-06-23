@@ -59,7 +59,7 @@ public class LoadBalanceFactory {
         LoadBalanceModeEnum strategyModeEnum =
                 loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
         boolean enableMetadata =
-                ConfigurationFactory.CURRENT_FILE_INSTANCE.getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA);
+                ConfigurationFactory.getInstance().getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, false);
 
         if (enableMetadata && !strategyModeEnum.equals(LoadBalanceModeEnum.METADATA)) {
             throw new IllegalStateException("Non-metadata load balancing strategy cannot be used in the metadata mode");

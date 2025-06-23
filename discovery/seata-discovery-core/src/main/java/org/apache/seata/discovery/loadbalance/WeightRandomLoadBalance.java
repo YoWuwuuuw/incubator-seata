@@ -31,7 +31,7 @@ public class WeightRandomLoadBalance implements LoadBalance {
 
     private static final String WEIGHT_KEY = "weight";
 
-    // In the example configuration file, this value is default 1
+    // this value is default 1
     private static final int DEFAULT_WEIGHT = 1;
 
     @SuppressWarnings("unchecked")
