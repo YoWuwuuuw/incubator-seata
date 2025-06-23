@@ -43,6 +43,8 @@ public class LoadBalanceFactory {
 
     public static final String WEIGHT_RANDOM_LOAD_BALANCE = "WeightRandomLoadBalance";
 
+    public static final String REGION_ROUTE_LOAD_BALANCE = "RegionRouteLoadBalance";
+
     /**
      * Get instance.
      *

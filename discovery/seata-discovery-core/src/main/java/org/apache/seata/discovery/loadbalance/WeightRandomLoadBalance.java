@@ -34,7 +34,6 @@ public class WeightRandomLoadBalance implements LoadBalance {
     // this value is default 1
     private static final int DEFAULT_WEIGHT = 1;
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T select(List<T> invokers, String xid) throws Exception {
         if (invokers == null || invokers.isEmpty()) {

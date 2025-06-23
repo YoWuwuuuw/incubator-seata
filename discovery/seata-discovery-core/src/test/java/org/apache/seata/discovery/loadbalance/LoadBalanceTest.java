@@ -189,6 +189,87 @@ public class LoadBalanceTest {
     }
 
     /**
+     * Test region route load balance select.
+     *
+     * @param addresses the addresses
+     */
+    @ParameterizedTest
+    @MethodSource("addressProvider")
+    public void testRegionRouteLoadBalance_select(List<InetSocketAddress> addresses) throws Exception {
+        RegionRouteLoadBalance loadBalance = new RegionRouteLoadBalance();
+
+        Assertions.assertNull(loadBalance.select(null, XID));
+        Assertions.assertNull(loadBalance.select(new ArrayList<>(), XID));
+
+        Map<String, String> southMetadata = new HashMap<>();
+        southMetadata.put("region", "south");
+        Map<String, String> northMetadata = new HashMap<>();
+        northMetadata.put("region", "north");
+        
+        List<ServiceInstance> serviceInstances = new ArrayList<>();
+        serviceInstances.add(new ServiceInstance(addresses.get(0), southMetadata));
+        serviceInstances.add(new ServiceInstance(addresses.get(1), southMetadata));
+        serviceInstances.add(new ServiceInstance(addresses.get(2), northMetadata));
+        serviceInstances.add(new ServiceInstance(addresses.get(3), null));
+        
+        // Test basic selection functionality
+        ServiceInstance selected = loadBalance.select(serviceInstances, XID);
+        Assertions.assertNotNull(selected);
+        Assertions.assertTrue(serviceInstances.contains(selected));
+        
+        // Test the same region first (the client default region is default)
+        int defaultCount = 0;
+        for (int i = 0; i < 100; i++) {
+            ServiceInstance instance = loadBalance.select(serviceInstances, XID);
+            String region = getRegionFromInstance(instance);
+            if ("default".equals(region)) {
+                defaultCount++;
+            }
+        }
+        Assertions.assertTrue(defaultCount > 0);
+
+        System.setProperty("client.loadBalance.region", "south");
+        try {
+            int southCount = 0;
+            for (int i = 0; i < 100; i++) {
+                ServiceInstance instance = loadBalance.select(serviceInstances, XID);
+                String region = getRegionFromInstance(instance);
+                if ("south".equals(region)) {
+                    southCount++;
+                }
+            }
+            Assertions.assertTrue(southCount > 0);
+        } finally {
+            System.clearProperty("client.loadBalance.region");
+        }
+
+        List<ServiceInstance> nullMetadataInstances = new ArrayList<>();
+        nullMetadataInstances.add(new ServiceInstance(addresses.get(0), null));
+        nullMetadataInstances.add(new ServiceInstance(addresses.get(1), new HashMap<>()));
+        
+        for (int i = 0; i < 10; i++) {
+            ServiceInstance instance = loadBalance.select(nullMetadataInstances, XID);
+            Assertions.assertNotNull(instance);
+        }
+
+        List<ServiceInstance> singleInstance = new ArrayList<>();
+        singleInstance.add(new ServiceInstance(addresses.get(0), southMetadata));
+        ServiceInstance singleSelected = loadBalance.select(singleInstance, XID);
+        Assertions.assertEquals(singleInstance.get(0), singleSelected);
+    }
+    
+    /**
+     * get region from ServiceInstance
+     */
+    private String getRegionFromInstance(ServiceInstance instance) {
+        if (instance == null || instance.getMetadata() == null) {
+            return "default";
+        }
+        String region = instance.getMetadata().get("region");
+        return region != null ? region : "default";
+    }
+
+    /**
      * Gets selected counter.
      *
      * @param runs        the runs

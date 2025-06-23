@@ -66,6 +66,7 @@ seata:
     load-balance:
       type: XID
       virtual-nodes: 10
+      region: default
   service:
     vgroup-mapping:
       default_tx_group: default
