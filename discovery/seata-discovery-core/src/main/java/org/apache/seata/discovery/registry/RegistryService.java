@@ -27,17 +27,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * The interface Registry service.
+ * Registry service interface for default mode.
  *
  * @param <T> the type parameter for listener
  */
 public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAddress> {
 
     /**
-     * Service cache for default mode
+     * Service cache for default mode.
      */
     Map<String, Map<String, List<InetSocketAddress>>> CURRENT_ADDRESS_MAP = new ConcurrentHashMap<>();
 
+    /**
+     * Looks up alive service addresses for the given transaction service group.
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @return list of alive service addresses
+     */
     default List<InetSocketAddress> aliveLookup(String transactionServiceGroup) {
         Map<String, List<InetSocketAddress>> clusterAddressMap =
                 CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup, k -> new ConcurrentHashMap<>());
@@ -48,13 +54,20 @@ public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAdd
             return inetSocketAddresses;
         }
 
-        // fall back to addresses of any cluster
+        // Fall back to addresses of any cluster
         return clusterAddressMap.values().stream()
                 .filter(CollectionUtils::isNotEmpty)
                 .findAny()
                 .orElse(Collections.emptyList());
     }
 
+    /**
+     * Refreshes the alive service addresses cache.
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @param aliveAddress the list of alive addresses
+     * @return the previous list of addresses
+     */
     default List<InetSocketAddress> refreshAliveLookup(
             String transactionServiceGroup, List<InetSocketAddress> aliveAddress) {
 
@@ -66,6 +79,13 @@ public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAdd
         return clusterAddressMap.put(clusterName, aliveAddress);
     }
 
+    /**
+     * Removes offline addresses from the cache.
+     *
+     * @param transactionGroupService the transaction group service
+     * @param clusterName the cluster name
+     * @param newAddressed the new addresses collection
+     */
     default void removeOfflineAddressesIfNecessary(
             String transactionGroupService, String clusterName, Collection<InetSocketAddress> newAddressed) {
         Map<String, List<InetSocketAddress>> clusterAddressMap =
@@ -76,7 +96,7 @@ public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAdd
         List<InetSocketAddress> inetSocketAddresses =
                 currentAddresses.stream().filter(newAddressed::contains).collect(Collectors.toList());
 
-        // prevent empty update
+        // Prevent empty update
         if (CollectionUtils.isNotEmpty(inetSocketAddresses)) {
             clusterAddressMap.put(clusterName, inetSocketAddresses);
         }

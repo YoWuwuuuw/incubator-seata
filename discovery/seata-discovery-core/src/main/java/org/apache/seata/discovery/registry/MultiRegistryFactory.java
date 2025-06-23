@@ -34,21 +34,28 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * The type multiple Registry factory.
+ * Factory for creating multiple registry service instances.
+ * Supports multiple registry centers with both default and metadata modes.
  */
 public class MultiRegistryFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MultiRegistryFactory.class);
 
     /**
-     * Gets instances.
+     * Gets the list of registry service instances.
      *
-     * @return the instance list
+     * @return the list of registry service instances
      */
     public static List<BaseRegistryService<?, ?>> getInstances() {
         return MultiRegistryFactoryHolder.INSTANCES;
     }
 
+    /**
+     * Builds registry services based on configuration.
+     *
+     * @return the list of configured registry services
+     * @throws NotSupportYetException if metadata mode is not supported for registry type
+     */
     private static List<BaseRegistryService<?, ?>> buildRegistryServices() {
         List<BaseRegistryService<?, ?>> registryServices = new ArrayList<>();
         String registryTypeNamesStr =
@@ -56,7 +63,7 @@ public class MultiRegistryFactory {
                         + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
                         + ConfigurationKeys.FILE_ROOT_TYPE);
 
-        // If blank, use default configuration
+        // Use default configuration if blank
         if (StringUtils.isBlank(registryTypeNamesStr)) {
             registryTypeNamesStr = RegistryType.File.name();
         }
@@ -93,6 +100,9 @@ public class MultiRegistryFactory {
         return registryServices;
     }
 
+    /**
+     * Holder for lazy initialization of registry services.
+     */
     private static class MultiRegistryFactoryHolder {
         private static final List<BaseRegistryService<?, ?>> INSTANCES = buildRegistryServices();
     }

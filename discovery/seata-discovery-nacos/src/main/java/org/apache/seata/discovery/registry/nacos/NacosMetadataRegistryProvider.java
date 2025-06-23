@@ -20,6 +20,9 @@ import org.apache.seata.common.loader.LoadLevel;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryProvider;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 
+/**
+ * Nacos metadata registry provider.
+ */
 @LoadLevel(name = "Nacos", order = 1)
 public class NacosMetadataRegistryProvider implements MetadataRegistryProvider {
     @Override

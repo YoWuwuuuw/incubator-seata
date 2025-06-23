@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
- * The type Nacos registry service.
+ * Nacos registry service implementation for original mode.
  */
 public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl
         implements RegistryService<EventListener> {
@@ -54,9 +54,9 @@ public class NacosRegistryServiceImpl extends AbstractNacosRegistryServiceImpl
     }
 
     /**
-     * Gets instance.
+     * Gets the singleton instance.
      *
-     * @return the instance
+     * @return the singleton instance
      */
     static NacosRegistryServiceImpl getInstance() {
         if (instance == null) {

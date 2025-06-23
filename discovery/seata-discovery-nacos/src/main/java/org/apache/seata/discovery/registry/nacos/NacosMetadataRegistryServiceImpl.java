@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
- * The type Nacos registry service for metadata.
+ * Nacos registry service implementation for metadata mode.
  */
 public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServiceImpl
         implements MetadataRegistryService<EventListener> {
@@ -56,9 +56,9 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
     }
 
     /**
-     * Gets instance.
+     * Gets the singleton instance.
      *
-     * @return the instance
+     * @return the singleton instance
      */
     static NacosMetadataRegistryServiceImpl getInstance() {
         if (instance == null) {
@@ -116,6 +116,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
             String missingDataId = PREFIX_SERVICE_ROOT + CONFIG_SPLIT_CHAR + PREFIX_SERVICE_MAPPING + key;
             throw new ConfigNotFoundException("%s configuration item is required", missingDataId);
         }
+
         if (useSLBWay) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("look up service address of SLB by nacos");
@@ -135,6 +136,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
             }
             return CLUSTER_INSTANCE_MAP.get(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName);
         }
+
         if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
             synchronized (LOCK_OBJ) {
                 if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
@@ -181,6 +183,12 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
         return CLUSTER_INSTANCE_MAP.get(clusterName);
     }
 
+    /**
+     * Creates a Nacos instance with metadata for registration.
+     *
+     * @param address the service address
+     * @return the Nacos instance with metadata
+     */
     private Instance getMetadataNacosInstance(InetSocketAddress address) {
         Instance instance = new Instance();
         instance.setIp(address.getAddress().getHostAddress());

@@ -28,21 +28,27 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 
 /**
- * The type Registry factory.
+ * Factory for creating registry service instances.
  */
 public class RegistryFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistryFactory.class);
 
     /**
-     * Gets instance.
+     * Gets the registry service instance.
      *
-     * @return the instance
+     * @return the registry service instance
      */
     public static BaseRegistryService<?, ?> getInstance() {
         return RegistryFactoryHolder.INSTANCE;
     }
 
+    /**
+     * Builds the registry service based on configuration.
+     *
+     * @return the configured registry service
+     * @throws NotSupportYetException if metadata mode is not supported for the registry type
+     */
     private static BaseRegistryService<?, ?> buildRegistryService() {
         RegistryType registryType;
         String registryTypeName =
@@ -50,7 +56,7 @@ public class RegistryFactory {
                         + ConfigurationKeys.FILE_CONFIG_SPLIT_CHAR
                         + ConfigurationKeys.FILE_ROOT_TYPE);
 
-        // If blank, use default configuration
+        // Use default configuration if blank
         if (StringUtils.isBlank(registryTypeName)) {
             registryTypeName = RegistryType.File.name();
         }
@@ -77,6 +83,9 @@ public class RegistryFactory {
                 .provide();
     }
 
+    /**
+     * Holder for lazy initialization of registry service.
+     */
     private static class RegistryFactoryHolder {
         private static final BaseRegistryService<?, ?> INSTANCE = buildRegistryService();
     }

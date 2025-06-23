@@ -22,8 +22,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * The type Random load balance.
- *
+ * Random load balancing strategy.
  */
 @LoadLevel(name = LoadBalanceFactory.RANDOM_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)

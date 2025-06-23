@@ -19,21 +19,20 @@ package org.apache.seata.discovery.loadbalance;
 import java.util.List;
 
 /**
- * The interface Load balance.
- *
+ * Load balance strategy interface.
  */
 public interface LoadBalance {
 
     String SPLIT = ":";
 
     /**
-     * Select t.
+     * Selects an instance from the available invokers.
      *
-     * @param <T>      the type parameter
-     * @param invokers the invokers
-     * @param xid      the xid
-     * @return the t
-     * @throws Exception the exception
+     * @param <T>      the type of invoker
+     * @param invokers the list of available invokers
+     * @param xid      the transaction ID for context
+     * @return the selected invoker, or null if no invokers available
+     * @throws Exception if selection fails
      */
     <T> T select(List<T> invokers, String xid) throws Exception;
 }

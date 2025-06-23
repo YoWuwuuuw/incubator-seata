@@ -17,12 +17,13 @@
 package org.apache.seata.discovery.registry;
 
 /**
- * the interface registry provider
+ * Registry provider interface.
  */
 public interface RegistryProvider {
     /**
-     * provide a registry implementation instance
-     * @return RegistryService
+     * Provides a registry service implementation instance.
+     *
+     * @return the registry service instance
      */
     RegistryService provide();
 }

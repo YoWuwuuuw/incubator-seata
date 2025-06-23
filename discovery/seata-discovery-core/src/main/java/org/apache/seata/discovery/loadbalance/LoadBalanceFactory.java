@@ -23,7 +23,7 @@ import org.apache.seata.config.ConfigurationFactory;
 import static org.apache.seata.common.DefaultValues.DEFAULT_LOAD_BALANCE;
 
 /**
- * The type Load balance factory.
+ * Factory for creating load balance instances.
  */
 public class LoadBalanceFactory {
 
@@ -46,9 +46,9 @@ public class LoadBalanceFactory {
     public static final String REGION_ROUTE_LOAD_BALANCE = "RegionRouteLoadBalance";
 
     /**
-     * Get instance.
+     * Gets load balance instance based on configuration.
      *
-     * @return the instance
+     * @return the load balance instance
      */
     public static LoadBalance getInstance() {
         String config = ConfigurationFactory.getInstance().getConfig(LOAD_BALANCE_TYPE, DEFAULT_LOAD_BALANCE);
@@ -57,6 +57,12 @@ public class LoadBalanceFactory {
         return loadBalance;
     }
 
+    /**
+     * Validates load balance mode compatibility with current configuration.
+     *
+     * @param loadBalance the load balance instance to validate
+     * @throws IllegalStateException if mode is incompatible
+     */
     private static void validateLoadBalanceMode(LoadBalance loadBalance) {
         LoadBalanceModeEnum strategyModeEnum =
                 loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();

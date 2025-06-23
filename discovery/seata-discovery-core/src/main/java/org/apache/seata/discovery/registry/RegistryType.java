@@ -19,60 +19,61 @@ package org.apache.seata.discovery.registry;
 import org.apache.seata.common.exception.NotSupportYetException;
 
 /**
- * The enum Registry type.
- *
+ * Registry type enumeration.
+ * Defines supported registry center types for service discovery.
  */
 public enum RegistryType {
     /**
-     * File registry type.
+     * File-based registry.
      */
     File,
     /**
-     * Raft registry type.
+     * Raft consensus registry.
      */
     Raft,
     /**
-     * ZK registry type.
+     * ZooKeeper registry.
      */
     ZK,
     /**
-     * Redis registry type.
+     * Redis registry.
      */
     Redis,
     /**
-     * Nacos registry type.
+     * Nacos registry.
      */
     Nacos,
     /**
-     * Eureka registry type.
+     * Eureka registry.
      */
     Eureka,
     /**
-     * Consul registry type
+     * Consul registry.
      */
     Consul,
     /**
-     * Etcd3 registry type
+     * Etcd3 registry.
      */
     Etcd3,
     /**
-     * Sofa registry type
+     * SOFA registry.
      */
     Sofa,
     /**
-     * Custom registry type
+     * Custom registry.
      */
     Custom,
     /**
-     * Seata namingServer registry type
+     * Seata naming server registry.
      */
     Seata;
 
     /**
-     * Gets type.
+     * Gets registry type by name (case-insensitive).
      *
-     * @param name the name
-     * @return the type
+     * @param name the registry type name
+     * @return the registry type
+     * @throws NotSupportYetException if registry type is not supported
      */
     public static RegistryType getType(String name) {
         for (RegistryType registryType : RegistryType.values()) {

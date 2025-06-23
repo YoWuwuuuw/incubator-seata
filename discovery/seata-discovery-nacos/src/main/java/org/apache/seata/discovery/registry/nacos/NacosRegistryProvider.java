@@ -20,6 +20,9 @@ import org.apache.seata.common.loader.LoadLevel;
 import org.apache.seata.discovery.registry.RegistryProvider;
 import org.apache.seata.discovery.registry.RegistryService;
 
+/**
+ * Nacos registry provider for original mode.
+ */
 @LoadLevel(name = "Nacos", order = 1)
 public class NacosRegistryProvider implements RegistryProvider {
     @Override

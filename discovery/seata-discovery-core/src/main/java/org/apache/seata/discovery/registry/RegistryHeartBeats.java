@@ -28,6 +28,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Registry heartbeat management utility.
+ * Provides heartbeat functionality for service registration to maintain service availability.
+ *
  * @since 2021/6/13 5:09 pm
  */
 public class RegistryHeartBeats {
@@ -54,10 +57,25 @@ public class RegistryHeartBeats {
                 }
             });
 
+    /**
+     * Adds heartbeat with default period for the registry type.
+     *
+     * @param registryType   the registry type
+     * @param serverAddress  the server address
+     * @param reRegister     the re-registration function
+     */
     public static void addHeartBeat(String registryType, InetSocketAddress serverAddress, ReRegister reRegister) {
         addHeartBeat(registryType, serverAddress, getHeartbeatPeriod(registryType), reRegister);
     }
 
+    /**
+     * Adds heartbeat with custom period for the registry type.
+     *
+     * @param registryType   the registry type
+     * @param serverAddress  the server address
+     * @param period         the heartbeat period in milliseconds
+     * @param reRegister     the re-registration function
+     */
     public static void addHeartBeat(
             String registryType, InetSocketAddress serverAddress, long period, ReRegister reRegister) {
         if (!getHeartbeatEnabled(registryType)) {
@@ -80,36 +98,54 @@ public class RegistryHeartBeats {
                 TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Closes heartbeat for the registry type.
+     *
+     * @param registryType the registry type
+     */
     public static void close(String registryType) {
         if (getHeartbeatEnabled(registryType)) {
             HEARTBEAT_SCHEDULED.shutdown();
         }
     }
 
+    /**
+     * Gets heartbeat period from configuration.
+     *
+     * @param registryType the registry type
+     * @return the heartbeat period in milliseconds
+     */
     private static long getHeartbeatPeriod(String registryType) {
         String propertySuffix = String.join("-", HEARTBEAT_KEY, HEARTBEAT_PERIOD_KEY);
-        //  FILE_CONFIG.getLong("registry.${registryType}.heartbeat-period");
         return FILE_CONFIG.getLong(
                 String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, registryType, propertySuffix),
                 DEFAULT_HEARTBEAT_PERIOD);
     }
 
+    /**
+     * Gets heartbeat enabled status from configuration.
+     *
+     * @param registryType the registry type
+     * @return true if heartbeat is enabled
+     */
     private static boolean getHeartbeatEnabled(String registryType) {
         String propertySuffix = String.join("-", HEARTBEAT_KEY, HEARTBEAT_ENABLED_KEY);
-        //  FILE_CONFIG.getBoolean("registry.${registryType}.heartbeat-enabled");
         return FILE_CONFIG.getBoolean(
                 String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, registryType, propertySuffix),
                 DEFAULT_HEARTBEAT_ENABLED);
     }
 
+    /**
+     * Functional interface for re-registration operations.
+     */
     @FunctionalInterface
     public interface ReRegister {
 
         /**
-         * do re-register
+         * Performs re-registration of the server address.
          *
-         * @param serverAddress the server address
-         * @throws Exception the exception
+         * @param serverAddress the server address to re-register
+         * @throws Exception if re-registration fails
          */
         void register(InetSocketAddress serverAddress) throws Exception;
     }

@@ -26,7 +26,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * The base interface for all mode registry services.
+ * Base interface for all registry services.
+ * Defines common operations for service registration and discovery.
  *
  * @param <T> the type parameter for listener
  * @param <I> the type parameter for instance
@@ -81,39 +82,39 @@ public interface BaseRegistryService<T, I> {
     /**
      * Subscribe.
      *
-     * @param cluster  the cluster
-     * @param listener the listener
-     * @throws Exception the exception
+     * @param cluster  the cluster name
+     * @param listener the change listener
+     * @throws Exception if subscription fails
      */
     void subscribe(String cluster, T listener) throws Exception;
 
     /**
      * Unsubscribe.
      *
-     * @param cluster  the cluster
-     * @param listener the listener
-     * @throws Exception the exception
+     * @param cluster  the cluster name
+     * @param listener the change listener
+     * @throws Exception if unsubscription fails
      */
     void unsubscribe(String cluster, T listener) throws Exception;
 
     /**
      * Close.
      *
-     * @throws Exception the exception
+     * @throws Exception if closing fails
      */
     void close() throws Exception;
 
     /**
      * Lookup instance list.
      *
-     * @param key the key
-     * @return the list
-     * @throws Exception the exception
+     * @param key the lookup key
+     * @return list of service instances
+     * @throws Exception if lookup fails
      */
     List<I> lookup(String key) throws Exception;
 
     /**
-     * get the list of available service instances(local cache)
+     * Gets available service instances from local cache.
      *
      * @param transactionServiceGroup the transaction service group
      * @return available service instances
@@ -121,28 +122,28 @@ public interface BaseRegistryService<T, I> {
     List<I> aliveLookup(String transactionServiceGroup);
 
     /**
-     * Refresh the list of available service instances and update the local cache
+     * Refreshes available service instances and updates local cache.
      *
      * @param transactionServiceGroup the transaction service group
-     * @param aliveAddress            the list of alive service addresses / instances
-     * @return Old available service instances list
+     * @param aliveAddress            the list of alive service addresses/instances
+     * @return previous available service instances list
      */
     List<I> refreshAliveLookup(String transactionServiceGroup, List<I> aliveAddress);
 
     /**
-     * Remove service instances that have been taken offline
+     * Removes offline service instances from cache.
      *
      * @param transactionGroupService the transaction group service
      * @param clusterName             the cluster name
-     * @param newAddressed            the new addresses / instances collection
+     * @param newAddressed            the new addresses/instances collection
      */
     void removeOfflineAddressesIfNecessary(
             String transactionGroupService, String clusterName, Collection<I> newAddressed);
 
     /**
-     * Get current service group name
+     * Gets current service group name from configuration.
      *
-     * @param key service group
+     * @param key service group key
      * @return the service group name
      */
     default String getServiceGroup(String key) {

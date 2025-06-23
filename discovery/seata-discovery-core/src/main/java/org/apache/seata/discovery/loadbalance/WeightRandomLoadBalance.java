@@ -23,7 +23,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Weighted random load balancing
+ * Weighted random load balancing strategy.
+ * Selects instances based on their configured weights using cumulative weight method.
  */
 @LoadLevel(name = LoadBalanceFactory.WEIGHT_RANDOM_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.METADATA)
@@ -53,13 +54,13 @@ public class WeightRandomLoadBalance implements LoadBalance {
         }
 
         if (totalWeight <= 0) {
-            // If all weights are zero or negative, it degenerates to random loadBalance
+            // Degenerate to random selection if all weights are zero or negative
             return (T) serviceInstances.get(ThreadLocalRandom.current().nextInt(serviceInstances.size()));
         }
 
         int randomWeight = ThreadLocalRandom.current().nextInt(totalWeight);
 
-        // Cumulative Weight Method
+        // Cumulative weight selection
         for (int i = 0; i < serviceInstances.size(); i++) {
             randomWeight -= weights[i];
             if (randomWeight < 0) {
@@ -67,12 +68,16 @@ public class WeightRandomLoadBalance implements LoadBalance {
             }
         }
 
-        // It does not actually execute here, but as a rollback, it can return to the first one
+        // Fallback to first instance
         return (T) serviceInstances.get(0);
     }
 
     /**
-     * Get the weight from the metadata of the ServiceInstance
+     * Gets weight from ServiceInstance metadata.
+     *
+     * @param instance the service instance
+     * @return the weight value, defaults to 1 if not specified
+     * @throws IllegalArgumentException if weight value is invalid
      */
     private int getWeight(ServiceInstance instance) {
         if (instance == null || instance.getMetadata() == null) {

@@ -29,8 +29,7 @@ import java.util.Objects;
 import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.XID_LOAD_BALANCE;
 
 /**
- * The type xid load balance.
- *
+ * XID-based load balancing strategy.
  */
 @LoadLevel(name = XID_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
@@ -44,14 +43,15 @@ public class XIDLoadBalance implements LoadBalance {
     @Override
     public <T> T select(List<T> invokers, String xid) throws Exception {
         if (StringUtils.isNotBlank(xid) && xid.contains(SPLIT)) {
-            // ip:port:transactionId -> ip:port
+            // Extract server address from XID: ip:port:transactionId -> ip:port
             String serverAddress = xid.substring(0, xid.lastIndexOf(SPLIT));
-            // ip:port -> port
+            // Extract port: ip:port -> port
             int index = serverAddress.lastIndexOf(SPLIT);
             int port = Integer.parseInt(serverAddress.substring(index + 1));
-            // ipv4/v6
+            // Extract IP (supports both IPv4 and IPv6)
             String ip = serverAddress.substring(0, index);
             InetSocketAddress xidInetSocketAddress = new InetSocketAddress(ip, port);
+
             for (T invoker : invokers) {
                 InetSocketAddress inetSocketAddress = (InetSocketAddress) invoker;
                 if (Objects.equals(xidInetSocketAddress, inetSocketAddress)) {

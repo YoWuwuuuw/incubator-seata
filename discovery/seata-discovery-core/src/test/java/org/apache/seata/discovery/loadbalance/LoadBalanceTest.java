@@ -16,8 +16,8 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
-import org.apache.seata.common.rpc.RpcStatus;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.common.rpc.RpcStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -205,18 +205,18 @@ public class LoadBalanceTest {
         southMetadata.put("region", "south");
         Map<String, String> northMetadata = new HashMap<>();
         northMetadata.put("region", "north");
-        
+
         List<ServiceInstance> serviceInstances = new ArrayList<>();
         serviceInstances.add(new ServiceInstance(addresses.get(0), southMetadata));
         serviceInstances.add(new ServiceInstance(addresses.get(1), southMetadata));
         serviceInstances.add(new ServiceInstance(addresses.get(2), northMetadata));
         serviceInstances.add(new ServiceInstance(addresses.get(3), null));
-        
+
         // Test basic selection functionality
         ServiceInstance selected = loadBalance.select(serviceInstances, XID);
         Assertions.assertNotNull(selected);
         Assertions.assertTrue(serviceInstances.contains(selected));
-        
+
         // Test the same region first (the client default region is default)
         int defaultCount = 0;
         for (int i = 0; i < 100; i++) {
@@ -246,7 +246,7 @@ public class LoadBalanceTest {
         List<ServiceInstance> nullMetadataInstances = new ArrayList<>();
         nullMetadataInstances.add(new ServiceInstance(addresses.get(0), null));
         nullMetadataInstances.add(new ServiceInstance(addresses.get(1), new HashMap<>()));
-        
+
         for (int i = 0; i < 10; i++) {
             ServiceInstance instance = loadBalance.select(nullMetadataInstances, XID);
             Assertions.assertNotNull(instance);
@@ -257,7 +257,7 @@ public class LoadBalanceTest {
         ServiceInstance singleSelected = loadBalance.select(singleInstance, XID);
         Assertions.assertEquals(singleInstance.get(0), singleSelected);
     }
-    
+
     /**
      * get region from ServiceInstance
      */

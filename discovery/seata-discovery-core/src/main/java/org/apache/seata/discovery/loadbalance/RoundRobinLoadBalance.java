@@ -22,8 +22,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * The type Round robin load balance.
- *
+ * Round robin load balancing strategy.
  */
 @LoadLevel(name = LoadBalanceFactory.ROUND_ROBIN_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
@@ -37,6 +36,11 @@ public class RoundRobinLoadBalance implements LoadBalance {
         return invokers.get(getPositiveSequence() % length);
     }
 
+    /**
+     * Gets the next positive sequence number in a thread-safe manner.
+     *
+     * @return the sequence number
+     */
     private int getPositiveSequence() {
         for (; ; ) {
             int current = sequence.get();

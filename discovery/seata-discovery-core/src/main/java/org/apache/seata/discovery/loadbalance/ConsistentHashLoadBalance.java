@@ -31,7 +31,7 @@ import java.util.TreeMap;
 import static org.apache.seata.common.DefaultValues.VIRTUAL_NODES_DEFAULT;
 
 /**
- * The type consistent hash load balance.
+ * Consistent hash load balancing strategy.
  */
 @LoadLevel(name = LoadBalanceFactory.CONSISTENT_HASH_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
@@ -49,7 +49,7 @@ public class ConsistentHashLoadBalance implements LoadBalance {
             .getInt(LOAD_BALANCE_CONSISTENT_HASH_VIRTUAL_NODES, VIRTUAL_NODES_DEFAULT);
 
     /**
-     * The ConsistentHashSelectorWrapper that caches a {@link ConsistentHashSelector}.
+     * Caches the consistent hash selector for performance.
      */
     private volatile ConsistentHashSelectorWrapper selectorWrapper;
 
@@ -67,6 +67,9 @@ public class ConsistentHashLoadBalance implements LoadBalance {
         return (T) selectorWrapper.getSelector(invokers).select(xid);
     }
 
+    /**
+     * Wrapper for consistent hash selector with caching support.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ConsistentHashSelectorWrapper {
 
@@ -104,6 +107,9 @@ public class ConsistentHashLoadBalance implements LoadBalance {
         }
     }
 
+    /**
+     * Consistent hash selector implementation.
+     */
     private static final class ConsistentHashSelector<T> {
 
         private final SortedMap<Long, T> virtualInvokers = new TreeMap<>();

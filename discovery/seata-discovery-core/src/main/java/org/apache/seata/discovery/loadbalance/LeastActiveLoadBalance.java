@@ -25,8 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.LEAST_ACTIVE_LOAD_BALANCE;
 
 /**
- * The type Least Active load balance.
- *
+ * Least active load balancing strategy.
  */
 @LoadLevel(name = LEAST_ACTIVE_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.ORIGINAL)
@@ -38,6 +37,8 @@ public class LeastActiveLoadBalance implements LoadBalance {
         long leastActive = -1;
         int leastCount = 0;
         int[] leastIndexes = new int[length];
+
+        // Find instances with least active requests
         for (int i = 0; i < length; i++) {
             long active = RpcStatus.getStatus(invokers.get(i).toString()).getActive();
             if (leastActive == -1 || active < leastActive) {
@@ -48,6 +49,8 @@ public class LeastActiveLoadBalance implements LoadBalance {
                 leastIndexes[leastCount++] = i;
             }
         }
+
+        // Return single least active instance or random from multiple
         if (leastCount == 1) {
             return invokers.get(leastIndexes[0]);
         }

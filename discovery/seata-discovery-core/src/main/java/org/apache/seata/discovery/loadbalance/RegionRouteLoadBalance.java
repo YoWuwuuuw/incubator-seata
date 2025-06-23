@@ -28,17 +28,16 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Region route load balancing strategy
- * Routes requests to instances in the same region as the client
+ * Region-based load balancing strategy.
  */
 @LoadLevel(name = LoadBalanceFactory.REGION_ROUTE_LOAD_BALANCE)
 @LoadBalanceMode(LoadBalanceModeEnum.METADATA)
 public class RegionRouteLoadBalance implements LoadBalance {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouteLoadBalance.class);
-    
+
     private static final String REGION_KEY = "region";
-    
+
     // Default region when client region is not configured
     private static final String DEFAULT_REGION = "default";
 
@@ -49,14 +48,14 @@ public class RegionRouteLoadBalance implements LoadBalance {
         }
 
         List<ServiceInstance> serviceInstances = (List<ServiceInstance>) invokers;
-        
+
         // Get client region from configuration
         String clientRegion = getClientRegion();
-        
-        // Find instances in the same region
+
+        // Separate instances by region
         List<ServiceInstance> sameRegionInstances = new ArrayList<>();
         List<ServiceInstance> otherRegionInstances = new ArrayList<>();
-        
+
         for (ServiceInstance instance : serviceInstances) {
             String instanceRegion = getRegion(instance);
             if (clientRegion.equals(instanceRegion)) {
@@ -65,34 +64,39 @@ public class RegionRouteLoadBalance implements LoadBalance {
                 otherRegionInstances.add(instance);
             }
         }
-        
+
         // Priority: same region instances
         if (!sameRegionInstances.isEmpty()) {
             LOGGER.debug("Selected instance from same region: {}", clientRegion);
             return (T) sameRegionInstances.get(ThreadLocalRandom.current().nextInt(sameRegionInstances.size()));
         }
-        
+
         // Fallback: other region instances
         if (!otherRegionInstances.isEmpty()) {
             LOGGER.debug("No instances in same region {}, falling back to other regions", clientRegion);
             return (T) otherRegionInstances.get(ThreadLocalRandom.current().nextInt(otherRegionInstances.size()));
         }
-        
+
         // Last resort: any available instance
         LOGGER.debug("No region-based instances found, using any available instance");
         return (T) serviceInstances.get(ThreadLocalRandom.current().nextInt(serviceInstances.size()));
     }
-    
+
     /**
-     * Get client region from configuration
+     * Gets client region from configuration.
+     *
+     * @return the client region, or "default" if not configured
      */
     private String getClientRegion() {
         String region = ConfigurationFactory.getInstance().getConfig("client.loadBalance.region");
         return StringUtils.isNotBlank(region) ? region : DEFAULT_REGION;
     }
-    
+
     /**
-     * Get region from ServiceInstance metadata
+     * Gets region from ServiceInstance metadata.
+     *
+     * @param instance the service instance
+     * @return the region, or "default" if not specified
      */
     private String getRegion(ServiceInstance instance) {
         if (instance == null || instance.getMetadata() == null) {
@@ -100,9 +104,6 @@ public class RegionRouteLoadBalance implements LoadBalance {
         }
 
         String region = instance.getMetadata().get(REGION_KEY);
-        if (region != null) {
-            return region;
-        }
-        return DEFAULT_REGION;
+        return region != null ? region : DEFAULT_REGION;
     }
-} 
+}

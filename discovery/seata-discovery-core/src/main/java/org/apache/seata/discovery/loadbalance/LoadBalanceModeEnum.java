@@ -17,15 +17,15 @@
 package org.apache.seata.discovery.loadbalance;
 
 /**
- * loadBalance enum
+ * Load balance mode enumeration.
  */
 public enum LoadBalanceModeEnum {
     /**
-     * METADATA
+     * Metadata mode - uses ServiceInstance with metadata for load balancing.
      */
     METADATA,
     /**
-     * ORIGINAL
+     * Original mode - uses InetSocketAddress for load balancing.
      */
     ORIGINAL
 }
