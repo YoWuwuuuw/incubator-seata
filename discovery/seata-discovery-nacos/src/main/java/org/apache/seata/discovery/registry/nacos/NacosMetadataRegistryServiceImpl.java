@@ -106,7 +106,27 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
     }
 
     @Override
-    public void close() throws Exception {}
+    public void close() throws Exception {
+        if (naming != null) {
+            try {
+                naming.shutDown();
+            } catch (Exception e) {
+                LOGGER.warn("Error while shutting down Nacos NamingService", e);
+            } finally {
+                naming = null;
+            }
+        }
+
+        if (useSLBWay && namingMaintain != null) {
+            try {
+                namingMaintain.shutDown();
+            } catch (Exception e) {
+                LOGGER.warn("Error while shutting down Nacos NamingMaintainService", e);
+            } finally {
+                namingMaintain = null;
+            }
+        }
+    }
 
     @Override
     public List<ServiceInstance> lookup(String key) throws Exception {

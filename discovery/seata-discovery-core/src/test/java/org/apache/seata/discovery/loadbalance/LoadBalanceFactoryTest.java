@@ -58,15 +58,15 @@ public class LoadBalanceFactoryTest {
         Configuration mockConfig = mock(Configuration.class);
         mockedConfigurationFactory.when(ConfigurationFactory::getInstance).thenReturn(mockConfig);
 
-        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString()))
-                .thenReturn("XID");
+        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString())).thenReturn("XID");
         when(mockConfig.getBoolean(eq(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA), eq(false)))
                 .thenReturn(false);
 
         LoadBalance loadBalance = LoadBalanceFactory.getInstance();
         assertInstanceOf(XIDLoadBalance.class, loadBalance);
 
-        LoadBalanceModeEnum mode = loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
+        LoadBalanceModeEnum mode =
+                loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
         assertEquals(LoadBalanceModeEnum.ORIGINAL, mode);
     }
 
@@ -75,15 +75,15 @@ public class LoadBalanceFactoryTest {
         Configuration mockConfig = mock(Configuration.class);
         mockedConfigurationFactory.when(ConfigurationFactory::getInstance).thenReturn(mockConfig);
 
-        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString()))
-                .thenReturn("WeightRandomLoadBalance");
+        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString())).thenReturn("WeightRandomLoadBalance");
         when(mockConfig.getBoolean(eq(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA), eq(false)))
                 .thenReturn(true);
 
         LoadBalance loadBalance = LoadBalanceFactory.getInstance();
         assertInstanceOf(WeightRandomLoadBalance.class, loadBalance);
 
-        LoadBalanceModeEnum mode = loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
+        LoadBalanceModeEnum mode =
+                loadBalance.getClass().getAnnotation(LoadBalanceMode.class).value();
         assertEquals(LoadBalanceModeEnum.METADATA, mode);
     }
 
@@ -91,31 +91,33 @@ public class LoadBalanceFactoryTest {
     public void testValidateLoadBalanceMode_OriginalModeWithMetadataStrategy() {
         Configuration mockConfig = mock(Configuration.class);
         mockedConfigurationFactory.when(ConfigurationFactory::getInstance).thenReturn(mockConfig);
-        
-        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString()))
-                .thenReturn("WeightRandomLoadBalance");
+
+        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString())).thenReturn("WeightRandomLoadBalance");
         when(mockConfig.getBoolean(eq(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA), eq(false)))
                 .thenReturn(false);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> LoadBalanceFactory.getInstance());
-        
-        assertTrue(exception.getMessage().contains("Metadata load balancing strategy cannot be used in the original mode"));
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> LoadBalanceFactory.getInstance());
+
+        assertTrue(exception
+                .getMessage()
+                .contains("Metadata load balancing strategy cannot be used in the original mode"));
     }
 
     @Test
     public void testValidateLoadBalanceMode_MetadataModeWithOriginalStrategy() {
         Configuration mockConfig = mock(Configuration.class);
         mockedConfigurationFactory.when(ConfigurationFactory::getInstance).thenReturn(mockConfig);
-        
-        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString()))
-                .thenReturn("XID");
+
+        when(mockConfig.getConfig(eq("client.loadBalance.type"), anyString())).thenReturn("XID");
         when(mockConfig.getBoolean(eq(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA), eq(false)))
                 .thenReturn(true);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> LoadBalanceFactory.getInstance());
-        
-        assertTrue(exception.getMessage().contains("Non-metadata load balancing strategy cannot be used in the metadata mode"));
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> LoadBalanceFactory.getInstance());
+
+        assertTrue(exception
+                .getMessage()
+                .contains("Non-metadata load balancing strategy cannot be used in the metadata mode"));
     }
 }

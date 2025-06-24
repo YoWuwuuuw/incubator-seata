@@ -70,7 +70,8 @@ public class LoadBalanceFactory {
                 ConfigurationFactory.getInstance().getBoolean(ConfigurationKeys.CLIENT_REGISTRY_ENABLEMETADATA, false);
 
         if (enableMetadata && !strategyModeEnum.equals(LoadBalanceModeEnum.METADATA)) {
-            throw new IllegalArgumentException("Non-metadata load balancing strategy cannot be used in the metadata mode");
+            throw new IllegalArgumentException(
+                    "Non-metadata load balancing strategy cannot be used in the metadata mode");
         }
 
         if (!enableMetadata && !strategyModeEnum.equals(LoadBalanceModeEnum.ORIGINAL)) {

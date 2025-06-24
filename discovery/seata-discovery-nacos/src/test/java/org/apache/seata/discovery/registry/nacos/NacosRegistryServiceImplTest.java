@@ -19,8 +19,11 @@ package org.apache.seata.discovery.registry.nacos;
 import com.alibaba.nacos.api.naming.listener.Event;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import org.apache.seata.discovery.registry.RegistryService;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -40,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The type Nacos registryService impl test
  */
 @EnabledOnOs(OS.LINUX)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class NacosRegistryServiceImplTest {
 
     private static final String GROUP_NAME_KEY = "default_tx_group";
@@ -57,6 +61,27 @@ public class NacosRegistryServiceImplTest {
                 service.unregister(instance);
             }
         }
+    }
+
+    @AfterAll
+    public static void closeService() throws Exception {
+        NacosRegistryServiceImpl instance = NacosRegistryServiceImpl.getInstance();
+        NacosRegistryServiceImpl.getNamingInstance();
+
+        Field useSLBWayField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("useSLBWay");
+        useSLBWayField.setAccessible(true);
+        useSLBWayField.set(instance, true);
+        NacosRegistryServiceImpl.getNamingMaintainInstance();
+
+        instance.close();
+
+        Field namingField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("naming");
+        namingField.setAccessible(true);
+        assertNull(namingField.get(null));
+
+        Field namingMaintainField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("namingMaintain");
+        namingMaintainField.setAccessible(true);
+        assertNull(namingMaintainField.get(null));
     }
 
     @Test
@@ -115,27 +140,6 @@ public class NacosRegistryServiceImplTest {
         assertTrue(getListenersMap().get(GROUP_NAME).contains(eventListener));
         service.unsubscribe(CLUSTER_NAME, eventListener);
         assertFalse(getListenersMap().get(GROUP_NAME).contains(eventListener));
-    }
-
-    @Test
-    public void testClose() throws Exception {
-        NacosRegistryServiceImpl instance = NacosRegistryServiceImpl.getInstance();
-        NacosRegistryServiceImpl.getNamingInstance();
-
-        Field useSLBWayField = NacosRegistryServiceImpl.class.getDeclaredField("useSLBWay");
-        useSLBWayField.setAccessible(true);
-        useSLBWayField.set(instance, true);
-        NacosRegistryServiceImpl.getNamingMaintainInstance();
-
-        instance.close();
-
-        Field namingField = NacosRegistryServiceImpl.class.getDeclaredField("naming");
-        namingField.setAccessible(true);
-        assertNull(namingField.get(null));
-
-        Field namingMaintainField = NacosRegistryServiceImpl.class.getDeclaredField("namingMaintain");
-        namingMaintainField.setAccessible(true);
-        assertNull(namingMaintainField.get(null));
     }
 
     private ConcurrentMap<String, List<EventListener>> getListenersMap() throws Exception {

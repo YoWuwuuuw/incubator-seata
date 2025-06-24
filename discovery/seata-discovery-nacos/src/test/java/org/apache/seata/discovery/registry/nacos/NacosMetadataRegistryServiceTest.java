@@ -20,6 +20,7 @@ import com.alibaba.nacos.api.naming.listener.Event;
 import com.alibaba.nacos.api.naming.listener.EventListener;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -33,6 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,6 +58,27 @@ public class NacosMetadataRegistryServiceTest {
                 service.unregister(instance.getAddress());
             }
         }
+    }
+
+    @AfterAll
+    public static void closeService() throws Exception {
+        NacosMetadataRegistryServiceImpl instance = NacosMetadataRegistryServiceImpl.getInstance();
+        NacosMetadataRegistryServiceImpl.getNamingInstance();
+
+        Field useSLBWayField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("useSLBWay");
+        useSLBWayField.setAccessible(true);
+        useSLBWayField.set(instance, true);
+        NacosMetadataRegistryServiceImpl.getNamingMaintainInstance();
+
+        instance.close();
+
+        Field namingField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("naming");
+        namingField.setAccessible(true);
+        assertNull(namingField.get(null));
+
+        Field namingMaintainField = AbstractNacosRegistryServiceImpl.class.getDeclaredField("namingMaintain");
+        namingMaintainField.setAccessible(true);
+        assertNull(namingMaintainField.get(null));
     }
 
     @Test
