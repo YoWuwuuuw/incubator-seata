@@ -19,14 +19,12 @@ package org.apache.seata.discovery.registry.mock;
 import org.apache.seata.discovery.registry.RegistryService;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * the mock nacos RegistryService
  */
 public class MockNacosRegistryService implements RegistryService<Object> {
-
     @Override
     public void register(InetSocketAddress address) throws Exception {}
 
@@ -40,10 +38,10 @@ public class MockNacosRegistryService implements RegistryService<Object> {
     public void unsubscribe(String cluster, Object listener) throws Exception {}
 
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
-        return new ArrayList<>();
-    }
+    public void close() throws Exception {}
 
     @Override
-    public void close() throws Exception {}
+    public List<InetSocketAddress> lookup(String key) throws Exception {
+        return null;
+    }
 }

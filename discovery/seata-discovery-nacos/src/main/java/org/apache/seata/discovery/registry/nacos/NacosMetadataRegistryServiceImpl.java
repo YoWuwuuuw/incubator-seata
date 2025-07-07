@@ -62,7 +62,7 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
      */
     static NacosMetadataRegistryServiceImpl getInstance() {
         if (instance == null) {
-            synchronized (NacosRegistryServiceImpl.class) {
+            synchronized (NacosMetadataRegistryServiceImpl.class) {
                 if (instance == null) {
                     instance = new NacosMetadataRegistryServiceImpl();
                 }
@@ -165,31 +165,14 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
                     List<Instance> firstAllInstances =
                             getNamingInstance().getAllInstances(getServiceName(), getServiceGroup(), clusters);
                     if (null != firstAllInstances) {
-                        List<ServiceInstance> newInstanceList = firstAllInstances.stream()
-                                .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                .map(eachInstance -> {
-                                    InetSocketAddress address =
-                                            new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
-                                    Map<String, String> metadata = eachInstance.getMetadata();
-                                    return new ServiceInstance(address, metadata);
-                                })
-                                .collect(Collectors.toList());
-                        CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
+                        CLUSTER_INSTANCE_MAP.put(clusterName, convertToServiceInstances(firstAllInstances));
                     }
                     subscribe(clusterName, event -> {
                         List<Instance> instances = ((NamingEvent) event).getInstances();
                         if (CollectionUtils.isEmpty(instances) && null != CLUSTER_INSTANCE_MAP.get(clusterName)) {
                             LOGGER.info("receive empty server list,cluster:{}", clusterName);
                         } else {
-                            List<ServiceInstance> newInstanceList = instances.stream()
-                                    .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                    .map(eachInstance -> {
-                                        InetSocketAddress address =
-                                                new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
-                                        Map<String, String> metadata = eachInstance.getMetadata();
-                                        return new ServiceInstance(address, metadata);
-                                    })
-                                    .collect(Collectors.toList());
+                            List<ServiceInstance> newInstanceList = convertToServiceInstances(instances);
                             CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
                             if (StringUtils.isNotEmpty(transactionServiceGroup)) {
                                 removeOfflineAddressesIfNecessary(
@@ -201,6 +184,23 @@ public class NacosMetadataRegistryServiceImpl extends AbstractNacosRegistryServi
             }
         }
         return CLUSTER_INSTANCE_MAP.get(clusterName);
+    }
+
+    /**
+     * Converts a list of Nacos Instance objects to a list of Seata ServiceInstance objects
+     *
+     * @param instances the list of Nacos Instance objects
+     * @return the list of converted ServiceInstance objects
+     */
+    private List<ServiceInstance> convertToServiceInstances(List<Instance> instances) {
+        return instances.stream()
+                .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
+                .map(eachInstance -> {
+                    InetSocketAddress address = new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort());
+                    Map<String, String> metadata = eachInstance.getMetadata();
+                    return new ServiceInstance(address, metadata);
+                })
+                .collect(Collectors.toList());
     }
 
     /**

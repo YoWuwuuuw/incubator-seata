@@ -42,6 +42,7 @@ public class RegionRouteLoadBalance implements LoadBalance {
     private static final String DEFAULT_REGION = "default";
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T select(List<T> invokers, String xid) throws Exception {
         if (invokers == null || invokers.isEmpty()) {
             return null;

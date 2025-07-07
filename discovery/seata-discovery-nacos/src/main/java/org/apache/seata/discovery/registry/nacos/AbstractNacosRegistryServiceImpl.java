@@ -64,7 +64,7 @@ public abstract class AbstractNacosRegistryServiceImpl {
     protected static final Object LOCK_OBJ = new Object();
     protected static final Pattern DEFAULT_SLB_REGISTRY_PATTERN =
             Pattern.compile("(?!.*internal)(?=.*seata).*mse.aliyuncs.com");
-    protected static volatile Boolean useSLBWay;
+    protected static volatile Boolean useSLBWay = false;
 
     protected String transactionServiceGroup;
 

@@ -21,9 +21,7 @@ import com.alibaba.nacos.api.naming.listener.EventListener;
 import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -43,7 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The type Nacos registryService impl test
  */
 @EnabledOnOs(OS.LINUX)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class NacosRegistryServiceImplTest {
 
     private static final String GROUP_NAME_KEY = "default_tx_group";
@@ -97,7 +94,12 @@ public class NacosRegistryServiceImplTest {
         */
         InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
         service.register(inetSocketAddress);
-        Thread.sleep(10000); // wait for Nacos loading
+
+        long startTime = System.currentTimeMillis();
+        while (service.lookup(GROUP_NAME_KEY).isEmpty() && System.currentTimeMillis() - startTime < 10000) {
+            Thread.sleep(100);
+        }
+
         assertEquals(inetSocketAddress, service.lookup(GROUP_NAME_KEY).get(0));
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
 
@@ -106,7 +108,6 @@ public class NacosRegistryServiceImplTest {
            lookup will always return the previous cached list instead of updating the cache to empty
         */
         service.unregister(inetSocketAddress);
-        Thread.sleep(10000);
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
 
         /*
@@ -115,7 +116,13 @@ public class NacosRegistryServiceImplTest {
         */
         InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8081);
         service.register(inetSocketAddress1);
-        Thread.sleep(10000);
+
+        startTime = System.currentTimeMillis();
+        while (!service.lookup(GROUP_NAME_KEY).get(0).equals(inetSocketAddress1)
+                && System.currentTimeMillis() - startTime < 10000) {
+            Thread.sleep(100);
+        }
+
         assertEquals(inetSocketAddress1, service.lookup(GROUP_NAME_KEY).get(0));
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());

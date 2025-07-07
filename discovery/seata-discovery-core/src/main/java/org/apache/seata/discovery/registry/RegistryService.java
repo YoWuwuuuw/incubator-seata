@@ -82,14 +82,14 @@ public interface RegistryService<T> extends BaseRegistryService<T, InetSocketAdd
     /**
      * Removes offline addresses from the cache.
      *
-     * @param transactionGroupService the transaction group service
+     * @param transactionServiceGroup the transaction group service
      * @param clusterName the cluster name
      * @param newAddressed the new addresses collection
      */
     default void removeOfflineAddressesIfNecessary(
-            String transactionGroupService, String clusterName, Collection<InetSocketAddress> newAddressed) {
+            String transactionServiceGroup, String clusterName, Collection<InetSocketAddress> newAddressed) {
         Map<String, List<InetSocketAddress>> clusterAddressMap =
-                CURRENT_ADDRESS_MAP.computeIfAbsent(transactionGroupService, key -> new ConcurrentHashMap<>());
+                CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
 
         List<InetSocketAddress> currentAddresses = clusterAddressMap.getOrDefault(clusterName, Collections.emptyList());
 

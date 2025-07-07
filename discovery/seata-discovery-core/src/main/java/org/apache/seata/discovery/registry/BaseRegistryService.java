@@ -21,6 +21,7 @@ import org.apache.seata.config.ConfigurationFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +50,7 @@ public interface BaseRegistryService<T, I> {
      */
     String CONFIG_SPLIT_CHAR = ".";
 
-    Set<String> SERVICE_GROUP_NAME = new HashSet<>();
+    Set<String> SERVICE_GROUP_NAME = Collections.synchronizedSet(new HashSet<>());
 
     /**
      * Register.

@@ -92,30 +92,45 @@ public class NacosMetadataRegistryServiceTest {
         /*
            1.The first time lookup is called, if the cluster does not have listener, it will add listener
         */
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
-        service.register(inetSocketAddress);
-        Thread.sleep(10000); // wait for Nacos loading
-        List<ServiceInstance> instances = (List<ServiceInstance>) service.lookup(GROUP_NAME_KEY);
-        assertEquals(inetSocketAddress, instances.get(0).getAddress());
+        InetSocketAddress firstInstanceAddress = new InetSocketAddress("127.0.0.1", 8080);
+        service.register(firstInstanceAddress);
+
+        long startTime = System.currentTimeMillis();
+        while (service.lookup(GROUP_NAME_KEY).isEmpty() && System.currentTimeMillis() - startTime < 10000) {
+            Thread.sleep(100);
+        }
+
+        List<ServiceInstance> firstLookupInstances = (List<ServiceInstance>) service.lookup(GROUP_NAME_KEY);
+        assertEquals(firstInstanceAddress, firstLookupInstances.get(0).getAddress());
+        assertEquals("1", firstLookupInstances.get(0).getMetadata().get("weight"));
+        assertEquals("south", firstLookupInstances.get(0).getMetadata().get("region"));
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
 
         /*
            2.When there is only one instance register(), and that instance unregister(),
            lookup will always return the previous cached list instead of updating the cache to empty
         */
-        service.unregister(inetSocketAddress);
-        Thread.sleep(10000);
+        service.unregister(firstInstanceAddress);
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
 
         /*
            3.If there is a new instance register, which triggers the listener onEvent(),
-           then lookup () returns the actual instance
+           then lookup() returns the actual instance
         */
-        InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8081);
-        service.register(inetSocketAddress1);
-        Thread.sleep(10000);
-        List<ServiceInstance> instances1 = (List<ServiceInstance>) service.lookup(GROUP_NAME_KEY);
-        assertEquals(inetSocketAddress1, instances1.get(0).getAddress());
+        InetSocketAddress secondInstanceAddress = new InetSocketAddress("127.0.0.1", 8081);
+        service.register(secondInstanceAddress);
+
+        startTime = System.currentTimeMillis();
+        while (!((List<ServiceInstance>) service.lookup(GROUP_NAME_KEY))
+                        .get(0)
+                        .getAddress()
+                        .equals(secondInstanceAddress)
+                && System.currentTimeMillis() - startTime < 10000) {
+            Thread.sleep(100);
+        }
+
+        List<ServiceInstance> secondLookupInstances = (List<ServiceInstance>) service.lookup(GROUP_NAME_KEY);
+        assertEquals(secondInstanceAddress, secondLookupInstances.get(0).getAddress());
         assertEquals(1, service.lookup(GROUP_NAME_KEY).size());
         assertEquals(1, getListenersMap().get(GROUP_NAME).size());
     }

@@ -16,12 +16,16 @@
  */
 package org.apache.seata.discovery.registry.mock;
 
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.metadata.MetadataRegistryService;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public class MockNacosMetadataRegistryService implements MetadataRegistryService {
+/**
+ * the mock nacos MetadataRegistryService
+ */
+public class MockNacosMetadataRegistryService implements MetadataRegistryService<Object> {
 
     @Override
     public void register(InetSocketAddress address) throws Exception {}
@@ -39,12 +43,7 @@ public class MockNacosMetadataRegistryService implements MetadataRegistryService
     public void close() throws Exception {}
 
     @Override
-    public List lookup(String key) throws Exception {
-        return null;
-    }
-
-    @Override
-    public List refreshAliveLookup(String transactionServiceGroup, List aliveAddress) {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         return null;
     }
 }

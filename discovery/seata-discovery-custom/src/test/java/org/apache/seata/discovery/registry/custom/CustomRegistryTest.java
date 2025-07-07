@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 public class CustomRegistryTest {
     @Test
     public void testCustomRegistryLoad() {
-        BaseRegistryService registryService = RegistryFactory.getInstance();
-        Assertions.assertTrue(registryService instanceof CustomRegistryServiceForTest);
+        BaseRegistryService<?, ?> registryService = RegistryFactory.getInstance();
+        Assertions.assertInstanceOf(CustomRegistryServiceForTest.class, registryService);
     }
 }

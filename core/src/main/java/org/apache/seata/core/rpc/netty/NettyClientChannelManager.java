@@ -199,7 +199,7 @@ class NettyClientChannelManager {
             return;
         }
         if (CollectionUtils.isEmpty(availList)) {
-            BaseRegistryService registryService = RegistryFactory.getInstance();
+            BaseRegistryService<?, ?> registryService = RegistryFactory.getInstance();
             String clusterName = registryService.getServiceGroup(transactionServiceGroup);
 
             if (StringUtils.isBlank(clusterName)) {

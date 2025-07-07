@@ -135,7 +135,6 @@ public class MultiRegistryFactoryTest {
     public void testGetInstancesWithInvalidRegistryType() {
         String invalidRegistryType = "InvalidRegistryType";
         System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
-        System.setProperty(REGISTRY_TYPE_KEY, "InvalidRegistryType");
 
         assertThrows(NotSupportYetException.class, () -> invokeBuildRegistryServices());
         assertThatThrownBy(MultiRegistryFactoryTest::invokeBuildRegistryServices)

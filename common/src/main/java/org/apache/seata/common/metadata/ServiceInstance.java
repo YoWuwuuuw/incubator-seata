@@ -22,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * entity for packaging inetSocketAddress and metadata for loadBalance
@@ -84,5 +85,23 @@ public class ServiceInstance {
             }
         }
         return addresses;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ServiceInstance that = (ServiceInstance) o;
+        return Objects.equals(address, that.address) && Objects.equals(metadata, that.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(address, metadata);
+    }
+
+    @Override
+    public String toString() {
+        return "ServiceInstance{" + "address=" + address + ", metadata=" + metadata + '}';
     }
 }

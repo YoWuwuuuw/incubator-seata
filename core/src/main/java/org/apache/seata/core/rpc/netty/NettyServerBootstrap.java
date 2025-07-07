@@ -199,7 +199,7 @@ public class NettyServerBootstrap implements RemotingBootstrap {
             if (instance.getTransaction() == null) {
                 Instance.getInstance().setTransaction(new Node.Endpoint(XID.getIpAddress(), XID.getPort(), "netty"));
             }
-            for (BaseRegistryService registryService : MultiRegistryFactory.getInstances()) {
+            for (BaseRegistryService<?, ?> registryService : MultiRegistryFactory.getInstances()) {
                 registryService.register(Instance.getInstance());
             }
             initialized.set(true);
@@ -217,7 +217,7 @@ public class NettyServerBootstrap implements RemotingBootstrap {
                 LOGGER.info("Shutting server down, the listen port: {}", XID.getPort());
             }
             if (initialized.get()) {
-                for (BaseRegistryService registryService : MultiRegistryFactory.getInstances()) {
+                for (BaseRegistryService<?, ?> registryService : MultiRegistryFactory.getInstances()) {
                     registryService.unregister(Instance.getInstance());
                     registryService.close();
                 }
