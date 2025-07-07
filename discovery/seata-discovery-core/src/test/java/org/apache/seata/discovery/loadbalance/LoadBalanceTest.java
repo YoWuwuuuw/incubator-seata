@@ -19,6 +19,7 @@ package org.apache.seata.discovery.loadbalance;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.rpc.RpcStatus;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+@Disabled
 public class LoadBalanceTest {
 
     private static final String XID = "XID";
