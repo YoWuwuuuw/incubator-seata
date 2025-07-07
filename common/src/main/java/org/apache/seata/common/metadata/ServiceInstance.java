@@ -89,8 +89,12 @@ public class ServiceInstance {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         ServiceInstance that = (ServiceInstance) o;
         return Objects.equals(address, that.address) && Objects.equals(metadata, that.metadata);
     }
