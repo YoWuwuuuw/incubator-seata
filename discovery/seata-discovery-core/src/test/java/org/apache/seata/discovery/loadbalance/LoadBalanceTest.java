@@ -85,6 +85,11 @@ public class LoadBalanceTest {
         int runs = 10000;
         int selected = 0;
         ConsistentHashLoadBalance loadBalance = new ConsistentHashLoadBalance();
+
+        // First ensure the load balance can actually select addresses
+        InetSocketAddress testSelect = loadBalance.select(addresses, XID);
+        Assertions.assertNotNull(testSelect, "LoadBalance should be able to select an address");
+
         Map<InetSocketAddress, AtomicLong> counter = getSelectedCounter(runs, addresses, loadBalance);
         for (InetSocketAddress address : counter.keySet()) {
             if (counter.get(address).get() > 0) {
@@ -113,7 +118,9 @@ public class LoadBalanceTest {
         Assertions.assertEquals(o1, o2);
 
         List<InetSocketAddress> addresses3 = new ArrayList<>(addresses);
-        addresses3.remove(ThreadLocalRandom.current().nextInt(addresses.size()));
+        if (addresses3.size() > 0) {
+            addresses3.remove(ThreadLocalRandom.current().nextInt(addresses3.size()));
+        }
         loadBalance.select(addresses3, XID);
         Object o3 = getConsistentHashSelectorByReflect(loadBalance);
         Assertions.assertNotEquals(o1, o3);
@@ -284,13 +291,15 @@ public class LoadBalanceTest {
         for (InetSocketAddress address : addresses) {
             counter.put(address, new AtomicLong(0));
         }
-        try {
-            for (int i = 0; i < runs; i++) {
+        for (int i = 0; i < runs; i++) {
+            try {
                 InetSocketAddress selectAddress = loadBalance.select(addresses, XID);
-                counter.get(selectAddress).incrementAndGet();
+                if (selectAddress != null && counter.containsKey(selectAddress)) {
+                    counter.get(selectAddress).incrementAndGet();
+                }
+            } catch (Exception e) {
+                // do nothing
             }
-        } catch (Exception e) {
-            // do nothing
         }
         return counter;
     }
