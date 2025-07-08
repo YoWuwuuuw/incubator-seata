@@ -326,10 +326,10 @@ class NettyClientChannelManager {
         List<ServiceInstance> availInetSocketAddressList;
 
         if (instance instanceof RegistryService) {
-            availInetSocketAddressList = ServiceInstance.convertToServiceInstanceList(instance.lookup(transactionServiceGroup));
-        } else {
             availInetSocketAddressList =
-                    instance.lookup(transactionServiceGroup);
+                    ServiceInstance.convertToServiceInstanceList(instance.lookup(transactionServiceGroup));
+        } else {
+            availInetSocketAddressList = instance.lookup(transactionServiceGroup);
         }
 
         if (CollectionUtils.isEmpty(availInetSocketAddressList)) {
