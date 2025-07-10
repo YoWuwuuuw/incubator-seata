@@ -183,7 +183,7 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
                 InetSocketAddress publicAddress = new InetSocketAddress(pubnetIp, Integer.parseInt(pubnetPort));
                 Map<String, String> metadata = service.getMetadata();
                 List<ServiceInstance> publicInstanceList =
-                        Collections.singletonList(new ServiceInstance(publicAddress, metadata));
+                        Collections.singletonList(ServiceInstance.fromStringMap(publicAddress, metadata));
                 CLUSTER_INSTANCE_MAP.put(PUBLIC_NAMING_ADDRESS_PREFIX + clusterName, publicInstanceList);
                 return publicInstanceList;
             }
@@ -199,7 +199,7 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
                     if (null != firstAllInstances) {
                         List<ServiceInstance> newInstanceList = firstAllInstances.stream()
                                 .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                .map(eachInstance -> new ServiceInstance(
+                                .map(eachInstance -> ServiceInstance.fromStringMap(
                                         new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()),
                                         eachInstance.getMetadata()))
                                 .collect(Collectors.toList());
@@ -212,7 +212,7 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
                         } else {
                             List<ServiceInstance> newInstanceList = instances.stream()
                                     .filter(eachInstance -> eachInstance.isEnabled() && eachInstance.isHealthy())
-                                    .map(eachInstance -> new ServiceInstance(
+                                    .map(eachInstance -> ServiceInstance.fromStringMap(
                                             new InetSocketAddress(eachInstance.getIp(), eachInstance.getPort()),
                                             eachInstance.getMetadata()))
                                     .collect(Collectors.toList());

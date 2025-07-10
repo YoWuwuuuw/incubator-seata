@@ -41,6 +41,7 @@ import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertiesPropertySource;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ class NamingserverRegistryServiceImplTest {
     private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     @BeforeAll
-    public static void beforeClass() throws Exception {
+    public static void beforeClass() {
         System.setProperty("registry.seata.namespace", "dev");
         System.setProperty("registry.seata.cluster", "cluster1");
         System.setProperty("registry.seata.server-addr", "127.0.0.1:8080");
@@ -86,7 +87,7 @@ class NamingserverRegistryServiceImplTest {
     }
 
     @Test
-    public void unregister1() throws Exception {
+    public void unregister() throws Exception {
         NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
         ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8080));
         namingserverRegistryService.register(serviceInstance);
@@ -95,23 +96,30 @@ class NamingserverRegistryServiceImplTest {
 
     @Test
     @Disabled
-    public void getNamingAddrsTest() {
+    public void getNamingAddrsTest() throws Exception {
         NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-        List<String> list = namingserverRegistryService.getNamingAddrs();
+
+        Method getNamingAddrsMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamingAddrs");
+        getNamingAddrsMethod.setAccessible(true);
+
+        List<String> list = (List<String>) getNamingAddrsMethod.invoke(namingserverRegistryService);
         assertEquals(list.size(), 1);
     }
 
     @Test
     @Disabled
-    public void getNamingAddrTest() {
+    public void getNamingAddrTest() throws Exception {
         NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-        String addr = namingserverRegistryService.getNamingAddr();
+
+        Method getNamingAddrMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamingAddr");
+        getNamingAddrMethod.setAccessible(true);
+        String addr = (String) getNamingAddrMethod.invoke(namingserverRegistryService);
         assertEquals(addr, "127.0.0.1:8080");
     }
 
     @Test
     @Disabled
-    public void testRegister1() throws Exception {
+    public void testRegister() throws Exception {
         RegistryService registryService = new NamingserverRegistryProvider().provide();
 
         ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
@@ -160,7 +168,9 @@ class NamingserverRegistryServiceImplTest {
         metaResponse.setClusterList(clusterList);
 
         // Call the method to test
-        List<ServiceInstance> result = registryService.handleMetadata(metaResponse, "testGroup");
+        Method handleMetadataMethod = registryService.getClass().getDeclaredMethod("handleMetadata", MetaResponse.class, String.class);
+        handleMetadataMethod.setAccessible(true);
+        List<ServiceInstance> result = (List<ServiceInstance>) handleMetadataMethod.invoke(registryService, metaResponse, "testGroup");
         registryService.lookup("testGroup");
         // Verify the result
         assertEquals(1, result.size());
@@ -191,7 +201,7 @@ class NamingserverRegistryServiceImplTest {
 
         registryService.unregister(serviceInstance1);
         registryService.unregister(serviceInstance2);
-        registryService.unsubscribe("group1");
+        reflectUnsubscribe("group1");
     }
 
     @Test
@@ -223,7 +233,7 @@ class NamingserverRegistryServiceImplTest {
         registryService.unregister(serviceInstance3);
         registryService.unregister(serviceInstance4);
 
-        registryService.unsubscribe("group2");
+        reflectUnsubscribe("group2");
     }
 
     @Test
@@ -286,7 +296,7 @@ class NamingserverRegistryServiceImplTest {
 
         // 5.Get an instance
         List<ServiceInstance> list = registryService.lookup("group1");
-        registryService.unsubscribe("group1");
+        reflectUnsubscribe("group1");
         assertEquals(list.size(), 1);
         InetSocketAddress inetSocketAddress = list.get(0).getAddress();
         assertEquals(inetSocketAddress.getAddress().getHostAddress(), "127.0.0.1");
@@ -318,7 +328,7 @@ class NamingserverRegistryServiceImplTest {
 
         // 3.check
         assertEquals(isNotified.get(), true);
-        registryService.unsubscribe("group2");
+        reflectUnsubscribe("group2");
     }
 
     @Test
@@ -352,7 +362,7 @@ class NamingserverRegistryServiceImplTest {
         assertEquals(namingListenerimpl.isNotified, false);
     }
 
-    public void createGroupInCluster(String namespace, String vGroup, String clusterName) throws Exception {
+    private void createGroupInCluster(String namespace, String vGroup, String clusterName) throws Exception {
         Map<String, String> paraMap = new HashMap<>();
         paraMap.put("namespace", namespace);
         paraMap.put("vGroup", vGroup);
@@ -384,5 +394,16 @@ class NamingserverRegistryServiceImplTest {
             isNotified = true;
         }
     }
+
+    private static void reflectUnsubscribe(String vGroup) throws Exception {
+        Field listenerServiceMapField = NamingserverRegistryServiceImpl.class.getDeclaredField("LISTENER_SERVICE_MAP");
+        listenerServiceMapField.setAccessible(true);
+        java.util.concurrent.ConcurrentMap<String, ?> listenerServiceMap =
+                (java.util.concurrent.ConcurrentMap<String, ?>) listenerServiceMapField.get(null);
+        listenerServiceMap.remove(vGroup);
+
+        Field isSubscribedField = NamingserverRegistryServiceImpl.class.getDeclaredField("isSubscribed");
+        isSubscribedField.setAccessible(true);
+        isSubscribedField.set(NamingserverRegistryServiceImpl.getInstance(), false);
+    }
 }
-;

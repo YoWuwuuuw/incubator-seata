@@ -20,6 +20,7 @@ import org.apache.seata.common.util.NetUtil;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +95,20 @@ public class ServiceInstance {
             }
         }
         return serviceInstances;
+    }
+
+    /**
+     * Creates a ServiceInstance from an InetSocketAddress and a Map<String, String> of metadata.
+     * @param address the InetSocketAddress
+     * @param stringMap the map of string metadata
+     * @return a new ServiceInstance
+     */
+    public static ServiceInstance fromStringMap(InetSocketAddress address, Map<String, String> stringMap) {
+        Map<String, Object> metadata = new HashMap<>();
+        if (stringMap != null) {
+            metadata.putAll(stringMap);
+        }
+        return new ServiceInstance(address, metadata);
     }
 
     @Override
