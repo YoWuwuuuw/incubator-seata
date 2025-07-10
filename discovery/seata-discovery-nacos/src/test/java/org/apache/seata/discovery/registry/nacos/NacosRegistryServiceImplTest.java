@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * The type Nacos registry serivce impl test
- *
  */
 public class NacosRegistryServiceImplTest {
 

@@ -16,6 +16,7 @@
  */
 package org.apache.seata.discovery.registry.redis;
 
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
@@ -66,12 +67,12 @@ public class RedisRegisterServiceImplTest {
     @Test
     @Order(1)
     public void testFlow() {
-
-        redisRegistryService.register(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        redisRegistryService.register(serviceInstance);
 
         Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
 
-        redisRegistryService.unregister(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        redisRegistryService.unregister(serviceInstance);
 
         Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
     }
@@ -80,7 +81,6 @@ public class RedisRegisterServiceImplTest {
     @Order(2)
     public void testRemoveServerAddressByPushEmptyProtection()
             throws NoSuchFieldException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-
         MockedStatic<ConfigurationFactory> configurationFactoryMockedStatic = mockStatic(ConfigurationFactory.class);
         Configuration configuration = mock(Configuration.class);
         when(configuration.getConfig(anyString())).thenReturn("cluster");

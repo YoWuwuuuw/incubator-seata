@@ -16,7 +16,8 @@
  */
 package org.apache.seata.discovery.registry;
 
-import java.net.InetSocketAddress;
+import org.apache.seata.common.metadata.ServiceInstance;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,10 +27,10 @@ import java.util.List;
 public class MockNacosRegistryService implements RegistryService<Object> {
 
     @Override
-    public void register(InetSocketAddress address) throws Exception {}
+    public void register(ServiceInstance address) throws Exception {}
 
     @Override
-    public void unregister(InetSocketAddress address) throws Exception {}
+    public void unregister(ServiceInstance address) throws Exception {}
 
     @Override
     public void subscribe(String cluster, Object listener) throws Exception {}
@@ -38,7 +39,7 @@ public class MockNacosRegistryService implements RegistryService<Object> {
     public void unsubscribe(String cluster, Object listener) throws Exception {}
 
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         return new ArrayList<>();
     }
 

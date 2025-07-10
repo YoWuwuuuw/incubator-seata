@@ -33,6 +33,7 @@ import org.apache.seata.common.metadata.Cluster;
 import org.apache.seata.common.metadata.ClusterRole;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.metadata.namingserver.MetaResponse;
 import org.apache.seata.common.metadata.namingserver.NamingServerNode;
 import org.apache.seata.common.metadata.namingserver.Unit;
@@ -181,7 +182,6 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      * @return the instance
      */
     static NamingserverRegistryServiceImpl getInstance() {
-
         if (instance == null) {
             synchronized (NamingserverRegistryServiceImpl.class) {
                 if (instance == null) {
@@ -193,17 +193,14 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public void register(InetSocketAddress address) throws Exception {
+    public void register(ServiceInstance instance) throws Exception {
         register(Instance.getInstance());
     }
 
-    @Override
     public void register(Instance instance) throws Exception {
         instance.setTimestamp(System.currentTimeMillis());
         doRegister(instance, getNamingAddrs());
     }
-
-    public void doRegister(List<Instance> instance, List<String> urlList) {}
 
     public void doRegister(Instance instance, List<String> urlList) throws RetryableException {
         for (String urlSuffix : urlList) {
@@ -258,11 +255,10 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public void unregister(InetSocketAddress inetSocketAddress) {
+    public void unregister(ServiceInstance instance) {
         unregister(Instance.getInstance());
     }
 
-    @Override
     public void unregister(Instance instance) {
         for (String urlSuffix : getNamingAddrs()) {
             String url = HTTP_PREFIX + urlSuffix + "/naming/v1/unregister?";
@@ -400,7 +396,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      * @throws Exception
      */
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         if (!isSubscribed) {
             // get available instanceList by vGroup
             refreshGroup(key);
@@ -416,15 +412,16 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
                     key);
         }
 
-        return Optional.ofNullable(VGROUP_ADDRESS_MAP.get(key)).orElse(Collections.emptyList()).stream()
-                .map(node -> {
-                    Node.Endpoint endpoint = node.getTransaction();
-                    return new InetSocketAddress(endpoint.getHost(), endpoint.getPort());
-                })
-                .collect(Collectors.toList());
+        return ServiceInstance.convertToServiceInstanceList(
+                Optional.ofNullable(VGROUP_ADDRESS_MAP.get(key)).orElse(Collections.emptyList()).stream()
+                        .map(node -> {
+                            Node.Endpoint endpoint = node.getTransaction();
+                            return new InetSocketAddress(endpoint.getHost(), endpoint.getPort());
+                        })
+                        .collect(Collectors.toList()));
     }
 
-    public List<InetSocketAddress> refreshGroup(String vGroup) throws IOException, RetryableException {
+    public List<ServiceInstance> refreshGroup(String vGroup) throws IOException, RetryableException {
         Map<String, String> paraMap = new HashMap<>();
         String namingAddr = getNamingAddr();
         if (isTokenExpired()) {
@@ -453,7 +450,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         }
     }
 
-    public List<InetSocketAddress> handleMetadata(MetaResponse metaResponse, String vGroup) {
+    public List<ServiceInstance> handleMetadata(MetaResponse metaResponse, String vGroup) {
         // MetaResponse -> endpoint list
         List<NamingServerNode> newAddressList = new ArrayList<>();
         if (metaResponse.getTerm() > 0) {
@@ -468,14 +465,14 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
                         .collect(Collectors.toList()));
             }
         }
-        List<InetSocketAddress> inetSocketAddresses = new ArrayList<>();
+        List<ServiceInstance> serviceInstances = new ArrayList<>();
         for (NamingServerNode node : newAddressList) {
             Node.Endpoint endpoint = node.getTransaction();
-            inetSocketAddresses.add(new InetSocketAddress(endpoint.getHost(), endpoint.getPort()));
+            serviceInstances.add(new ServiceInstance(new InetSocketAddress(endpoint.getHost(), endpoint.getPort())));
         }
-        removeOfflineAddressesIfNecessary(vGroup, vGroup, inetSocketAddresses);
+        removeOfflineAddressesIfNecessary(vGroup, vGroup, serviceInstances);
         VGROUP_ADDRESS_MAP.put(vGroup, newAddressList);
-        return inetSocketAddresses;
+        return serviceInstances;
     }
 
     @Override
@@ -496,13 +493,13 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public List<InetSocketAddress> aliveLookup(String transactionServiceGroup) {
-        Map<String, List<InetSocketAddress>> clusterAddressMap =
-                CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup, k -> new ConcurrentHashMap<>());
+    public List<ServiceInstance> aliveLookup(String transactionServiceGroup) {
+        Map<String, List<ServiceInstance>> clusterAddressMap =
+                CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, k -> new ConcurrentHashMap<>());
 
-        List<InetSocketAddress> inetSocketAddresses = clusterAddressMap.get(transactionServiceGroup);
-        if (CollectionUtils.isNotEmpty(inetSocketAddresses)) {
-            return inetSocketAddresses;
+        List<ServiceInstance> serviceInstances = clusterAddressMap.get(transactionServiceGroup);
+        if (CollectionUtils.isNotEmpty(serviceInstances)) {
+            return serviceInstances;
         }
 
         // fall back to addresses of any cluster
@@ -513,11 +510,11 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     @Override
-    public List<InetSocketAddress> refreshAliveLookup(
-            String transactionServiceGroup, List<InetSocketAddress> aliveAddress) {
-        Map<String, List<InetSocketAddress>> clusterAddressMap =
-                CURRENT_ADDRESS_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
-        return clusterAddressMap.put(transactionServiceGroup, aliveAddress);
+    public List<ServiceInstance> refreshAliveLookup(
+            String transactionServiceGroup, List<ServiceInstance> aliveInstances) {
+        Map<String, List<ServiceInstance>> clusterAddressMap =
+                CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
+        return clusterAddressMap.put(transactionServiceGroup, aliveInstances);
     }
 
     /**

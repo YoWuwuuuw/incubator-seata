@@ -22,6 +22,7 @@ import com.ecwid.consul.v1.Response;
 import com.ecwid.consul.v1.agent.model.NewService;
 import com.ecwid.consul.v1.health.HealthServicesRequest;
 import com.ecwid.consul.v1.health.model.HealthService;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.common.util.StringUtils;
@@ -65,7 +66,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     private static final String FILE_CONFIG_KEY_PREFIX =
             FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + REGISTRY_TYPE + FILE_CONFIG_SPLIT_CHAR;
 
-    private ConcurrentMap<String, List<InetSocketAddress>> clusterAddressMap;
+    private ConcurrentMap<String, List<ServiceInstance>> clusterAddressMap;
     private ConcurrentMap<String, Set<ConsulListener>> listenerMap;
     private ExecutorService notifierExecutor;
     private ConcurrentMap<String, ConsulNotifier> notifiers;
@@ -123,8 +124,10 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     @Override
-    public void register(InetSocketAddress address) throws Exception {
+    public void register(ServiceInstance instance) throws Exception {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
+
         doRegister(address);
         RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, this::doRegister);
     }
@@ -134,13 +137,14 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     @Override
-    public void unregister(InetSocketAddress address) throws Exception {
+    public void unregister(ServiceInstance instance) {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
         getConsulClient().agentServiceDeregister(createServiceId(address), getAclToken());
     }
 
     @Override
-    public void subscribe(String cluster, ConsulListener listener) throws Exception {
+    public void subscribe(String cluster, ConsulListener listener) {
         // 1.add listener to subscribe list
         listenerMap.computeIfAbsent(cluster, key -> new HashSet<>()).add(listener);
         // 2.get healthy services
@@ -153,7 +157,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     @Override
-    public void unsubscribe(String cluster, ConsulListener listener) throws Exception {
+    public void unsubscribe(String cluster, ConsulListener listener) {
         // 1.remove notifier for the cluster
         ConsulNotifier notifier = notifiers.remove(cluster);
         // 2.stop the notifier
@@ -161,7 +165,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         transactionServiceGroup = key;
         final String cluster = getServiceGroup(key);
         if (cluster == null) {
@@ -171,7 +175,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
         return lookupByCluster(cluster);
     }
 
-    private List<InetSocketAddress> lookupByCluster(String cluster) throws Exception {
+    private List<ServiceInstance> lookupByCluster(String cluster) {
         if (!listenerMap.containsKey(cluster)) {
             // 1.refresh cluster
             refreshCluster(cluster);
@@ -314,14 +318,14 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
             return;
         }
 
-        List<InetSocketAddress> addresses = services.stream()
+        List<ServiceInstance> instances = ServiceInstance.convertToServiceInstanceList(services.stream()
                 .map(HealthService::getService)
                 .map(service -> new InetSocketAddress(service.getAddress(), service.getPort()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
 
-        clusterAddressMap.put(cluster, addresses);
+        clusterAddressMap.put(cluster, instances);
 
-        removeOfflineAddressesIfNecessary(transactionServiceGroup, cluster, addresses);
+        removeOfflineAddressesIfNecessary(transactionServiceGroup, cluster, instances);
     }
 
     /**

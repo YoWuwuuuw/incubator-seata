@@ -16,6 +16,7 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.RegistryFactory;
 import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.Assertions;
@@ -54,8 +55,8 @@ public class LoadBalanceFactoryTest {
         RegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
         InetSocketAddress address2 = new InetSocketAddress("127.0.0.1", 8092);
-        registryService.register(address1);
-        registryService.register(address2);
+        registryService.register(new ServiceInstance(address1));
+        registryService.register(new ServiceInstance(address2));
         List<InetSocketAddress> addressList = registryService.lookup(DEFAULT_TX_GROUP);
         InetSocketAddress balanceAddress = loadBalance.select(addressList, XID);
         Assertions.assertNotNull(balanceAddress);
@@ -73,7 +74,7 @@ public class LoadBalanceFactoryTest {
     public void testUnRegistry(LoadBalance loadBalance) throws Exception {
         RegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
-        registryService.unregister(address);
+        registryService.unregister(new ServiceInstance(address));
     }
 
     /**
@@ -90,8 +91,8 @@ public class LoadBalanceFactoryTest {
         RegistryService registryService = RegistryFactory.getInstance();
         InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8091);
         InetSocketAddress address2 = new InetSocketAddress("127.0.0.1", 8092);
-        registryService.register(address1);
-        registryService.register(address2);
+        registryService.register(new ServiceInstance(address1));
+        registryService.register(new ServiceInstance(address2));
         List<InetSocketAddress> addressList = registryService.lookup(DEFAULT_TX_GROUP);
         InetSocketAddress balanceAddress = loadBalance.select(addressList, XID);
         Assertions.assertNotNull(balanceAddress);

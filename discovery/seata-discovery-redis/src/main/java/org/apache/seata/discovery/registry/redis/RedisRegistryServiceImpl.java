@@ -19,6 +19,7 @@ package org.apache.seata.discovery.registry.redis;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.exception.ShouldNeverHappenException;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
@@ -65,7 +66,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     private static final String REDIS_DB = "db";
     private static final String REDIS_PASSWORD = "password";
     private static final ConcurrentMap<String, List<RedisListener>> LISTENER_SERVICE_MAP = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<String, Set<InetSocketAddress>> CLUSTER_ADDRESS_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Set<ServiceInstance>> CLUSTER_INSTANCE_MAP = new ConcurrentHashMap<>();
     private static volatile RedisRegistryServiceImpl instance;
     private static volatile JedisPool jedisPool;
 
@@ -151,7 +152,8 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     }
 
     @Override
-    public void register(InetSocketAddress address) {
+    public void register(ServiceInstance instance) {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
         doRegisterOrExpire(address, true);
         RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, KEY_REFRESH_PERIOD, this::doRegisterOrExpire);
@@ -175,7 +177,8 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     }
 
     @Override
-    public void unregister(InetSocketAddress address) {
+    public void unregister(ServiceInstance instance) {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
         String serverAddr = NetUtil.toStringAddress(address);
         try (Jedis jedis = jedisPool.getResource();
@@ -226,7 +229,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     public void unsubscribe(String cluster, RedisListener listener) {}
 
     @Override
-    public List<InetSocketAddress> lookup(String key) {
+    public List<ServiceInstance> lookup(String key) {
         transactionServiceGroup = key;
         String clusterName = getServiceGroup(key);
         if (clusterName == null) {
@@ -237,7 +240,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     }
 
     // default visible for test
-    List<InetSocketAddress> lookupByCluster(String clusterName) {
+    List<ServiceInstance> lookupByCluster(String clusterName) {
         if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
             String redisRegistryKey = REDIS_FILEKEY_PREFIX + clusterName;
             try (Jedis jedis = jedisPool.getResource()) {
@@ -250,8 +253,8 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
                 switch (eventType) {
                     case RedisListener.REGISTER:
                         CollectionUtils.computeIfAbsent(
-                                        CLUSTER_ADDRESS_MAP, clusterName, value -> ConcurrentHashMap.newKeySet(2))
-                                .add(NetUtil.toInetSocketAddress(serverAddr));
+                                        CLUSTER_INSTANCE_MAP, clusterName, value -> ConcurrentHashMap.newKeySet(2))
+                                .add(new ServiceInstance(NetUtil.toInetSocketAddress(serverAddr)));
                         break;
                     case RedisListener.UN_REGISTER:
                         removeServerAddressByPushEmptyProtection(clusterName, serverAddr);
@@ -262,7 +265,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
             });
         }
         return new ArrayList<>(CollectionUtils.computeIfAbsent(
-                CLUSTER_ADDRESS_MAP, clusterName, value -> ConcurrentHashMap.newKeySet(2)));
+                CLUSTER_INSTANCE_MAP, clusterName, value -> ConcurrentHashMap.newKeySet(2)));
     }
 
     /**
@@ -275,10 +278,10 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
      */
     private void removeServerAddressByPushEmptyProtection(String notifyCluserName, String serverAddr) {
 
-        Set<InetSocketAddress> socketAddresses = CollectionUtils.computeIfAbsent(
-                CLUSTER_ADDRESS_MAP, notifyCluserName, value -> ConcurrentHashMap.newKeySet(2));
-        InetSocketAddress inetSocketAddress = NetUtil.toInetSocketAddress(serverAddr);
-        if (socketAddresses.size() == 1 && socketAddresses.contains(inetSocketAddress)) {
+        Set<ServiceInstance> serviceInstances = CollectionUtils.computeIfAbsent(
+                CLUSTER_INSTANCE_MAP, notifyCluserName, value -> ConcurrentHashMap.newKeySet(2));
+        ServiceInstance serviceInstance = new ServiceInstance(NetUtil.toInetSocketAddress(serverAddr));
+        if (serviceInstances.size() == 1 && serviceInstances.contains(serviceInstance)) {
             String txServiceGroupName =
                     ConfigurationFactory.getInstance().getConfig(ConfigurationKeys.TX_SERVICE_GROUP);
 
@@ -289,9 +292,9 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
                 }
             }
         }
-        socketAddresses.remove(inetSocketAddress);
+        serviceInstances.remove(serviceInstance);
 
-        removeOfflineAddressesIfNecessary(transactionServiceGroup, notifyCluserName, socketAddresses);
+        removeOfflineAddressesIfNecessary(transactionServiceGroup, notifyCluserName, serviceInstances);
     }
 
     @Override
@@ -380,8 +383,11 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
             }
         } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
 
-        if (CollectionUtils.isNotEmpty(newAddressSet) && !newAddressSet.equals(CLUSTER_ADDRESS_MAP.get(clusterName))) {
-            CLUSTER_ADDRESS_MAP.put(clusterName, newAddressSet);
+        Set<ServiceInstance> currentInstances = ServiceInstance.convertToServiceInstanceList(newAddressSet);
+
+        if (CollectionUtils.isNotEmpty(currentInstances)
+                && !currentInstances.equals(CLUSTER_INSTANCE_MAP.get(clusterName))) {
+            CLUSTER_INSTANCE_MAP.put(clusterName, currentInstances);
         }
     }
 
