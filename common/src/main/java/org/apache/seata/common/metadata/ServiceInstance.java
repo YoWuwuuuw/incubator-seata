@@ -31,11 +31,17 @@ import java.util.Set;
  */
 public class ServiceInstance {
     private InetSocketAddress address;
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
 
-    public ServiceInstance(InetSocketAddress address, Map<String, String> metadata) {
+    public ServiceInstance(InetSocketAddress address, Map<String, Object> metadata) {
         this.address = address;
         this.metadata = metadata;
+    }
+
+    public ServiceInstance(Instance instance) {
+        this.address = new InetSocketAddress(
+                instance.getTransaction().getHost(), instance.getTransaction().getPort());
+        this.metadata = instance.getMetadata();
     }
 
     public ServiceInstance(InetSocketAddress address) {
@@ -50,11 +56,11 @@ public class ServiceInstance {
         this.address = address;
     }
 
-    public Map<String, String> getMetadata() {
+    public Map<String, Object> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
+    public void setMetadata(Map<String, Object> metadata) {
         this.metadata = metadata;
     }
 

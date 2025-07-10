@@ -62,7 +62,7 @@ public interface VGroupMappingStoreManager {
         try {
             InetSocketAddress address = new InetSocketAddress(XID.getIpAddress(), XID.getPort());
             for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
-                registryService.register(new ServiceInstance(address));
+                registryService.register(new ServiceInstance(address, instance.getMetadata()));
             }
         } catch (Exception e) {
             throw new RuntimeException("vGroup mapping relationship notified failed! ", e);

@@ -138,10 +138,10 @@ public class RaftVGroupMappingStoreManager implements VGroupMappingStoreManager 
                 Instance node = instance.clone();
                 node.setRole(RaftServerManager.isLeader(group) ? ClusterRole.LEADER : ClusterRole.FOLLOWER);
                 Instance.getInstances().add(node);
+                InetSocketAddress inetSocketAddress = new InetSocketAddress(
+                        node.getTransaction().getHost(), node.getTransaction().getPort());
                 for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
-                    ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(
-                            node.getTransaction().getHost(),
-                            node.getTransaction().getPort()));
+                    ServiceInstance serviceInstance = new ServiceInstance(inetSocketAddress, node.getMetadata());
                     registryService.register(serviceInstance);
                 }
             }

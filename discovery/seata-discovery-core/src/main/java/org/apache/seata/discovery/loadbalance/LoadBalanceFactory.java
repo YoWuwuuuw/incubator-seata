@@ -28,6 +28,7 @@ import static org.apache.seata.common.DefaultValues.DEFAULT_LOAD_BALANCE;
 public class LoadBalanceFactory {
 
     private static final String CLIENT_PREFIX = "client.";
+
     /**
      * The constant LOAD_BALANCE_PREFIX.
      */

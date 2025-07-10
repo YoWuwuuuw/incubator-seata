@@ -121,7 +121,7 @@ public interface RegistryService<T> {
 
     default List<ServiceInstance> aliveLookup(String transactionServiceGroup) {
         Map<String, List<ServiceInstance>> clusterInstanceMap =
-                CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, k -> new ConcurrentHashMap<>());
+                CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
 
         String clusterName = getServiceGroup(transactionServiceGroup);
         List<ServiceInstance> serviceInstances = clusterInstanceMap.get(clusterName);

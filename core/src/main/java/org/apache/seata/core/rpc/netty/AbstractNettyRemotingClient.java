@@ -27,6 +27,7 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import org.apache.seata.common.exception.FrameworkErrorCode;
 import org.apache.seata.common.exception.FrameworkException;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
@@ -287,9 +288,9 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
         InetSocketAddress address = null;
         try {
             @SuppressWarnings("unchecked")
-            List<InetSocketAddress> inetSocketAddressList =
+            List<ServiceInstance> serviceInstances =
                     RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
-            address = this.doSelect(inetSocketAddressList, msg);
+            address = this.doSelect(serviceInstances, msg);
         } catch (Exception ex) {
             LOGGER.error("Select the address failed: {}", ex.getMessage());
         }
@@ -299,12 +300,14 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
         return NetUtil.toStringAddress(address);
     }
 
-    protected InetSocketAddress doSelect(List<InetSocketAddress> list, Object msg) throws Exception {
+    protected InetSocketAddress doSelect(List<ServiceInstance> list, Object msg) throws Exception {
         if (CollectionUtils.isNotEmpty(list)) {
             if (list.size() > 1) {
-                return LoadBalanceFactory.getInstance().select(list, getXid(msg));
+                return LoadBalanceFactory.getInstance()
+                        .select(list, getXid(msg))
+                        .getAddress();
             } else {
-                return list.get(0);
+                return list.get(0).getAddress();
             }
         }
         return null;
