@@ -30,7 +30,6 @@ import org.apache.seata.common.metadata.namingserver.Unit;
 import org.apache.seata.common.util.HttpClientUtil;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
-import org.apache.seata.discovery.registry.RegistryService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -56,23 +55,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.seata.common.Constants.OBJECT_KEY_SPRING_CONFIGURABLE_ENVIRONMENT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NamingserverRegistryServiceImplTest {
 
     private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
+    private final NamingserverRegistryServiceImpl registryService = NamingserverRegistryServiceImpl.getInstance();
 
     @BeforeAll
     public static void beforeClass() {
         System.setProperty("registry.seata.namespace", "dev");
         System.setProperty("registry.seata.cluster", "cluster1");
-        System.setProperty("registry.seata.server-addr", "127.0.0.1:8080");
+        System.setProperty("registry.seata.server-addr", "127.0.0.1:8081");
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
         // Get the application environment
         ConfigurableEnvironment environment = context.getEnvironment();
         MutablePropertySources propertySources = environment.getPropertySources();
         Properties customProperties = new Properties();
-        customProperties.setProperty("seata.registry.namingserver.server-addr[0]", "127.0.0.1:8080");
+        customProperties.setProperty("seata.registry.namingserver.server-addr[0]", "127.0.0.1:8081");
 
         PropertiesPropertySource customPropertySource = new PropertiesPropertySource("customSource", customProperties);
         propertySources.addLast(customPropertySource);
@@ -87,61 +88,25 @@ class NamingserverRegistryServiceImplTest {
     }
 
     @Test
-    public void unregister() throws Exception {
-        NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8080));
-        namingserverRegistryService.register(serviceInstance);
-        namingserverRegistryService.unregister(serviceInstance);
-    }
-
-    @Test
-    @Disabled
-    public void getNamingAddrsTest() throws Exception {
-        NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-
+    public void testGetNamingAddrs() throws Exception {
         Method getNamingAddrsMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamingAddrs");
         getNamingAddrsMethod.setAccessible(true);
 
-        List<String> list = (List<String>) getNamingAddrsMethod.invoke(namingserverRegistryService);
+        List<String> list = (List<String>) getNamingAddrsMethod.invoke(registryService);
         assertEquals(list.size(), 1);
     }
 
     @Test
-    @Disabled
-    public void getNamingAddrTest() throws Exception {
-        NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-
+    public void testGetNamingAddr() throws Exception {
         Method getNamingAddrMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamingAddr");
         getNamingAddrMethod.setAccessible(true);
-        String addr = (String) getNamingAddrMethod.invoke(namingserverRegistryService);
-        assertEquals(addr, "127.0.0.1:8080");
+
+        String addr = (String) getNamingAddrMethod.invoke(registryService);
+        assertEquals(addr, "127.0.0.1:8081");
     }
 
     @Test
-    @Disabled
-    public void testRegister() throws Exception {
-        RegistryService registryService = new NamingserverRegistryProvider().provide();
-
-        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
-        // 1.register
-        registryService.register(serviceInstance);
-
-        // 2.create vGroup in cluster
-        createGroupInCluster("dev", "group1", "cluster1");
-        // 3.get instances
-        List<InetSocketAddress> list = registryService.lookup("group1");
-
-        assertEquals(list.size(), 1);
-        InetSocketAddress inetSocketAddress = list.get(0);
-        assertEquals(inetSocketAddress.getAddress().getHostAddress(), "127.0.0.1");
-        assertEquals(inetSocketAddress.getPort(), 8088);
-
-        registryService.unregister(serviceInstance);
-    }
-
-    @Test
-    public void testHandleMetadata() throws Exception {
-        NamingserverRegistryServiceImpl registryService = NamingserverRegistryServiceImpl.getInstance();
+    public void testHandleMetadata_withMockResponse() throws Exception {
         // Use reflection to set the isSubscribed field to true
         Field isSubscribedField = NamingserverRegistryServiceImpl.class.getDeclaredField("isSubscribed");
         isSubscribedField.setAccessible(true);
@@ -168,10 +133,14 @@ class NamingserverRegistryServiceImplTest {
         metaResponse.setClusterList(clusterList);
 
         // Call the method to test
-        Method handleMetadataMethod = registryService.getClass().getDeclaredMethod("handleMetadata", MetaResponse.class, String.class);
+        Method handleMetadataMethod =
+                registryService.getClass().getDeclaredMethod("handleMetadata", MetaResponse.class, String.class);
         handleMetadataMethod.setAccessible(true);
-        List<ServiceInstance> result = (List<ServiceInstance>) handleMetadataMethod.invoke(registryService, metaResponse, "testGroup");
+        List<ServiceInstance> result =
+                (List<ServiceInstance>) handleMetadataMethod.invoke(registryService, metaResponse, "testGroup");
+
         registryService.lookup("testGroup");
+
         // Verify the result
         assertEquals(1, result.size());
         assertEquals("127.0.0.1", result.get(0).getAddress().getAddress().getHostAddress());
@@ -180,119 +149,55 @@ class NamingserverRegistryServiceImplTest {
     }
 
     @Test
-    @Disabled
-    public void testRegister2() throws Exception {
-        NamingserverRegistryServiceImpl registryService =
-                (NamingserverRegistryServiceImpl) new NamingserverRegistryProvider().provide();
-        ServiceInstance serviceInstance1 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
-        ServiceInstance serviceInstance2 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
+    public void testRegisterAndUnregister() throws Exception {
+        ServiceInstance registerServiceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
+
         // 1.register
-        registryService.register(serviceInstance1);
-        registryService.register(serviceInstance2);
+        registryService.register(registerServiceInstance);
 
         // 2.create vGroup in cluster
-        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-        createGroupInCluster(namespace, "group1", "cluster1");
+        createGroupInCluster("dev", "group1", "cluster1");
 
         // 3.get instances
-        List list = registryService.lookup("group1");
+        List<ServiceInstance> list = registryService.lookup("group1");
 
-        assertEquals(list.size(), 1);
+        assertEquals(1, list.size());
+        ServiceInstance lookupServiceInstance = list.get(0);
+        assertEquals(lookupServiceInstance, registerServiceInstance);
 
-        registryService.unregister(serviceInstance1);
-        registryService.unregister(serviceInstance2);
-        reflectUnsubscribe("group1");
+        registryService.unregister(registerServiceInstance);
     }
 
-    @Test
-    @Disabled
-    public void testRegister3() throws Exception {
-        NamingserverRegistryServiceImpl registryService =
-                (NamingserverRegistryServiceImpl) new NamingserverRegistryProvider().provide();
-        ServiceInstance serviceInstance1 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
-        ServiceInstance serviceInstance2 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8089));
-        ServiceInstance serviceInstance3 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8090));
-        ServiceInstance serviceInstance4 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8091));
-        // 1.register
-        registryService.register(serviceInstance1);
-        registryService.register(serviceInstance2);
-        registryService.register(serviceInstance3);
-        registryService.register(serviceInstance4);
-
-        // 2.create vGroup in cluster
-        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-        createGroupInCluster(namespace, "group2", "cluster1");
-
-        // 3.get instances
-        List list = registryService.lookup("group2");
-
-        assertEquals(list.size(), 4);
-
-        registryService.unregister(serviceInstance1);
-        registryService.unregister(serviceInstance2);
-        registryService.unregister(serviceInstance3);
-        registryService.unregister(serviceInstance4);
-
-        reflectUnsubscribe("group2");
-    }
-
-    @Test
-    @Disabled
-    public void testUnregister() throws Exception {
-        RegistryService registryService = new NamingserverRegistryProvider().provide();
-        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
-        // 1.register
-        registryService.register(serviceInstance);
-
-        // 2.create vGroup in cluster
-        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-        createGroupInCluster(namespace, "group1", "cluster1");
-
-        // 3.get instances
-        List list = registryService.lookup("group1");
-
-        assertEquals(list.size(), 1);
-
-        // 4.unregister
-        registryService.unregister(serviceInstance);
-
-        // 5.get instances
-        List list1 = registryService.lookup("group1");
-        assertEquals(list1.size(), 0);
-    }
-
-    @Disabled
     @Test
     public void testWatch() throws Exception {
-        NamingserverRegistryServiceImpl registryService =
-                (NamingserverRegistryServiceImpl) new NamingserverRegistryProvider().provide();
-
         // 1.Register a node under cluster1
         InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8088);
         registryService.register(new ServiceInstance(inetSocketAddress1));
 
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-        int delaySeconds = 500;
+
         // 2.After a delay of 0.5s, create transaction group group1 under cluster1
+        int delaySeconds = 500;
         executor.schedule(
                 () -> {
                     try {
-
                         String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
                         createGroupInCluster(namespace, "group1", "cluster1");
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                    executor.shutdown(); // 任务执行后关闭执行器
+                    executor.shutdown(); // After the task is executed, close the executor
                 },
                 delaySeconds,
                 TimeUnit.MILLISECONDS);
+
         // 3.Watch transaction group group1
         long timestamp1 = System.currentTimeMillis();
-        boolean needFetch = registryService.watch("group1");
+        registryService.watch("group1");
         long timestamp2 = System.currentTimeMillis();
+
         // 4.After 0.5s, group1 is mapped to cluster1, and data should be pushed to the client within 1s.
-        assert timestamp2 - timestamp1 < 1500;
+        assertTrue(timestamp2 - timestamp1 < 1500);
 
         // 5.Get an instance
         List<ServiceInstance> list = registryService.lookup("group1");
@@ -303,12 +208,10 @@ class NamingserverRegistryServiceImplTest {
         assertEquals(inetSocketAddress.getPort(), 8088);
     }
 
-    @Disabled
     @Test
     public void testSubscribe() throws Exception {
-        NamingserverRegistryServiceImpl registryService = NamingserverRegistryServiceImpl.getInstance();
-
         AtomicBoolean isNotified = new AtomicBoolean(false);
+
         // 1.subscribe
         registryService.subscribe(
                 vGroup -> {
@@ -327,16 +230,12 @@ class NamingserverRegistryServiceImplTest {
         createGroupInCluster(namespace, "group2", "cluster1");
 
         // 3.check
-        assertEquals(isNotified.get(), true);
+        assertEquals(true, isNotified.get());
         reflectUnsubscribe("group2");
     }
 
     @Test
-    @Disabled
     public void testUnsubscribe() throws Exception {
-        NamingserverRegistryServiceImpl registryService =
-                (NamingserverRegistryServiceImpl) new NamingserverRegistryProvider().provide();
-
         NamingListenerimpl namingListenerimpl = new NamingListenerimpl();
 
         // 1.subscribe
@@ -367,7 +266,7 @@ class NamingserverRegistryServiceImplTest {
         paraMap.put("namespace", namespace);
         paraMap.put("vGroup", vGroup);
         paraMap.put("clusterName", clusterName);
-        String url = "http://127.0.0.1:8080/naming/v1/createGroup";
+        String url = "http://127.0.0.1:8081/naming/v1/createGroup";
         Map<String, String> header = new HashMap<>();
         header.put(HTTP.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
         try {

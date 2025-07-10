@@ -113,8 +113,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     // k: naming server address; v: Number of Health Check Continues Failures
-    private static final ConcurrentMap<String, AtomicInteger> AVAILABLE_NAMINGSERVER_MAP =
-            new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, AtomicInteger> AVAILABLE_NAMINGSERVER_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String /* vgroup */, List<NamingServerNode>> VGROUP_ADDRESS_MAP =
             new ConcurrentHashMap<>();
     private static final ConcurrentMap<String /* vgroup */, List<NamingListener>> LISTENER_SERVICE_MAP =
@@ -140,7 +139,8 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
 
     private NamingserverRegistryServiceImpl() {
         OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        String heartBeatKey = String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, "heartbeat-period");
+        String heartBeatKey =
+                String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, "heartbeat-period");
         healthcheckPeriod = FILE_CONFIG.getInt(heartBeatKey, healthcheckPeriod);
         List<String> urlList = getNamingAddrs();
         checkAvailableNamingAddr(urlList);
@@ -397,13 +397,13 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
                     key);
         }
 
-        return ServiceInstance.convertToServiceInstanceList(
-                Optional.ofNullable(VGROUP_ADDRESS_MAP.get(key)).orElse(Collections.emptyList()).stream()
-                        .map(node -> {
-                            Node.Endpoint endpoint = node.getTransaction();
-                            return new InetSocketAddress(endpoint.getHost(), endpoint.getPort());
-                        })
-                        .collect(Collectors.toList()));
+        return Optional.ofNullable(VGROUP_ADDRESS_MAP.get(key)).orElse(Collections.emptyList()).stream()
+                .map(node -> {
+                    Node.Endpoint endpoint = node.getTransaction();
+                    Map<String, Object> metadata = node.getMetadata();
+                    return new ServiceInstance(new InetSocketAddress(endpoint.getHost(), endpoint.getPort()), metadata);
+                })
+                .collect(Collectors.toList());
     }
 
     private List<ServiceInstance> refreshGroup(String vGroup) throws IOException, RetryableException {
@@ -453,7 +453,8 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         List<ServiceInstance> serviceInstances = new ArrayList<>();
         for (NamingServerNode node : newAddressList) {
             Node.Endpoint endpoint = node.getTransaction();
-            serviceInstances.add(new ServiceInstance(new InetSocketAddress(endpoint.getHost(), endpoint.getPort())));
+            serviceInstances.add(new ServiceInstance(
+                    new InetSocketAddress(endpoint.getHost(), endpoint.getPort()), node.getMetadata()));
         }
         removeOfflineAddressesIfNecessary(vGroup, vGroup, serviceInstances);
         VGROUP_ADDRESS_MAP.put(vGroup, newAddressList);
@@ -488,9 +489,9 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     @Override
     public List<ServiceInstance> refreshAliveLookup(
             String transactionServiceGroup, List<ServiceInstance> aliveInstances) {
-        Map<String, List<ServiceInstance>> clusterAddressMap =
+        Map<String, List<ServiceInstance>> clusterInstanceMap =
                 CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
-        return clusterAddressMap.put(transactionServiceGroup, aliveInstances);
+        return clusterInstanceMap.put(transactionServiceGroup, aliveInstances);
     }
 
     private static void refreshToken(String tcAddress) throws RetryableException {
@@ -580,8 +581,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      * @return url List
      */
     private List<String> getNamingAddrs() {
-        String namingAddrsKey =
-                String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, "server-addr");
+        String namingAddrsKey = String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, "server-addr");
 
         String urlListStr = FILE_CONFIG.getConfig(namingAddrsKey);
         if (StringUtils.isBlank(urlListStr)) {
