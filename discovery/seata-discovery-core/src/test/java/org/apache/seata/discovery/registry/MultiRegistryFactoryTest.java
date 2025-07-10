@@ -23,6 +23,7 @@ import ch.qos.logback.core.read.ListAppender;
 import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.exception.NotSupportYetException;
+import org.apache.seata.discovery.registry.mock.MockNacosRegistryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

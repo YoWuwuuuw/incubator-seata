@@ -32,9 +32,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
-/**
- * Created by guoyao on 2019/2/14.
- */
 public class LoadBalanceTest {
 
     private static final String XID = "XID";
