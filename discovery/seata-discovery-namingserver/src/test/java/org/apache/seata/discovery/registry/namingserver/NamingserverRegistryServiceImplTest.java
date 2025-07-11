@@ -16,20 +16,15 @@
  */
 package org.apache.seata.discovery.registry.namingserver;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.entity.ContentType;
-import org.apache.http.protocol.HTTP;
 import org.apache.seata.common.holder.ObjectHolder;
 import org.apache.seata.common.metadata.Cluster;
 import org.apache.seata.common.metadata.ClusterRole;
+import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.metadata.namingserver.MetaResponse;
 import org.apache.seata.common.metadata.namingserver.NamingServerNode;
 import org.apache.seata.common.metadata.namingserver.Unit;
-import org.apache.seata.common.util.HttpClientUtil;
-import org.apache.seata.config.Configuration;
-import org.apache.seata.config.ConfigurationFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -42,31 +37,50 @@ import org.springframework.core.env.PropertiesPropertySource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.seata.common.Constants.OBJECT_KEY_SPRING_CONFIGURABLE_ENVIRONMENT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Test for NamingserverRegistryServiceImpl
+ * @Disable annotation method requires local startup of namingserver for testing
+ */
 class NamingserverRegistryServiceImplTest {
-
-    private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
     private final NamingserverRegistryServiceImpl registryService = NamingserverRegistryServiceImpl.getInstance();
 
     @BeforeAll
     public static void beforeClass() {
+        // set the global instance information for the register
+        Instance instance = Instance.getInstance();
+        instance.setClusterName("cluster1");
+        instance.setUnit("unit1");
+        instance.setNamespace("dev");
+        instance.setTransaction(new Node.Endpoint("127.0.0.1", 8888));
+        instance.setControl(new Node.Endpoint("127.0.0.1", 8888));
+
+        Map<String, String> vGroups = new HashMap<>();
+        vGroups.put("group1", "unit1"); // vGroup -> unitName, namingserver automatically adds transaction groups based on it
+        instance.addMetadata("vGroup", vGroups);
+
         System.setProperty("registry.seata.namespace", "dev");
         System.setProperty("registry.seata.cluster", "cluster1");
         System.setProperty("registry.seata.server-addr", "127.0.0.1:8081");
+
+        System.setProperty("registry.seata.username", "seata");
+        System.setProperty("registry.seata.password", "seata");
+
+        // Set a smaller metadataMaxAgeMs for testing
+        System.setProperty("registry.seata.metadataMaxAgeMs", "1000");
+
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
         // Get the application environment
@@ -85,6 +99,9 @@ class NamingserverRegistryServiceImplTest {
         System.clearProperty("registry.seata.namespace");
         System.clearProperty("registry.seata.cluster");
         System.clearProperty("registry.seata.server-addr");
+        System.clearProperty("registry.seata.username");
+        System.clearProperty("registry.seata.password");
+        System.clearProperty("registry.seata.metadataMaxAgeMs");
     }
 
     @Test
@@ -97,6 +114,7 @@ class NamingserverRegistryServiceImplTest {
     }
 
     @Test
+    @Disabled
     public void testGetNamingAddr() throws Exception {
         Method getNamingAddrMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamingAddr");
         getNamingAddrMethod.setAccessible(true);
@@ -149,134 +167,102 @@ class NamingserverRegistryServiceImplTest {
     }
 
     @Test
+    @Disabled
     public void testRegisterAndUnregister() throws Exception {
-        ServiceInstance registerServiceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8888));
 
-        // 1.register
-        registryService.register(registerServiceInstance);
+        // The ServiceInstance parameter here has no effect and is only used for assertion testing.
+        // In fact, register is registered by calling Instance.getInstance() of the global singleton.
+        registryService.register(serviceInstance);
 
-        // 2.create vGroup in cluster
-        createGroupInCluster("dev", "group1", "cluster1");
-
-        // 3.get instances
         List<ServiceInstance> list = registryService.lookup("group1");
 
         assertEquals(1, list.size());
-        ServiceInstance lookupServiceInstance = list.get(0);
-        assertEquals(lookupServiceInstance, registerServiceInstance);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("vGroup", Instance.getInstance().getMetadata().get("vGroup"));
+        serviceInstance.setMetadata(metadata);
 
-        registryService.unregister(registerServiceInstance);
+        assertEquals(list.get(0), serviceInstance);
+
+        registryService.unregister(serviceInstance);
     }
 
     @Test
-    public void testWatch() throws Exception {
-        // 1.Register a node under cluster1
-        InetSocketAddress inetSocketAddress1 = new InetSocketAddress("127.0.0.1", 8088);
-        registryService.register(new ServiceInstance(inetSocketAddress1));
+    @Disabled
+    public void testRegister_withMetadata() throws Exception {
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8888));
+        Instance.getInstance().addMetadata("key1", "value1");
+        Instance.getInstance().addMetadata("key2", Collections.singletonMap("subKey", "subValue"));
 
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        registryService.register(serviceInstance);
 
-        // 2.After a delay of 0.5s, create transaction group group1 under cluster1
-        int delaySeconds = 500;
-        executor.schedule(
-                () -> {
-                    try {
-                        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-                        createGroupInCluster(namespace, "group1", "cluster1");
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                    executor.shutdown(); // After the task is executed, close the executor
-                },
-                delaySeconds,
-                TimeUnit.MILLISECONDS);
-
-        // 3.Watch transaction group group1
-        long timestamp1 = System.currentTimeMillis();
-        registryService.watch("group1");
-        long timestamp2 = System.currentTimeMillis();
-
-        // 4.After 0.5s, group1 is mapped to cluster1, and data should be pushed to the client within 1s.
-        assertTrue(timestamp2 - timestamp1 < 1500);
-
-        // 5.Get an instance
         List<ServiceInstance> list = registryService.lookup("group1");
-        reflectUnsubscribe("group1");
-        assertEquals(list.size(), 1);
-        InetSocketAddress inetSocketAddress = list.get(0).getAddress();
-        assertEquals(inetSocketAddress.getAddress().getHostAddress(), "127.0.0.1");
-        assertEquals(inetSocketAddress.getPort(), 8088);
+
+        assertEquals(1, list.size());
+        Map<String, Object> metadata = Instance.getInstance().getMetadata();
+        metadata.put("vGroup", Instance.getInstance().getMetadata().get("vGroup"));
+        serviceInstance.setMetadata(metadata);
+
+        assertEquals(list.get(0), serviceInstance);
+
+        registryService.unregister(serviceInstance);
     }
 
     @Test
-    public void testSubscribe() throws Exception {
-        AtomicBoolean isNotified = new AtomicBoolean(false);
+    @Disabled
+    public void testWatch() throws Exception {
+        // 1. registering an instance
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8888));
+        registryService.register(serviceInstance);
+        Thread.sleep(1000);
 
-        // 1.subscribe
-        registryService.subscribe(
-                vGroup -> {
-                    try {
-                        isNotified.set(true);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                "group2");
+        // 2. test for no changes: should return 304
+        boolean result1 = registryService.watch("group1");
+        assertFalse(result1);
 
-        // 2.register
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8088);
-        registryService.register(new ServiceInstance(inetSocketAddress));
-        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-        createGroupInCluster(namespace, "group2", "cluster1");
+        // 3. triggering data changes: Re-registering instances
+        registryService.unregister(serviceInstance);
+        Thread.sleep(1000);
+        
+        // set a new term value
+        Instance instance = Instance.getInstance();
+        instance.setTerm(System.currentTimeMillis());
+        registryService.register(serviceInstance);
+        Thread.sleep(1000);
 
-        // 3.check
-        assertEquals(true, isNotified.get());
-        reflectUnsubscribe("group2");
+        // 4. test for changes: simulate the client using the old term, and return 200
+        Field termField = NamingserverRegistryServiceImpl.class.getDeclaredField("term");
+        termField.setAccessible(true);
+        termField.set(registryService, 0L);
+        
+        boolean result2 = registryService.watch("group1");
+        assertTrue(result2);
+
+        reflectUnsubscribe("group1");
     }
 
     @Test
     public void testUnsubscribe() throws Exception {
         NamingListenerimpl namingListenerimpl = new NamingListenerimpl();
 
-        // 1.subscribe
-        registryService.subscribe(namingListenerimpl, "group1");
+        registryService.subscribe(namingListenerimpl, "group3");
 
-        // 2.register
-        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8088));
-        registryService.register(serviceInstance);
-        String namespace = FILE_CONFIG.getConfig("registry.namingserver.namespace");
-        createGroupInCluster(namespace, "group1", "cluster1");
+        registryService.unsubscribe(namingListenerimpl, "group3");
 
-        // 3.check
-        assertEquals(namingListenerimpl.isNotified, true);
-        namingListenerimpl.setNotified(false);
+        Thread.sleep(2000);
 
-        // 4.unsubscribe
-        registryService.unsubscribe(namingListenerimpl, "group1");
-
-        // 5.unregister
-        registryService.unregister(serviceInstance);
-
-        // 6.check
         assertEquals(namingListenerimpl.isNotified, false);
     }
 
-    private void createGroupInCluster(String namespace, String vGroup, String clusterName) throws Exception {
-        Map<String, String> paraMap = new HashMap<>();
-        paraMap.put("namespace", namespace);
-        paraMap.put("vGroup", vGroup);
-        paraMap.put("clusterName", clusterName);
-        String url = "http://127.0.0.1:8081/naming/v1/createGroup";
-        Map<String, String> header = new HashMap<>();
-        header.put(HTTP.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
-        try {
-            CloseableHttpResponse response = HttpClientUtil.doGet(url, paraMap, header, 30000);
-        } catch (Exception e) {
-            throw new RemoteException();
-        }
+    private void reflectUnsubscribe(String vGroup) throws Exception {
+        Field listenerServiceMapField = NamingserverRegistryServiceImpl.class.getDeclaredField("LISTENER_SERVICE_MAP");
+        listenerServiceMapField.setAccessible(true);
+        ConcurrentMap<String, List<NamingListener>> listenerServiceMap =
+                (ConcurrentMap<String, List<NamingListener>>) listenerServiceMapField.get(null);
+        listenerServiceMap.remove(vGroup);
     }
 
-    private class NamingListenerimpl implements NamingListener {
+    private static class NamingListenerimpl implements NamingListener {
 
         public boolean isNotified = false;
 
@@ -292,17 +278,5 @@ class NamingserverRegistryServiceImplTest {
         public void onEvent(String vGroup) {
             isNotified = true;
         }
-    }
-
-    private static void reflectUnsubscribe(String vGroup) throws Exception {
-        Field listenerServiceMapField = NamingserverRegistryServiceImpl.class.getDeclaredField("LISTENER_SERVICE_MAP");
-        listenerServiceMapField.setAccessible(true);
-        java.util.concurrent.ConcurrentMap<String, ?> listenerServiceMap =
-                (java.util.concurrent.ConcurrentMap<String, ?>) listenerServiceMapField.get(null);
-        listenerServiceMap.remove(vGroup);
-
-        Field isSubscribedField = NamingserverRegistryServiceImpl.class.getDeclaredField("isSubscribed");
-        isSubscribedField.setAccessible(true);
-        isSubscribedField.set(NamingserverRegistryServiceImpl.getInstance(), false);
     }
 }
