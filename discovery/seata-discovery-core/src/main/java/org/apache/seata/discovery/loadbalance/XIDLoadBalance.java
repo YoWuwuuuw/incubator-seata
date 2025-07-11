@@ -18,6 +18,7 @@ package org.apache.seata.discovery.loadbalance;
 
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.loader.LoadLevel;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +53,9 @@ public class XIDLoadBalance implements LoadBalance {
             String ip = serverAddress.substring(0, index);
             InetSocketAddress xidInetSocketAddress = new InetSocketAddress(ip, port);
             for (T invoker : invokers) {
-                InetSocketAddress inetSocketAddress = (InetSocketAddress) invoker;
+                InetSocketAddress inetSocketAddress = ((ServiceInstance) invoker).getAddress();
                 if (Objects.equals(xidInetSocketAddress, inetSocketAddress)) {
-                    return (T) inetSocketAddress;
+                    return invoker;
                 }
             }
             LOGGER.error("not found seata-server channel,xid: {}, try use random load balance", xid);

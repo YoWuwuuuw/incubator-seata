@@ -68,7 +68,9 @@ class NamingserverRegistryServiceImplTest {
         instance.setControl(new Node.Endpoint("127.0.0.1", 8888));
 
         Map<String, String> vGroups = new HashMap<>();
-        vGroups.put("group1", "unit1"); // vGroup -> unitName, namingserver automatically adds transaction groups based on it
+        vGroups.put(
+                "group1",
+                "unit1"); // vGroup -> unitName, namingserver automatically adds transaction groups based on it
         instance.addMetadata("vGroup", vGroups);
 
         System.setProperty("registry.seata.namespace", "dev");
@@ -223,7 +225,7 @@ class NamingserverRegistryServiceImplTest {
         // 3. triggering data changes: Re-registering instances
         registryService.unregister(serviceInstance);
         Thread.sleep(1000);
-        
+
         // set a new term value
         Instance instance = Instance.getInstance();
         instance.setTerm(System.currentTimeMillis());
@@ -234,7 +236,7 @@ class NamingserverRegistryServiceImplTest {
         Field termField = NamingserverRegistryServiceImpl.class.getDeclaredField("term");
         termField.setAccessible(true);
         termField.set(registryService, 0L);
-        
+
         boolean result2 = registryService.watch("group1");
         assertTrue(result2);
 
