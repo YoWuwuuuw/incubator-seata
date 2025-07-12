@@ -18,7 +18,6 @@ package org.apache.seata.discovery.loadbalance;
 
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.rpc.RpcStatus;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -26,12 +25,18 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LoadBalanceTest {
 
@@ -49,7 +54,7 @@ public class LoadBalanceTest {
         Map<ServiceInstance, AtomicLong> counter = getSelectedCounter(runs, instances, new RandomLoadBalance());
         for (ServiceInstance instance : counter.keySet()) {
             Long count = counter.get(instance).get();
-            Assertions.assertTrue(count > 0, "selecte one time at last");
+            assertTrue(count > 0, "selecte one time at last");
         }
     }
 
@@ -65,7 +70,7 @@ public class LoadBalanceTest {
         Map<ServiceInstance, AtomicLong> counter = getSelectedCounter(runs, instances, new RoundRobinLoadBalance());
         for (ServiceInstance instance : counter.keySet()) {
             Long count = counter.get(instance).get();
-            Assertions.assertTrue(Math.abs(count - runs / (0f + instances.size())) < 1f, "abs diff shoud < 1");
+            assertTrue(Math.abs(count - runs / (0f + instances.size())) < 1f, "abs diff shoud < 1");
         }
     }
 
@@ -80,13 +85,13 @@ public class LoadBalanceTest {
         XIDLoadBalance loadBalance = new XIDLoadBalance();
         // ipv4
         ServiceInstance serviceInstance = loadBalance.select(instances, "127.0.0.1:8092:123456");
-        Assertions.assertNotNull(serviceInstance);
+        assertNotNull(serviceInstance);
         // ipv6
         serviceInstance = loadBalance.select(instances, "2000:0000:0000:0000:0001:2345:6789:abcd:8092:123456");
-        Assertions.assertNotNull(serviceInstance);
+        assertNotNull(serviceInstance);
         // test not found tc channel
         serviceInstance = loadBalance.select(instances, "127.0.0.1:8199:123456");
-        Assertions.assertNotEquals(serviceInstance.getAddress().getPort(), 8199);
+        assertNotEquals(serviceInstance.getAddress().getPort(), 8199);
     }
 
     /**
@@ -106,7 +111,7 @@ public class LoadBalanceTest {
                 selected++;
             }
         }
-        Assertions.assertEquals(1, selected, "selected must be equal to 1");
+        assertEquals(1, selected, "selected must be equal to 1");
     }
 
     /**
@@ -125,13 +130,13 @@ public class LoadBalanceTest {
         List<ServiceInstance> instances2 = new ArrayList<>(instances);
         loadBalance.select(instances2, XID);
         Object o2 = getConsistentHashSelectorByReflect(loadBalance);
-        Assertions.assertEquals(o1, o2);
+        assertEquals(o1, o2);
 
         List<ServiceInstance> instances3 = new ArrayList<>(instances);
         instances3.remove(ThreadLocalRandom.current().nextInt(instances.size()));
         loadBalance.select(instances3, XID);
         Object o3 = getConsistentHashSelectorByReflect(loadBalance);
-        Assertions.assertNotEquals(o1, o3);
+        assertNotEquals(o1, o3);
     }
 
     /**
@@ -151,7 +156,7 @@ public class LoadBalanceTest {
         LoadBalance loadBalance = new LeastActiveLoadBalance();
         for (int i = 0; i < runs; i++) {
             ServiceInstance selectInstance = loadBalance.select(instances, XID);
-            Assertions.assertEquals(selectInstance, targetInstance);
+            assertEquals(selectInstance, targetInstance);
         }
         RpcStatus.beginCount(targetInstance.getAddress().toString());
         RpcStatus.beginCount(targetInstance.getAddress().toString());
@@ -159,11 +164,58 @@ public class LoadBalanceTest {
         for (ServiceInstance instance : counter.keySet()) {
             Long count = counter.get(instance).get();
             if (instance == targetInstance) {
-                Assertions.assertEquals(count, 0);
+                assertEquals(count, 0);
             } else {
-                Assertions.assertTrue(count > 0);
+                assertTrue(count > 0);
             }
         }
+    }
+
+    /**
+     * Test weighted random load balance select with instances without weights.
+     * Should downgrade to random load balancing.
+     *
+     * @param instances the instances without weights
+     */
+    @ParameterizedTest
+    @MethodSource("instanceProvider")
+    public void testWeightedRandomLoadBalance_selectWithoutWeights(List<ServiceInstance> instances) throws Exception {
+        int runs = 10000;
+        Map<ServiceInstance, AtomicLong> counter = getSelectedCounter(runs, instances, new WeightedRandomLoadBalance());
+
+        // Verify all instances are selected roughly equally (random distribution)
+        for (ServiceInstance instance : counter.keySet()) {
+            Long count = counter.get(instance).get();
+            assertTrue(count > 0);
+
+            // In random distribution, each instance should be selected roughly 1/n times
+            double expectedCount = runs / (double) instances.size();
+            double actualCount = count;
+            double tolerance = expectedCount * 0.2; // 20% tolerance
+            assertTrue(Math.abs(actualCount - expectedCount) < tolerance);
+        }
+    }
+
+    /**
+     * Test weighted random load balance select with weighted instances.
+     * Verifies that instances with higher weights are selected more frequently.
+     *
+     * @param instances the instances with weights configured
+     */
+    @ParameterizedTest
+    @MethodSource("weightedInstanceProvider")
+    public void testWeightedRandomLoadBalance_selectWithWeights(List<ServiceInstance> instances) throws Exception {
+        int runs = 10000;
+        Map<ServiceInstance, AtomicLong> counter = getSelectedCounter(runs, instances, new WeightedRandomLoadBalance());
+
+        // Verify all instances are selected at least once
+        for (ServiceInstance instance : counter.keySet()) {
+            Long count = counter.get(instance).get();
+            assertTrue(count > 0);
+        }
+
+        // Verify that instances with higher weights are selected more frequently
+        verifyWeightedDistribution(instances, counter);
     }
 
     /**
@@ -176,7 +228,7 @@ public class LoadBalanceTest {
      */
     public Map<ServiceInstance, AtomicLong> getSelectedCounter(
             int runs, List<ServiceInstance> instances, LoadBalance loadBalance) throws Exception {
-        Assertions.assertNotNull(loadBalance);
+        assertNotNull(loadBalance);
         Map<ServiceInstance, AtomicLong> counter = new ConcurrentHashMap<>();
         for (ServiceInstance instance : instances) {
             counter.put(instance, new AtomicLong(0));
@@ -200,7 +252,7 @@ public class LoadBalanceTest {
         Field selectorWrapperField = ConsistentHashLoadBalance.class.getDeclaredField("selectorWrapper");
         selectorWrapperField.setAccessible(true);
         Object selectWrapper = selectorWrapperField.get(loadBalance);
-        Assertions.assertNotNull(selectWrapper);
+        assertNotNull(selectWrapper);
         Field selectorField = selectWrapper.getClass().getDeclaredField("selector");
         selectorField.setAccessible(true);
         return selectorField.get(selectWrapper);
@@ -219,5 +271,92 @@ public class LoadBalanceTest {
                 new ServiceInstance(new InetSocketAddress("127.0.0.1", 8094)),
                 new ServiceInstance(new InetSocketAddress("127.0.0.1", 8095)),
                 new ServiceInstance(new InetSocketAddress("2000:0000:0000:0000:0001:2345:6789:abcd", 8092))));
+    }
+
+    /**
+     * Provides a stream of weighted service instance lists for parameterized tests.
+     *
+     * @return Stream<List<ServiceInstance>> weighted service instance lists
+     */
+    static Stream<List<ServiceInstance>> weightedInstanceProvider() {
+        return Stream.of(Arrays.asList(
+                createWeightedInstance("127.0.0.1", 8091, 2),
+                createWeightedInstance("127.0.0.1", 8092, 3),
+                createWeightedInstance("127.0.0.1", 8093, 1),
+                createWeightedInstance("127.0.0.1", 8094, 4),
+                createWeightedInstance("127.0.0.1", 8095, 2)));
+    }
+
+    /**
+     * Verify that the selection distribution roughly matches the configured weights.
+     * Instances with higher weights should be selected more frequently.
+     *
+     * @param instances the list of service instances
+     * @param counter   the selection count for each instance
+     */
+    private void verifyWeightedDistribution(List<ServiceInstance> instances, Map<ServiceInstance, AtomicLong> counter) {
+        // Calculate total weight and expected selection ratios
+        int totalWeight = 0;
+        Map<ServiceInstance, Integer> weights = new HashMap<>();
+
+        for (ServiceInstance instance : instances) {
+            int weight = getWeightFromInstance(instance);
+            weights.put(instance, weight);
+            totalWeight += weight;
+        }
+
+        if (totalWeight > 0) {
+            // Verify that instances with higher weights are selected more frequently
+            for (ServiceInstance instance : instances) {
+                int weight = weights.get(instance);
+                if (weight > 0) {
+                    double expectedRatio = (double) weight / totalWeight;
+                    double actualRatio = (double) counter.get(instance).get()
+                            / counter.values().stream()
+                                    .mapToLong(AtomicLong::get)
+                                    .sum();
+
+                    // Allow 30% tolerance for random distribution
+                    double tolerance = expectedRatio * 0.3;
+                    assertTrue(Math.abs(actualRatio - expectedRatio) < tolerance);
+                }
+            }
+        }
+    }
+
+    /**
+     * Extract weight from ServiceInstance metadata.
+     *
+     * @param instance the service instance
+     * @return the weight value, default is 1 if not configured
+     */
+    private int getWeightFromInstance(ServiceInstance instance) {
+        if (instance.getMetadata() != null && instance.getMetadata().containsKey("weight")) {
+            Object weightObj = instance.getMetadata().get("weight");
+            if (weightObj instanceof Number) {
+                return Math.max(0, ((Number) weightObj).intValue());
+            } else if (weightObj instanceof String) {
+                try {
+                    return Math.max(0, Integer.parseInt((String) weightObj));
+                } catch (NumberFormatException e) {
+                    return 1;
+                }
+            }
+        }
+        return 1;
+    }
+
+    /**
+     * Helper method to create a weighted service instance.
+     *
+     * @param host   the host
+     * @param port   the port
+     * @param weight the weight value
+     * @return ServiceInstance with weight configured in metadata
+     */
+    private static ServiceInstance createWeightedInstance(String host, int port, int weight) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("weight", weight);
+        return new ServiceInstance(new InetSocketAddress(host, port), metadata);
     }
 }

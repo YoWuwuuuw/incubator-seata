@@ -140,8 +140,8 @@ public class RaftVGroupMappingStoreManager implements VGroupMappingStoreManager 
                 Instance.getInstances().add(node);
                 InetSocketAddress inetSocketAddress = new InetSocketAddress(
                         node.getTransaction().getHost(), node.getTransaction().getPort());
+                ServiceInstance serviceInstance = new ServiceInstance(inetSocketAddress, node.getMetadata());
                 for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
-                    ServiceInstance serviceInstance = new ServiceInstance(inetSocketAddress, node.getMetadata());
                     registryService.register(serviceInstance);
                 }
             }

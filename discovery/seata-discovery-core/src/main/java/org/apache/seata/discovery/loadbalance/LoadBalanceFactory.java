@@ -46,6 +46,8 @@ public class LoadBalanceFactory {
 
     public static final String LEAST_ACTIVE_LOAD_BALANCE = "LeastActiveLoadBalance";
 
+    public static final String WEIGHTED_RANDOM_LOAD_BALANCE = "WeightedRandomLoadBalance";
+
     /**
      * Get instance.
      *

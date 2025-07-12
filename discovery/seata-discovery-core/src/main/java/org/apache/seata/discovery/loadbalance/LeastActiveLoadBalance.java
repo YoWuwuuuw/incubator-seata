@@ -27,7 +27,6 @@ import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.LEAST_AC
 
 /**
  * The type Least Active load balance.
- *
  */
 @LoadLevel(name = LEAST_ACTIVE_LOAD_BALANCE)
 public class LeastActiveLoadBalance implements LoadBalance {
@@ -39,8 +38,9 @@ public class LeastActiveLoadBalance implements LoadBalance {
         int leastCount = 0;
         int[] leastIndexes = new int[length];
         for (int i = 0; i < length; i++) {
-            ServiceInstance serviceInstance = (ServiceInstance)invokers.get(i);
-            long active = RpcStatus.getStatus(serviceInstance.getAddress().toString()).getActive();
+            ServiceInstance serviceInstance = (ServiceInstance) invokers.get(i);
+            long active =
+                    RpcStatus.getStatus(serviceInstance.getAddress().toString()).getActive();
             if (leastActive == -1 || active < leastActive) {
                 leastActive = active;
                 leastCount = 1;
