@@ -165,7 +165,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     @Override
-    public List<ServiceInstance> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) {
         transactionServiceGroup = key;
         final String cluster = getServiceGroup(key);
         if (cluster == null) {

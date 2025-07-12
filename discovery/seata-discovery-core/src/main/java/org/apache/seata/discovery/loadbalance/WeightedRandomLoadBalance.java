@@ -16,6 +16,7 @@
  */
 package org.apache.seata.discovery.loadbalance;
 
+import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.loader.LoadLevel;
 import org.apache.seata.common.metadata.ServiceInstance;
 
@@ -33,15 +34,18 @@ import java.util.concurrent.ThreadLocalRandom;
 @LoadLevel(name = LoadBalanceFactory.WEIGHTED_RANDOM_LOAD_BALANCE)
 public class WeightedRandomLoadBalance implements LoadBalance {
 
+    private static final LoadBalance RANDOM_LOAD_BALANCE =
+            EnhancedServiceLoader.load(LoadBalance.class, LoadBalanceFactory.RANDOM_LOAD_BALANCE);
+
     private static final String WEIGHT_KEY = "weight";
     private static final int DEFAULT_WEIGHT = 1;
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T select(List<T> invokers, String xid) {
+    public <T> T select(List<T> invokers, String xid) throws Exception {
         // Check if all instances have no weight, if so downgrade to random load balancing
         if (!hasAnyWeight(invokers)) {
-            return new RandomLoadBalance().select(invokers, xid);
+            return RANDOM_LOAD_BALANCE.select(invokers, xid);
         }
 
         // Calculate total weight
@@ -49,7 +53,7 @@ public class WeightedRandomLoadBalance implements LoadBalance {
 
         // If total weight is 0, downgrade to random load balancing
         if (totalWeight <= 0) {
-            return new RandomLoadBalance().select(invokers, xid);
+            return RANDOM_LOAD_BALANCE.select(invokers, xid);
         }
 
         // Generate random numbers

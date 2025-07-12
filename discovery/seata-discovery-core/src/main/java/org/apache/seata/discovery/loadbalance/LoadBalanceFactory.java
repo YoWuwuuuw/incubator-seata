@@ -23,18 +23,10 @@ import static org.apache.seata.common.DefaultValues.DEFAULT_LOAD_BALANCE;
 
 /**
  * The type Load balance factory.
- *
  */
 public class LoadBalanceFactory {
 
-    private static final String CLIENT_PREFIX = "client.";
-
-    /**
-     * The constant LOAD_BALANCE_PREFIX.
-     */
-    public static final String LOAD_BALANCE_PREFIX = CLIENT_PREFIX + "loadBalance.";
-
-    public static final String LOAD_BALANCE_TYPE = LOAD_BALANCE_PREFIX + "type";
+    public static final String LOAD_BALANCE_TYPE = "client.loadBalance.type";
 
     public static final String RANDOM_LOAD_BALANCE = "RandomLoadBalance";
 

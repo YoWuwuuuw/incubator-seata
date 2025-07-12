@@ -31,7 +31,6 @@ import static org.apache.seata.discovery.loadbalance.LoadBalanceFactory.XID_LOAD
 
 /**
  * The type xid load balance.
- *
  */
 @LoadLevel(name = XID_LOAD_BALANCE)
 public class XIDLoadBalance implements LoadBalance {

@@ -72,6 +72,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+/**
+ * Namingserver registryService implementation.
+ */
 public class NamingserverRegistryServiceImpl implements RegistryService<NamingListener> {
     private static final Logger LOGGER = LoggerFactory.getLogger(NamingserverRegistryServiceImpl.class);
     public static volatile NamingserverRegistryServiceImpl instance;
@@ -97,7 +100,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     private static final int LONG_POLL_TIME_OUT_PERIOD = 28 * 1000;
 
     private static final int THREAD_POOL_NUM = 1;
-    // naming server is considered unhealthy if failing in healthy check more than 1 times
+    // namingserver is considered unhealthy if failing in healthy check more than 1 times
     private static final int HEALTH_CHECK_THRESHOLD = 1;
 
     private static final String USERNAME;
@@ -184,11 +187,6 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         }
     }
 
-    /**
-     * Gets instance.
-     *
-     * @return the instance
-     */
     static NamingserverRegistryServiceImpl getInstance() {
         if (instance == null) {
             synchronized (NamingserverRegistryServiceImpl.class) {
@@ -375,11 +373,6 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         isSubscribed = false;
     }
 
-    /**
-     * @param key vGroup name
-     * @return List<InetSocketAddress> available instance list
-     * @throws Exception
-     */
     @Override
     public List<ServiceInstance> lookup(String key) throws Exception {
         if (!isSubscribed) {
@@ -548,9 +541,9 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     /**
-     * get one namingserver url
+     * Get a single available namingserver address with health check and load balancing.
      *
-     * @return url
+     * @return a randomly selected healthy naming server address
      */
     private String getNamingAddr() {
         if (namingServerAddressCache != null) {
@@ -576,9 +569,9 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
     }
 
     /**
-     * get all namingserver urlList
+     * Get all configured namingserver addresses from configuration file without health check.
      *
-     * @return url List
+     * @return list of all configured naming server addresses
      */
     private List<String> getNamingAddrs() {
         String namingAddrsKey = String.join(FILE_CONFIG_SPLIT_CHAR, FILE_ROOT_REGISTRY, REGISTRY_TYPE, "server-addr");

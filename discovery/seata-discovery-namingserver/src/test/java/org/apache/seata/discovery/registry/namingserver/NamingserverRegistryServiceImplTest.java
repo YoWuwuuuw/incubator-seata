@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test for NamingserverRegistryServiceImpl
- * @Disable annotation method requires local startup of namingserver for testing
+ * The @Disable annotation method requires local startup of namingserver for testing
  */
 class NamingserverRegistryServiceImplTest {
     private final NamingserverRegistryServiceImpl registryService = NamingserverRegistryServiceImpl.getInstance();

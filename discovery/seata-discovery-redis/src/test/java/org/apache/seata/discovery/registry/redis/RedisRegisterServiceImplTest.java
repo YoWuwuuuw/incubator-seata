@@ -92,7 +92,8 @@ public class RedisRegisterServiceImplTest {
 
         ConcurrentMap<String, Set<ServiceInstance>> CLUSTER_INSTANCE_MAP =
                 (ConcurrentMap<String, Set<ServiceInstance>>) field.get(null);
-        CLUSTER_INSTANCE_MAP.put("cluster", Sets.newSet(new ServiceInstance(NetUtil.toInetSocketAddress("127.0.0.1:8091"))));
+        CLUSTER_INSTANCE_MAP.put(
+                "cluster", Sets.newSet(new ServiceInstance(NetUtil.toInetSocketAddress("127.0.0.1:8091"))));
 
         Method method = RedisRegistryServiceImpl.class.getDeclaredMethod(
                 "removeServerAddressByPushEmptyProtection", String.class, String.class);

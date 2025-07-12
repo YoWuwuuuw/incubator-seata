@@ -28,7 +28,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @since 2021/6/13 5:09 pm
+ * Responsible for managing the heartbeat mechanism for registry centers.
  */
 public class RegistryHeartBeats {
 

@@ -30,9 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * The interface Registry service.
+ * Service registry interface for managing service registration and discovery.
  *
- * @param <T> the type parameter
+ * @param <T> the listener type parameter
  */
 public interface RegistryService<T> {
 
@@ -40,40 +40,45 @@ public interface RegistryService<T> {
      * The constant PREFIX_SERVICE_MAPPING.
      */
     String PREFIX_SERVICE_MAPPING = "vgroupMapping.";
+
     /**
      * The constant PREFIX_SERVICE_ROOT.
      */
     String PREFIX_SERVICE_ROOT = "service";
+
     /**
      * The constant CONFIG_SPLIT_CHAR.
      */
     String CONFIG_SPLIT_CHAR = ".";
 
+    /**
+     * Set of service group names.
+     */
     Set<String> SERVICE_GROUP_NAME = new HashSet<>();
 
     /**
-     * Service node health check
+     * Current instance cache map for service node health check.
      */
     Map<String, Map<String, List<ServiceInstance>>> CURRENT_INSTANCE_MAP = new ConcurrentHashMap<>();
 
     /**
-     * Register.
+     * Register a serviceInstance.
      *
-     * @param address the address
+     * @param address the serviceInstance to register
      * @throws Exception the exception
      */
     void register(ServiceInstance address) throws Exception;
 
     /**
-     * Unregister.
+     * Unregister a serviceInstance.
      *
-     * @param address the address
+     * @param address the service instance to unregister
      * @throws Exception the exception
      */
     void unregister(ServiceInstance address) throws Exception;
 
     /**
-     * Subscribe.
+     * Subscribe to cluster changes.
      *
      * @param cluster  the cluster
      * @param listener the listener
@@ -82,7 +87,7 @@ public interface RegistryService<T> {
     void subscribe(String cluster, T listener) throws Exception;
 
     /**
-     * Unsubscribe.
+     * Unsubscribe from cluster changes.
      *
      * @param cluster  the cluster
      * @param listener the listener
@@ -91,22 +96,22 @@ public interface RegistryService<T> {
     void unsubscribe(String cluster, T listener) throws Exception;
 
     /**
-     * Lookup list.
+     * Look up serviceInstances by key.
      *
      * @param key the key
-     * @return the list
+     * @return list of serviceInstances
      * @throws Exception the exception
      */
     List<ServiceInstance> lookup(String key) throws Exception;
 
     /**
-     * Close.
+     * Close the registry service.
      * @throws Exception the exception
      */
     void close() throws Exception;
 
     /**
-     * Get current service group name
+     * Get current service group name from configuration.
      *
      * @param key service group
      * @return the service group name
@@ -119,6 +124,12 @@ public interface RegistryService<T> {
         return ConfigurationFactory.getInstance().getConfig(key);
     }
 
+    /**
+     * Look up alive serviceInstances for a transaction service group.
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @return list of alive serviceInstances
+     */
     default List<ServiceInstance> aliveLookup(String transactionServiceGroup) {
         Map<String, List<ServiceInstance>> clusterInstanceMap =
                 CURRENT_INSTANCE_MAP.computeIfAbsent(transactionServiceGroup, key -> new ConcurrentHashMap<>());
@@ -136,6 +147,13 @@ public interface RegistryService<T> {
                 .orElse(Collections.emptyList());
     }
 
+    /**
+     * Refresh alive serviceInstances for a transaction service group.
+     *
+     * @param transactionServiceGroup the transaction service group
+     * @param aliveInstances the alive instances to update
+     * @return the previous list of instances
+     */
     default List<ServiceInstance> refreshAliveLookup(
             String transactionServiceGroup, List<ServiceInstance> aliveInstances) {
         Map<String, List<ServiceInstance>> clusterInstanceMap =
@@ -147,13 +165,11 @@ public interface RegistryService<T> {
     }
 
     /**
+     * Remove offline instances if necessary by intersecting old and new instances.
      *
-     * remove offline addresses if necessary.
-     *
-     * Intersection of the old and new addresses
-     *
-     * @param clusterName
-     * @param onlineInstances
+     * @param transactionGroupService the transaction group service
+     * @param clusterName the cluster name
+     * @param onlineInstances the online instances
      */
     default void removeOfflineAddressesIfNecessary(
             String transactionGroupService, String clusterName, Collection<ServiceInstance> onlineInstances) {

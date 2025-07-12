@@ -30,7 +30,6 @@ import java.util.List;
 
 /**
  * The type File registry service.
- *
  */
 public class FileRegistryServiceImpl implements RegistryService<ConfigChangeListener> {
 
