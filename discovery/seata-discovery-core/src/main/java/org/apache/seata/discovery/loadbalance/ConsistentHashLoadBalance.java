@@ -39,8 +39,8 @@ public class ConsistentHashLoadBalance implements LoadBalance {
     /**
      * The number of virtual nodes
      */
-    private static final int VIRTUAL_NODES_NUM = ConfigurationFactory.getInstance()
-            .getInt("client.loadBalance.virtualNodes", VIRTUAL_NODES_DEFAULT);
+    private static final int VIRTUAL_NODES_NUM =
+            ConfigurationFactory.getInstance().getInt("client.loadBalance.virtualNodes", VIRTUAL_NODES_DEFAULT);
 
     /**
      * Consistent hashing selector wrapper for caching selector instances

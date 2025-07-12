@@ -25,7 +25,7 @@ import org.apache.seata.discovery.registry.RegistryService;
  */
 @LoadLevel(name = "Seata", order = 1)
 public class NamingserverRegistryProvider implements RegistryProvider {
-    
+
     /**
      * Provides the namingserver registryService instance.
      *

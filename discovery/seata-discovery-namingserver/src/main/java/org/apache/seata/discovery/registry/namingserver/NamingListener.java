@@ -20,7 +20,7 @@ package org.apache.seata.discovery.registry.namingserver;
  * Listener interface for namingserver events.
  */
 public interface NamingListener {
-    
+
     /**
      * Called when a namingserver event occurs.
      *
