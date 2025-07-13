@@ -159,8 +159,8 @@ public class EtcdRegistryServiceImplTest {
         // 1.register
         registryService.register(new ServiceInstance(inetSocketAddress));
         // 2.lookup
-        List<InetSocketAddress> inetSocketAddresses = registryService.lookup(DEFAULT_TX_GROUP);
-        assertThat(inetSocketAddresses).size().isEqualTo(1);
+        List<ServiceInstance> serviceInstances = registryService.lookup(DEFAULT_TX_GROUP);
+        assertThat(serviceInstances).size().isEqualTo(1);
     }
 
     /**

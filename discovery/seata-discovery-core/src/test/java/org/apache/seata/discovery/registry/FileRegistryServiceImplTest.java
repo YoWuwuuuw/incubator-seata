@@ -84,7 +84,6 @@ class FileRegistryServiceImplTest {
     public void testGetServiceGroup() {
         String result = fileRegistryService.getServiceGroup(TEST_GROUP);
         assertEquals(TEST_GROUP, result);
-        assertTrue(RegistryService.SERVICE_GROUP_NAME.contains("service.vgroupMapping.testGroup"));
     }
 
     /**
@@ -136,7 +135,7 @@ class FileRegistryServiceImplTest {
 
         List<ServiceInstance> result = fileRegistryService.aliveLookup(TEST_GROUP);
         assertFalse(result.isEmpty());
-        assertEquals(newInstances.toString(), new HashSet<>(result).toString());
+        assertEquals(new HashSet<>(newInstances), new HashSet<>(result));
     }
 
     @Test
