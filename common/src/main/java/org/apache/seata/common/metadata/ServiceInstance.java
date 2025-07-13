@@ -70,7 +70,7 @@ public class ServiceInstance {
      * @param addresses list of InetSocketAddress
      * @return list of ServiceInstance
      */
-    public static List<ServiceInstance> convertToServiceInstanceList(List<InetSocketAddress> addresses) {
+    public static List<ServiceInstance> convertToServiceInstanceSet(List<InetSocketAddress> addresses) {
         List<ServiceInstance> serviceInstances = new ArrayList<>();
         if (addresses != null && !addresses.isEmpty()) {
             for (InetSocketAddress address : addresses) {
@@ -86,7 +86,7 @@ public class ServiceInstance {
      * @param addresses set of InetSocketAddress
      * @return set of ServiceInstance
      */
-    public static Set<ServiceInstance> convertToServiceInstanceList(Set<InetSocketAddress> addresses) {
+    public static Set<ServiceInstance> convertToServiceInstanceSet(Set<InetSocketAddress> addresses) {
         Set<ServiceInstance> serviceInstances = new HashSet<>();
         if (addresses != null && !addresses.isEmpty()) {
             for (InetSocketAddress address : addresses) {

@@ -60,9 +60,10 @@ public interface VGroupMappingStoreManager {
         Map<String, Object> map = this.readVGroups();
         instance.addMetadata("vGroup", map);
         try {
-            InetSocketAddress address = new InetSocketAddress(XID.getIpAddress(), XID.getPort());
+            ServiceInstance serviceInstance = new ServiceInstance(
+                    new InetSocketAddress(XID.getIpAddress(), XID.getPort()), instance.getMetadata());
             for (RegistryService<?> registryService : MultiRegistryFactory.getInstances()) {
-                registryService.register(new ServiceInstance(address, instance.getMetadata()));
+                registryService.register(serviceInstance);
             }
         } catch (Exception e) {
             throw new RuntimeException("vGroup mapping relationship notified failed! ", e);

@@ -142,8 +142,7 @@ class FileRegistryServiceImplTest {
     @Test
     public void testLookup() throws Exception {
         List<ServiceInstance> lookup = fileRegistryService.lookup(TEST_CLUSTER);
-        System.out.println(lookup.get(0).toString());
-        assertTrue(lookup.get(0).toString().equals(serviceInstance1.toString()));
+        assertEquals(serviceInstance1, lookup.get(0));
 
         // Set the getServiceGroup() to return null by reflection
         Configuration mockConfig = Mockito.mock(Configuration.class);

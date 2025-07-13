@@ -408,7 +408,7 @@ public class RaftRegistryServiceImpl implements RegistryService<ConfigChangeList
             String clusterName = getServiceGroup(transactionServiceGroup);
             Node leader = METADATA.getLeader(clusterName);
             if (leader != null) {
-                return ServiceInstance.convertToServiceInstanceList(
+                return ServiceInstance.convertToServiceInstanceSet(
                         Collections.singletonList(selectTransactionEndpoint(leader)));
             }
         }
@@ -611,7 +611,7 @@ public class RaftRegistryServiceImpl implements RegistryService<ConfigChangeList
         }
         List<Node> nodes = METADATA.getNodes(clusterName);
         if (CollectionUtils.isNotEmpty(nodes)) {
-            return ServiceInstance.convertToServiceInstanceList(nodes.parallelStream()
+            return ServiceInstance.convertToServiceInstanceSet(nodes.parallelStream()
                     .map(RaftRegistryServiceImpl::selectTransactionEndpoint)
                     .collect(Collectors.toList()));
         }

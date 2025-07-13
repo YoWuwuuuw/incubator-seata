@@ -383,7 +383,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
             }
         } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
 
-        Set<ServiceInstance> currentInstances = ServiceInstance.convertToServiceInstanceList(newAddressSet);
+        Set<ServiceInstance> currentInstances = ServiceInstance.convertToServiceInstanceSet(newAddressSet);
 
         if (CollectionUtils.isNotEmpty(currentInstances)
                 && !currentInstances.equals(CLUSTER_INSTANCE_MAP.get(clusterName))) {

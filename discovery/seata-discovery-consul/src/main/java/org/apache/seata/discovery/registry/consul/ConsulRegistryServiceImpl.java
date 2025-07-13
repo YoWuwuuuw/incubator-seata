@@ -318,7 +318,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
             return;
         }
 
-        List<ServiceInstance> instances = ServiceInstance.convertToServiceInstanceList(services.stream()
+        List<ServiceInstance> instances = ServiceInstance.convertToServiceInstanceSet(services.stream()
                 .map(HealthService::getService)
                 .map(service -> new InetSocketAddress(service.getAddress(), service.getPort()))
                 .collect(Collectors.toList()));

@@ -107,7 +107,7 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
     }
 
     @Override
-    public void unregister(ServiceInstance address) {
+    public void unregister(ServiceInstance instance) {
         if (eurekaClient == null) {
             return;
         }
@@ -121,7 +121,7 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
     }
 
     @Override
-    public void unsubscribe(String cluster, EurekaEventListener listener) throws Exception {
+    public void unsubscribe(String cluster, EurekaEventListener listener) {
         List<EurekaEventListener> subscribeList = LISTENER_SERVICE_MAP.get(cluster);
         if (subscribeList != null) {
             List<EurekaEventListener> newSubscribeList = subscribeList.stream()
@@ -133,7 +133,7 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
     }
 
     @Override
-    public List<ServiceInstance> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) {
         transactionServiceGroup = key;
         String clusterName = getServiceGroup(key);
         if (clusterName == null) {
@@ -169,7 +169,7 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
             LOGGER.info("refresh cluster success,but cluster empty! cluster name:{}", clusterName);
         } else {
             List<ServiceInstance> onlineInstanceList =
-                    ServiceInstance.convertToServiceInstanceList(application.getInstances().stream()
+                    ServiceInstance.convertToServiceInstanceSet(application.getInstances().stream()
                             .filter(instance -> InstanceInfo.InstanceStatus.UP.equals(instance.getStatus())
                                     && instance.getIPAddr() != null
                                     && instance.getPort() > 0

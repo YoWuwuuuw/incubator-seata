@@ -202,7 +202,7 @@ public class EtcdRegistryServiceImplMockTest {
                     .thenReturn(CLUSTER_NAME);
             List<ServiceInstance> lookup = registryService.lookup(DEFAULT_TX_GROUP);
             List<String> lookupServices = lookup.stream()
-                    .map(instance -> instance.getAddress().getHostString() + ":"
+                    .map(instance -> instance.getAddress().getHostName() + ":"
                             + instance.getAddress().getPort())
                     .collect(Collectors.toList());
 
