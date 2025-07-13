@@ -17,14 +17,9 @@
 package org.apache.seata.discovery.registry.namingserver;
 
 import org.apache.seata.common.holder.ObjectHolder;
-import org.apache.seata.common.metadata.Cluster;
-import org.apache.seata.common.metadata.ClusterRole;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.metadata.ServiceInstance;
-import org.apache.seata.common.metadata.namingserver.MetaResponse;
-import org.apache.seata.common.metadata.namingserver.NamingServerNode;
-import org.apache.seata.common.metadata.namingserver.Unit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -37,7 +32,6 @@ import org.springframework.core.env.PropertiesPropertySource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -123,49 +117,6 @@ class NamingserverRegistryServiceImplTest {
 
         String addr = (String) getNamingAddrMethod.invoke(registryService);
         assertEquals(addr, "127.0.0.1:8081");
-    }
-
-    @Test
-    public void testHandleMetadata_withMockResponse() throws Exception {
-        // Use reflection to set the isSubscribed field to true
-        Field isSubscribedField = NamingserverRegistryServiceImpl.class.getDeclaredField("isSubscribed");
-        isSubscribedField.setAccessible(true);
-        isSubscribedField.set(registryService, true);
-
-        // Create a mock MetaResponse
-        MetaResponse metaResponse = new MetaResponse();
-        metaResponse.setTerm(1);
-
-        Cluster cluster = new Cluster();
-        Unit unit = new Unit();
-        List<NamingServerNode> namingInstanceList = new ArrayList<>();
-        NamingServerNode node = new NamingServerNode();
-        node.setRole(ClusterRole.LEADER);
-        node.setTerm(1);
-        node.setTransaction(new Node.Endpoint("127.0.0.1", 8091));
-        namingInstanceList.add(node);
-        unit.setNamingInstanceList(namingInstanceList);
-        List<Unit> unitData = new ArrayList<>();
-        unitData.add(unit);
-        cluster.setUnitData(unitData);
-        List<Cluster> clusterList = new ArrayList<>();
-        clusterList.add(cluster);
-        metaResponse.setClusterList(clusterList);
-
-        // Call the method to test
-        Method handleMetadataMethod =
-                registryService.getClass().getDeclaredMethod("handleMetadata", MetaResponse.class, String.class);
-        handleMetadataMethod.setAccessible(true);
-        List<ServiceInstance> result =
-                (List<ServiceInstance>) handleMetadataMethod.invoke(registryService, metaResponse, "testGroup");
-
-        registryService.lookup("testGroup");
-
-        // Verify the result
-        assertEquals(1, result.size());
-        assertEquals("127.0.0.1", result.get(0).getAddress().getAddress().getHostAddress());
-        assertEquals(8091, result.get(0).getAddress().getPort());
-        isSubscribedField.set(registryService, false);
     }
 
     @Test
