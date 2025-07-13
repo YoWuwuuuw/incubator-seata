@@ -248,12 +248,15 @@ public class NamingserverRegistryServiceImplMockTest {
 
     @Test
     public void testGetNamespace() throws Exception {
+        System.setProperty("registry.seata.namespace", "dev");
+
         Method getNamespaceMethod = NamingserverRegistryServiceImpl.class.getDeclaredMethod("getNamespace");
         getNamespaceMethod.setAccessible(true);
         String result = (String) getNamespaceMethod.invoke(registryService);
 
-        // The default namespace should be "public" when no configuration is set
-        assertEquals("public", result);
+        assertEquals("dev", result);
+
+        System.clearProperty("registry.seata.namespace");
     }
 
     @Test
