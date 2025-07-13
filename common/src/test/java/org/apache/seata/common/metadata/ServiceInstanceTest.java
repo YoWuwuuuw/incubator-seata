@@ -53,7 +53,7 @@ public class ServiceInstanceTest {
 
         assertEquals(
                 Instance.getInstance().getTransaction().getHost(),
-                instance2.getAddress().getHostName());
+                instance2.getAddress().getAddress().getHostAddress());
         assertEquals(
                 Instance.getInstance().getTransaction().getPort(),
                 instance2.getAddress().getPort());
