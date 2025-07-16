@@ -207,6 +207,14 @@ class NamingserverRegistryServiceImplTest {
         assertEquals(namingListenerimpl.isNotified, false);
     }
 
+    @Test
+    public void testAliveLookup() {
+        String transactionServiceGroup = "test-group";
+
+        List<ServiceInstance> result = registryService.aliveLookup(transactionServiceGroup);
+        assertEquals(0, result.size());
+    }
+
     private void reflectUnsubscribe(String vGroup) throws Exception {
         Field listenerServiceMapField = NamingserverRegistryServiceImpl.class.getDeclaredField("LISTENER_SERVICE_MAP");
         listenerServiceMapField.setAccessible(true);

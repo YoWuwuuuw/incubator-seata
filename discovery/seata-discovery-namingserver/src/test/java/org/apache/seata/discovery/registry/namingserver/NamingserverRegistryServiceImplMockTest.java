@@ -209,14 +209,6 @@ public class NamingserverRegistryServiceImplMockTest {
     }
 
     @Test
-    public void testAliveLookup() {
-        String transactionServiceGroup = "test-group";
-
-        List<ServiceInstance> result = registryService.aliveLookup(transactionServiceGroup);
-        assertEquals(0, result.size());
-    }
-
-    @Test
     public void testRefreshAliveLookup() {
         ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8091));
         String transactionServiceGroup = "test-group";
