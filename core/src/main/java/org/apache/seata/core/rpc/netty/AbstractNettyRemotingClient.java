@@ -49,6 +49,7 @@ import org.apache.seata.core.rpc.processor.Pair;
 import org.apache.seata.core.rpc.processor.RemotingProcessor;
 import org.apache.seata.discovery.loadbalance.LoadBalanceFactory;
 import org.apache.seata.discovery.registry.RegistryFactory;
+import org.apache.seata.discovery.routing.RoutingManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -290,6 +291,10 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             @SuppressWarnings("unchecked")
             List<ServiceInstance> serviceInstances =
                     RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
+
+            // Apply routing filter
+            serviceInstances = applyRoutingFilter(serviceInstances, transactionServiceGroup, msg);
+
             address = this.doSelect(serviceInstances, msg);
         } catch (Exception ex) {
             LOGGER.error("Select the address failed: {}", ex.getMessage());
@@ -298,6 +303,30 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             throw new FrameworkException(NoAvailableService);
         }
         return NetUtil.toStringAddress(address);
+    }
+
+    /**
+     * Apply routing filter
+     * @param serviceInstances original service instances list
+     * @param transactionServiceGroup transaction service group
+     * @param msg message object
+     * @return filtered service instances list
+     */
+    private List<ServiceInstance> applyRoutingFilter(
+            List<ServiceInstance> serviceInstances, String transactionServiceGroup, Object msg) {
+        try {
+            // Get routing manager
+            RoutingManager routingManager = RoutingManager.getInstance();
+
+            // Get transaction ID
+            String xid = getXid(msg);
+
+            // Execute routing filter
+            return routingManager.filter(serviceInstances);
+        } catch (Exception e) {
+            LOGGER.warn("Routing filter failed, using original service instances: {}", e.getMessage());
+            return serviceInstances;
+        }
     }
 
     protected InetSocketAddress doSelect(List<ServiceInstance> list, Object msg) throws Exception {

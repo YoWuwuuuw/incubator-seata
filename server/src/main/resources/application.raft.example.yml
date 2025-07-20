@@ -84,6 +84,9 @@ seata:
     preferred-networks: 30.240.*
     metadata:
       weight: 100
+      # Server location configuration for region routing
+      lat: ""
+      lng: ""
     seata:
       server-addr: 127.0.0.1:8081
       cluster: default

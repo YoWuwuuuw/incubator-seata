@@ -19,12 +19,21 @@ package org.apache.seata.spring.boot.autoconfigure.properties.registry;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.apache.seata.spring.boot.autoconfigure.StarterConstants.REGISTRY_METADATA_PREFIX;
 
 @Component
 @ConfigurationProperties(prefix = REGISTRY_METADATA_PREFIX)
 public class RegistryMetadataProperties {
     private String external;
+
+    /**
+     * Dynamic metadata configuration map
+     * This allows loading all metadata properties dynamically
+     */
+    private Map<String, String> metadata = new HashMap<>();
 
     public String getExternal() {
         return external;
@@ -33,5 +42,64 @@ public class RegistryMetadataProperties {
     public RegistryMetadataProperties setExternal(String external) {
         this.external = external;
         return this;
+    }
+
+    public Map<String, String> getMetadata() {
+        return metadata;
+    }
+
+    public RegistryMetadataProperties setMetadata(Map<String, String> metadata) {
+        this.metadata = metadata;
+        return this;
+    }
+
+    /**
+     * Get metadata value by key
+     * @param key metadata key
+     * @return metadata value
+     */
+    public String getMetadataValue(String key) {
+        return metadata.get(key);
+    }
+
+    /**
+     * Set metadata value by key
+     * @param key metadata key
+     * @param value metadata value
+     */
+    public void setMetadataValue(String key, String value) {
+        metadata.put(key, value);
+    }
+
+    /**
+     * Get location latitude
+     * @return latitude value
+     */
+    public String getLat() {
+        return metadata.get("lat");
+    }
+
+    /**
+     * Set location latitude
+     * @param lat latitude value
+     */
+    public void setLat(String lat) {
+        metadata.put("lat", lat);
+    }
+
+    /**
+     * Get location longitude
+     * @return longitude value
+     */
+    public String getLng() {
+        return metadata.get("lng");
+    }
+
+    /**
+     * Set location longitude
+     * @param lng longitude value
+     */
+    public void setLng(String lng) {
+        metadata.put("lng", lng);
     }
 }
