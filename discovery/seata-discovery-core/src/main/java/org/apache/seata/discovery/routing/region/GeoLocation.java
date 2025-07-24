@@ -46,8 +46,12 @@ public class GeoLocation {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         GeoLocation that = (GeoLocation) o;
         return Double.compare(that.latitude, latitude) == 0 && Double.compare(that.longitude, longitude) == 0;
     }
