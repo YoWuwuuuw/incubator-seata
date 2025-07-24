@@ -169,7 +169,7 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
             LOGGER.info("refresh cluster success,but cluster empty! cluster name:{}", clusterName);
         } else {
             List<ServiceInstance> onlineInstanceList =
-                    ServiceInstance.convertToServiceInstanceSet(application.getInstances().stream()
+                    ServiceInstance.convertToServiceInstanceList(application.getInstances().stream()
                             .filter(instance -> InstanceInfo.InstanceStatus.UP.equals(instance.getStatus())
                                     && instance.getIPAddr() != null
                                     && instance.getPort() > 0

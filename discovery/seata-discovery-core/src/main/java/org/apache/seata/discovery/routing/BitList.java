@@ -16,10 +16,10 @@
  */
 package org.apache.seata.discovery.routing;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * High-performance routing intermediate structure based on BitSet.
@@ -35,6 +35,7 @@ public class BitList<T> {
 
     /**
      * Constructor
+     *
      * @param list original list
      */
     public BitList(List<T> list) {
@@ -46,8 +47,9 @@ public class BitList<T> {
 
     /**
      * Create BitList from list
+     *
      * @param list list
-     * @param <T> element type
+     * @param <T>  element type
      * @return BitList instance
      */
     public static <T> BitList<T> fromList(List<T> list) {
@@ -56,11 +58,14 @@ public class BitList<T> {
 
     /**
      * Filter operation
+     *
      * @param predicate filter condition
      * @return filtered BitList
      */
     public BitList<T> filter(Predicate<T> predicate) {
         BitList<T> result = new BitList<>(originalList);
+        result.validBits.clear();
+        result.validBits.or(this.validBits); // Inherit the current valid bit first
         for (int i = 0; i < size; i++) {
             if (validBits.get(i) && !predicate.test(originalList.get(i))) {
                 result.validBits.clear(i);
@@ -71,16 +76,22 @@ public class BitList<T> {
 
     /**
      * Convert to List
+     *
      * @return List of valid elements
      */
     public List<T> toList() {
-        return originalList.stream()
-                .filter(item -> validBits.get(originalList.indexOf(item)))
-                .collect(Collectors.toList());
+        List<T> result = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            if (validBits.get(i)) {
+                result.add(originalList.get(i));
+            }
+        }
+        return result;
     }
 
     /**
      * Get the number of valid elements
+     *
      * @return number of valid elements
      */
     public int size() {
@@ -89,6 +100,7 @@ public class BitList<T> {
 
     /**
      * Check if empty
+     *
      * @return whether it is empty
      */
     public boolean isEmpty() {

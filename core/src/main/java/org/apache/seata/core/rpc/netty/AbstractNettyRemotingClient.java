@@ -288,12 +288,11 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
     protected String loadBalance(String transactionServiceGroup, Object msg) {
         InetSocketAddress address = null;
         try {
-            @SuppressWarnings("unchecked")
             List<ServiceInstance> serviceInstances =
                     RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
 
             // Apply routing filter
-            serviceInstances = applyRoutingFilter(serviceInstances, transactionServiceGroup, msg);
+            serviceInstances = applyRoutingFilter(serviceInstances);
 
             address = this.doSelect(serviceInstances, msg);
         } catch (Exception ex) {
@@ -307,24 +306,23 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
 
     /**
      * Apply routing filter
+     *
      * @param serviceInstances original service instances list
-     * @param transactionServiceGroup transaction service group
-     * @param msg message object
      * @return filtered service instances list
      */
-    private List<ServiceInstance> applyRoutingFilter(
-            List<ServiceInstance> serviceInstances, String transactionServiceGroup, Object msg) {
+    private List<ServiceInstance> applyRoutingFilter(List<ServiceInstance> serviceInstances) {
         try {
+            if (serviceInstances == null || serviceInstances.isEmpty()) {
+                return serviceInstances;
+            }
+
             // Get routing manager
             RoutingManager routingManager = RoutingManager.getInstance();
-
-            // Get transaction ID
-            String xid = getXid(msg);
 
             // Execute routing filter
             return routingManager.filter(serviceInstances);
         } catch (Exception e) {
-            LOGGER.warn("Routing filter failed, using original service instances: {}", e.getMessage());
+            LOGGER.warn("Routing filter failed, using original service instances", e);
             return serviceInstances;
         }
     }

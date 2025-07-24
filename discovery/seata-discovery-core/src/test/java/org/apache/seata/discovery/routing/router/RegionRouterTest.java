@@ -77,6 +77,10 @@ public class RegionRouterTest {
 
         BitList<ServiceInstance> result = router.doRoute(servers, ctx);
         assertEquals(2, result.size()); // Should return all servers, sorted by distance
+
+        // Verify that servers are sorted by distance (server1 should be first as it has the same location as client)
+        assertEquals(server1, result.toList().get(0));
+        assertEquals(server2, result.toList().get(1));
     }
 
     /**

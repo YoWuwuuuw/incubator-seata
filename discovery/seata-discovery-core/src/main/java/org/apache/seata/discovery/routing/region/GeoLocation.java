@@ -16,6 +16,8 @@
  */
 package org.apache.seata.discovery.routing.region;
 
+import java.util.Objects;
+
 /**
  * Geographic location information
  * Based on latitude and longitude coordinates, used for client and server location representation
@@ -40,5 +42,18 @@ public class GeoLocation {
     @Override
     public String toString() {
         return String.format("Location{lat=%.6f, lng=%.6f}", latitude, longitude);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GeoLocation that = (GeoLocation) o;
+        return Double.compare(that.latitude, latitude) == 0 && Double.compare(that.longitude, longitude) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(latitude, longitude);
     }
 }

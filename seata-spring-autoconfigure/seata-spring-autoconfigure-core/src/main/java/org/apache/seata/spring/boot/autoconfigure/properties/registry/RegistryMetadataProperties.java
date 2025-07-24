@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.seata.spring.boot.autoconfigure.StarterConstants.REGISTRY_METADATA_PREFIX;
 
@@ -33,7 +34,7 @@ public class RegistryMetadataProperties {
      * Dynamic metadata configuration map
      * This allows loading all metadata properties dynamically
      */
-    private Map<String, String> metadata = new HashMap<>();
+    private Map<String, String> metadata = new ConcurrentHashMap<>();
 
     public String getExternal() {
         return external;
@@ -45,21 +46,12 @@ public class RegistryMetadataProperties {
     }
 
     public Map<String, String> getMetadata() {
-        return metadata;
+        return new HashMap<>(metadata);
     }
 
     public RegistryMetadataProperties setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
         return this;
-    }
-
-    /**
-     * Get metadata value by key
-     * @param key metadata key
-     * @return metadata value
-     */
-    public String getMetadataValue(String key) {
-        return metadata.get(key);
     }
 
     /**

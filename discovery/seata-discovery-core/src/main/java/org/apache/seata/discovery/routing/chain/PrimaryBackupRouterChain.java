@@ -22,6 +22,7 @@ import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -34,41 +35,43 @@ public class PrimaryBackupRouterChain implements RouterChain {
     private final DefaultRouterChain primaryChain;
     private final DefaultRouterChain backupChain;
 
-    private final String primaryOrder;
-    private final String backupOrder;
-
-    private boolean hasSwitchedToBackup = false; // Whether already switched to backup chain
+    private volatile boolean hasSwitchedToBackup = false; // Whether already switched to backup chain
 
     /**
      * Constructor
      */
     public PrimaryBackupRouterChain() {
-        this.primaryOrder = RoutingProperties.getPrimaryBackupOrder();
-        this.backupOrder = RoutingProperties.getRouterChainOrder();
+        // Use clearer naming
+        String primaryChainOrder = RoutingProperties.getPrimaryBackupOrder();
+        String fallbackChainOrder = RoutingProperties.getRouterChainOrder();
 
-        // Validate primary chain configuration
-        if (primaryOrder == null || primaryOrder.trim().isEmpty()) {
-            // Primary chain not configured, check backup chain
-            if (backupOrder == null || backupOrder.trim().isEmpty()) {
-                LOGGER.warn("Both primary and backup chain orders are not configured, using fallback strategy");
-                this.primaryChain = new DefaultRouterChain();
-                this.backupChain = new DefaultRouterChain();
-            } else {
-                LOGGER.warn("Primary backup order is not configured, using backup chain as primary");
-                this.primaryChain = new DefaultRouterChain(backupOrder);
-                this.backupChain = new DefaultRouterChain();
-            }
-        } else {
-            // Validate primary chain configuration validity
-            if (isValidRouterOrder(primaryOrder)) {
-                this.primaryChain = new DefaultRouterChain(primaryOrder);
-                this.backupChain = new DefaultRouterChain();
-            } else {
-                LOGGER.warn("Primary backup order configuration is invalid, using fallback strategy");
-                this.primaryChain = new DefaultRouterChain();
-                this.backupChain = new DefaultRouterChain();
-            }
+        this.primaryChain = createRouterChain(primaryChainOrder, "primary");
+        this.backupChain = createRouterChain(fallbackChainOrder, "backup");
+
+        // If the primary chain is invalid, try to use the backup chain as the primary
+        if (this.primaryChain == null && this.backupChain != null) {
+            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
+                    .warn("Primary chain is invalid, using backup chain as primary");
         }
+
+        // Ensure both chains are not null
+        if (this.primaryChain == null) {
+            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
+                    .warn("Primary and backup chain are invalid, using default chain");
+        }
+    }
+
+    private DefaultRouterChain createRouterChain(String order, String chainType) {
+        if (order == null || order.trim().isEmpty()) {
+            LoggerFactory.getLogger(PrimaryBackupRouterChain.class).warn("{} chain order is not configured", chainType);
+            return null;
+        }
+        if (!isValidRouterOrder(order)) {
+            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
+                    .warn("{} chain order configuration is invalid: {}", chainType, order);
+            return null;
+        }
+        return new DefaultRouterChain(order);
     }
 
     /**
@@ -107,20 +110,20 @@ public class PrimaryBackupRouterChain implements RouterChain {
             return primaryResult;
         }
 
-        // Primary chain result is empty, switch to backup chain
-        if (RoutingProperties.isPrimaryBackupEnabled()) {
-            LOGGER.info("Primary chain produced empty result, switching to backup chain");
-            hasSwitchedToBackup = true;
-
-            List<ServiceInstance> backupResult = backupChain.filterAll(servers, ctx);
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Backup chain filtered {} servers from {}", backupResult.size(), servers.size());
-            }
-            return backupResult;
+        // Primary chain result is empty
+        if (!RoutingProperties.isPrimaryBackupEnabled()) {
+            // Backup chain is disabled, return primary chain's empty result
+            return primaryResult;
         }
 
-        // If backup chain is also disabled, return original list
-        return servers;
+        LOGGER.info("Primary chain produced empty result, switching to backup chain");
+        hasSwitchedToBackup = true;
+
+        List<ServiceInstance> backupResult = backupChain.filterAll(servers, ctx);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Backup chain filtered {} servers from {}", backupResult.size(), servers.size());
+        }
+        return backupResult;
     }
 
     /**
@@ -133,16 +136,15 @@ public class PrimaryBackupRouterChain implements RouterChain {
         if (routerOrder == null || routerOrder.trim().isEmpty()) {
             return false;
         }
-
-        String[] orderNames = routerOrder.split(",");
-        for (String orderName : orderNames) {
-            String trimmedName = orderName.trim();
-            if (!trimmedName.isEmpty() && !RouterChainUtils.isValidRouterName(trimmedName)) {
-                LOGGER.warn("Invalid router name in configuration: {}", trimmedName);
-                return false;
-            }
-        }
-
-        return true;
+        return Arrays.stream(routerOrder.split(","))
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .allMatch(name -> {
+                    if (!RouterChainUtils.isValidRouterName(name)) {
+                        LOGGER.warn("Invalid router name in configuration: {}", name);
+                        return false;
+                    }
+                    return true;
+                });
     }
 }

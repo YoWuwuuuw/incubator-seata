@@ -78,8 +78,12 @@ public class ExpressionParser {
     private static List<ConditionMatcher> parseSingleExpression(String expression) {
         List<ConditionMatcher> matchers = new ArrayList<>();
 
-        // Remove possible parentheses
-        String cleanExpression = expression.replaceAll("[()]", "").trim();
+        // Remove outer parentheses only
+        String cleanExpression = expression.trim();
+        if (cleanExpression.startsWith("(") && cleanExpression.endsWith(")")) {
+            cleanExpression =
+                    cleanExpression.substring(1, cleanExpression.length() - 1).trim();
+        }
 
         if (!cleanExpression.isEmpty()) {
             matchers.add(new ConfigurableConditionMatcher(cleanExpression));
@@ -111,11 +115,8 @@ public class ExpressionParser {
                         matchers.add(new ConfigurableConditionMatcher(condition));
                     }
                 } else {
-                    // If no parentheses, use directly
-                    String condition = part.replaceAll("[()]", "").trim();
-                    if (!condition.isEmpty()) {
-                        matchers.add(new ConfigurableConditionMatcher(condition));
-                    }
+                    // OR expression parts must have parentheses
+                    throw new IllegalArgumentException("OR expression part must be enclosed in parentheses: " + part);
                 }
             }
         }

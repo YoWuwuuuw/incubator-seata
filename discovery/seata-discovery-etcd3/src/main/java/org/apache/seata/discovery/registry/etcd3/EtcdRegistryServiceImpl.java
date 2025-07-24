@@ -278,7 +278,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 .get(buildRegistryKeyPrefix(cluster), getOption)
                 .get();
         // 2.add to list
-        List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceSet(getResponse.getKvs().stream()
+        List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceList(getResponse.getKvs().stream()
                 .map(keyValue -> {
                     String[] instanceInfo =
                             NetUtil.splitIPPortStr(keyValue.getValue().toString(UTF_8));

@@ -77,10 +77,6 @@ public class RoutingManager {
      * @return filtered service instances list
      */
     public List<ServiceInstance> filter(List<ServiceInstance> servers) {
-        if (servers == null || servers.isEmpty()) {
-            return servers;
-        }
-
         // Check if routing feature is enabled
         if (!RoutingProperties.isRoutingEnabled()) {
             return servers;

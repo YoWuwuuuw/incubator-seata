@@ -176,19 +176,23 @@ public class MetadataRouterTest {
 
         ServiceInstance server1 = mock(ServiceInstance.class);
         ServiceInstance server2 = mock(ServiceInstance.class);
+        ServiceInstance server3 = mock(ServiceInstance.class);
         Map<String, Object> metadata1 = new HashMap<>();
         Map<String, Object> metadata2 = new HashMap<>();
         metadata1.put("version", "2.5");
         // server2 has no version metadata
+        // server3 has null metadata
         when(server1.getMetadata()).thenReturn(metadata1);
         when(server2.getMetadata()).thenReturn(metadata2);
+        when(server3.getMetadata()).thenReturn(null);
 
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2));
+        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2, server3));
         RoutingContext ctx = new RoutingContext();
 
         BitList<ServiceInstance> result = router.doRoute(servers, ctx);
         assertEquals(1, result.size()); // Only server1 should pass through
         assertTrue(result.toList().contains(server1));
         assertFalse(result.toList().contains(server2));
+        assertFalse(result.toList().contains(server3));
     }
 }

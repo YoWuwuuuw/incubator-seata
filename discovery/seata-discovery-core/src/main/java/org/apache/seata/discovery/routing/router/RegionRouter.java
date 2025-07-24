@@ -131,7 +131,7 @@ public class RegionRouter extends AbstractStateRouter<ServiceInstance> {
      * @return distance (km)
      */
     private double calculateHaversineDistance(GeoLocation loc1, GeoLocation loc2) {
-        final double R = 6371; // Earth radius (km)
+        final double r = 6371; // Earth radius (km)
 
         double latDistance = Math.toRadians(loc2.getLatitude() - loc1.getLatitude());
         double lngDistance = Math.toRadians(loc2.getLongitude() - loc1.getLongitude());
@@ -144,7 +144,7 @@ public class RegionRouter extends AbstractStateRouter<ServiceInstance> {
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        return R * c;
+        return r * c;
     }
 
     @Override

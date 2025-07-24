@@ -57,16 +57,19 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
     @Override
     protected BitList<ServiceInstance> doRoute(BitList<ServiceInstance> servers, RoutingContext ctx) {
+        // Create a local copy to ensure consistency during method execution
+        String currentExpression = this.expression;
+
         // If expression is empty or contains only spaces, return original server list directly
-        if (expression == null || expression.trim().isEmpty()) {
+        if (currentExpression == null || currentExpression.trim().isEmpty()) {
             return servers;
         }
 
         // Parse expression
-        List<ConditionMatcher> matchers = ExpressionParser.parse(expression);
+        List<ConditionMatcher> matchers = ExpressionParser.parse(currentExpression);
 
         // Check if it's an OR expression
-        if (ExpressionParser.isOrExpression(expression)) {
+        if (ExpressionParser.isOrExpression(currentExpression)) {
             // OR logic: any condition satisfied is sufficient
             return servers.filter(server -> matchers.stream().anyMatch(m -> m.match(server, ctx)));
         } else {

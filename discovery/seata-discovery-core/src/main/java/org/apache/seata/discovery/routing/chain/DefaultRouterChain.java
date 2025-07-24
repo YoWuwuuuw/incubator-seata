@@ -98,10 +98,10 @@ public class DefaultRouterChain implements RouterChain {
             if (result.isEmpty()) {
                 if (fallbackToAny) {
                     LOGGER.warn("Router chain produced empty result, falling back to all servers");
-                    return BitList.fromList(servers.toList());
+                    return servers;
                 } else {
                     LOGGER.warn("Router chain produced empty result, no fallback allowed");
-                    return new BitList<>(new ArrayList<>());
+                    return result;
                 }
             }
         }
@@ -225,10 +225,12 @@ public class DefaultRouterChain implements RouterChain {
                                 EnhancedServiceLoader.load(StateRouter.class, routerName);
                         if (customRouter != null) {
                             routerInstances.add(customRouter);
+                        } else {
+                            LOGGER.warn(
+                                    "Custom router '{}' specified in configuration but not found via SPI", routerName);
                         }
                     } catch (Exception e) {
-                        // Ignore loading failure
-                        LOGGER.debug("Failed to load custom router: {}", routerName, e);
+                        LOGGER.warn("Failed to load custom router: {}", routerName, e);
                     }
                 }
                 break;

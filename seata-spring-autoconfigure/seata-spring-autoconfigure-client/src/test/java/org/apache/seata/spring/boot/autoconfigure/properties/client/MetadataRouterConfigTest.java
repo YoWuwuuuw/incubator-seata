@@ -29,7 +29,7 @@ public class MetadataRouterConfigTest {
     public void testDefaultValues() {
         MetadataRouterConfig config = new MetadataRouterConfig();
 
-        assertTrue(config.isEnabled());
+        assertFalse(config.isEnabled());
         assertEquals("", config.getExpression());
     }
 

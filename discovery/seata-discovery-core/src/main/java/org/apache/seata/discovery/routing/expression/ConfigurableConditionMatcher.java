@@ -48,6 +48,12 @@ public class ConfigurableConditionMatcher implements ConditionMatcher {
     @Override
     public boolean match(ServiceInstance server, RoutingContext ctx) {
         Map<String, Object> metadata = server.getMetadata();
+
+        // Handle null metadata case
+        if (metadata == null) {
+            return false; // If metadata is null, don't pass through
+        }
+
         Object actualValue = metadata.get(key);
 
         if (actualValue == null) {
