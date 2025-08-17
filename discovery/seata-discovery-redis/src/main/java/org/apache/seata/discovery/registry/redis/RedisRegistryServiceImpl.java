@@ -155,16 +155,16 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     public void register(ServiceInstance instance) {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        doRegisterOrExpire(address, true);
-        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, KEY_REFRESH_PERIOD, this::doRegisterOrExpire);
+        doRegisterOrExpire(instance, true);
+        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, KEY_REFRESH_PERIOD, this::doRegisterOrExpire);
     }
 
-    private void doRegisterOrExpire(InetSocketAddress address) {
-        doRegisterOrExpire(address, false);
+    private void doRegisterOrExpire(ServiceInstance instance) {
+        doRegisterOrExpire(instance, false);
     }
 
-    private void doRegisterOrExpire(InetSocketAddress address, boolean publish) {
-        String serverAddr = NetUtil.toStringAddress(address);
+    private void doRegisterOrExpire(ServiceInstance instance, boolean publish) {
+        String serverAddr = NetUtil.toStringAddress(instance.getAddress());
         String key = getRedisRegistryKey() + "_" + serverAddr; // key = registry.redis.${cluster}_ip:port
         try (Jedis jedis = jedisPool.getResource();
                 Pipeline pipelined = jedis.pipelined()) {
