@@ -264,6 +264,71 @@ public interface ConfigurationKeys {
     String DEFAULT_GLOBAL_TRANSACTION_TIMEOUT = CLIENT_TM_PREFIX + "defaultGlobalTransactionTimeout";
 
     /**
+     * The constant CLIENT_ROUTING_PREFIX.
+     */
+    String CLIENT_ROUTING_PREFIX = CLIENT_PREFIX + "routing.";
+
+    /**
+     * the constant CLIENT_ROUTING_ENABLED
+     */
+    String CLIENT_ROUTING_ENABLED = CLIENT_ROUTING_PREFIX + "enabled";
+
+    /**
+     * the constant CLIENT_ROUTING_DEBUG
+     */
+    String CLIENT_ROUTING_DEBUG = CLIENT_ROUTING_PREFIX + "debug";
+
+    /**
+     * the constant CLIENT_ROUTING_FALLBACK
+     */
+    String CLIENT_ROUTING_FALLBACK = CLIENT_ROUTING_PREFIX + "fallback";
+
+    /**
+     * the constant CLIENT_ROUTING_LOCATION_LAT
+     */
+    String CLIENT_ROUTING_LOCATION_LAT = CLIENT_ROUTING_PREFIX + "location.lat";
+
+    /**
+     * the constant CLIENT_ROUTING_LOCATION_LNG
+     */
+    String CLIENT_ROUTING_LOCATION_LNG = CLIENT_ROUTING_PREFIX + "location.lng";
+
+    /**
+     * the constant CLIENT_REGION_ROUTER_ENABLED
+     */
+    String CLIENT_REGION_ROUTER_ENABLED = CLIENT_ROUTING_PREFIX + "region-router.enabled";
+
+    /**
+     * the constant CLIENT_REGION_ROUTER_TOP_N
+     */
+    String CLIENT_REGION_ROUTER_TOP_N = CLIENT_ROUTING_PREFIX + "region-router.topN";
+
+    /**
+     * the constant CLIENT_METADATA_ROUTER_ENABLED
+     */
+    String CLIENT_METADATA_ROUTER_ENABLED = CLIENT_ROUTING_PREFIX + "metadata-router.enabled";
+
+    /**
+     * the constant CLIENT_METADATA_ROUTER_EXPRESSION
+     */
+    String CLIENT_METADATA_ROUTER_EXPRESSION = CLIENT_ROUTING_PREFIX + "metadata-router.expression";
+
+    /**
+     * the constant CLIENT_ROUTER_CHAIN_ORDER
+     */
+    String CLIENT_ROUTER_CHAIN_ORDER = CLIENT_ROUTING_PREFIX + "chain.order";
+
+    /**
+     * the constant CLIENT_PRIMARY_BACKUP_ENABLED
+     */
+    String CLIENT_PRIMARY_BACKUP_ENABLED = CLIENT_ROUTING_PREFIX + "primary-backup.enabled";
+
+    /**
+     * The constant CLIENT_PRIMARY_BACKUP_ORDER
+     */
+    String CLIENT_PRIMARY_BACKUP_ORDER = CLIENT_ROUTING_PREFIX + "primary-backup.order";
+
+    /**
      * The constant SERIALIZE_FOR_RPC.
      */
     String SERIALIZE_FOR_RPC = TRANSPORT_PREFIX + "serialization";

@@ -16,13 +16,15 @@
  */
 package org.apache.seata.discovery.routing.chain;
 
+import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RouterSnapshotNode;
 import org.apache.seata.discovery.routing.RoutingContext;
 import org.apache.seata.discovery.routing.StateRouter;
-import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.apache.seata.discovery.routing.router.MetadataRouter;
 import org.apache.seata.discovery.routing.router.RegionRouter;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import java.util.List;
 public class DefaultRouterChain implements RouterChain {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRouterChain.class);
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private final List<StateRouter<ServiceInstance>> routers = new ArrayList<>();
 
@@ -47,9 +50,9 @@ public class DefaultRouterChain implements RouterChain {
      * Default constructor
      */
     public DefaultRouterChain() {
-        this.fallbackToAny = RoutingProperties.isRoutingFallbackEnabled();
-        this.debugEnabled = RoutingProperties.isRoutingDebugEnabled();
-        loadRouters(RoutingProperties.getRouterChainOrder());
+        this.fallbackToAny = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
+        this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
+        loadRouters(fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTER_CHAIN_ORDER));
     }
 
     /**
@@ -58,8 +61,8 @@ public class DefaultRouterChain implements RouterChain {
      * @param routerOrder router order string
      */
     public DefaultRouterChain(String routerOrder) {
-        this.fallbackToAny = RoutingProperties.isRoutingFallbackEnabled();
-        this.debugEnabled = RoutingProperties.isRoutingDebugEnabled();
+        this.fallbackToAny = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
+        this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
         loadRouters(routerOrder);
     }
 
@@ -182,15 +185,15 @@ public class DefaultRouterChain implements RouterChain {
      */
     private boolean isRouterEnabled(String routerName) {
         if (routerName.startsWith("metadata-router-")) {
-            // Check if specific metadata-router is enabled
-            return RoutingProperties.isMetadataRouterEnabled(routerName);
+            String configKey = "client.routing." + routerName + ".enabled";
+            return fileConfig.getBoolean(configKey, true);
         }
 
         switch (routerName) {
             case "region-router":
-                return RoutingProperties.isRegionRouterEnabled();
+                return fileConfig.getBoolean(ConfigurationKeys.CLIENT_REGION_ROUTER_ENABLED, true);
             case "metadata-router":
-                return RoutingProperties.isMetadataRouterEnabled();
+                return fileConfig.getBoolean(ConfigurationKeys.CLIENT_METADATA_ROUTER_ENABLED, true);
             default:
                 return true; // SPI routers are enabled by default
         }
@@ -215,9 +218,7 @@ public class DefaultRouterChain implements RouterChain {
                 break;
             default:
                 if (routerName.startsWith("metadata-router-")) {
-                    // Create specific metadata-router instance
-                    MetadataRouter router = new MetadataRouter(routerName);
-                    routerInstances.add(router);
+                    routerInstances.add(new MetadataRouter(routerName));
                 } else {
                     // Try to load custom router via SPI
                     try {

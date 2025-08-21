@@ -16,18 +16,22 @@
  */
 package org.apache.seata.discovery.routing.region;
 
-import org.apache.seata.discovery.routing.config.RoutingProperties;
+import org.apache.seata.common.ConfigurationKeys;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 
 /**
  * Supports degradation mechanism: prefers dynamic location, falls back to configured location on failure
  */
 public class DefaultClientLocationProvider implements ClientLocationProvider {
 
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
+
     @Override
     public GeoLocation getClientLocation() {
         // Configured location information
-        double lat = RoutingProperties.getClientRoutingLocationLat();
-        double lng = RoutingProperties.getClientRoutingLocationLng();
+        double lat = Double.parseDouble(fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTING_LOCATION_LAT, "0.0"));
+        double lng = Double.parseDouble(fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTING_LOCATION_LNG, "0.0"));
 
         return new GeoLocation(lat, lng);
     }

@@ -16,11 +16,13 @@
  */
 package org.apache.seata.discovery.routing;
 
+import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.chain.DefaultRouterChain;
 import org.apache.seata.discovery.routing.chain.PrimaryBackupRouterChain;
 import org.apache.seata.discovery.routing.chain.RouterChain;
-import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.apache.seata.discovery.routing.region.ClientLocationProvider;
 import org.apache.seata.discovery.routing.region.DefaultClientLocationProvider;
 import org.apache.seata.discovery.routing.region.GeoLocation;
@@ -35,6 +37,7 @@ import java.util.List;
 public class RoutingManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RoutingManager.class);
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private static volatile RoutingManager INSTANCE;
 
@@ -46,7 +49,7 @@ public class RoutingManager {
      */
     private RoutingManager() {
         // Choose which router chain mode to use based on configuration
-        if (RoutingProperties.isPrimaryBackupEnabled()) {
+        if (fileConfig.getBoolean(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ENABLED, false)) {
             LOGGER.info("Using PrimaryBackupRouterChain Mode");
             this.routerChain = new PrimaryBackupRouterChain();
         } else {
@@ -78,7 +81,7 @@ public class RoutingManager {
      */
     public List<ServiceInstance> filter(List<ServiceInstance> servers) {
         // Check if routing feature is enabled
-        if (!RoutingProperties.isRoutingEnabled()) {
+        if (!fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_ENABLED, false)) {
             return servers;
         }
 
@@ -89,7 +92,7 @@ public class RoutingManager {
             // Execute routing filter
             List<ServiceInstance> filteredServers = routerChain.filterAll(servers, ctx);
 
-            if (LOGGER.isDebugEnabled() || RoutingProperties.isRoutingDebugEnabled()) {
+            if (LOGGER.isDebugEnabled() || fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false)) {
                 LOGGER.debug(
                         "Routing filter applied: original={}, filtered={}, group={}, xid={}",
                         servers.size(),
@@ -116,10 +119,6 @@ public class RoutingManager {
             ctx.setAttribute("clientLat", location.getLatitude());
             ctx.setAttribute("clientLng", location.getLongitude());
         }
-
-        // Add router configuration information
-        ctx.setAttribute("regionRouterEnabled", RoutingProperties.isRegionRouterEnabled());
-        ctx.setAttribute("metadataRouterEnabled", RoutingProperties.isMetadataRouterEnabled());
 
         // Add other context information
         ctx.setAttribute("timestamp", System.currentTimeMillis());

@@ -16,10 +16,12 @@
  */
 package org.apache.seata.discovery.routing.router;
 
+import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RoutingContext;
-import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.apache.seata.discovery.routing.expression.ConditionMatcher;
 import org.apache.seata.discovery.routing.expression.ExpressionParser;
 
@@ -36,6 +38,8 @@ import java.util.List;
  */
 public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
+
     private volatile String expression;
 
     /**
@@ -43,7 +47,7 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
      */
     public MetadataRouter() {
         super("MetadataRouter", false);
-        this.expression = RoutingProperties.getMetadataRouterExpression();
+        this.expression = fileConfig.getConfig(ConfigurationKeys.CLIENT_METADATA_ROUTER_EXPRESSION);
     }
 
     /**
@@ -52,7 +56,7 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
      */
     public MetadataRouter(String routerName) {
         super(routerName, false);
-        this.expression = RoutingProperties.getMetadataRouterExpression(routerName);
+        this.expression = fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTING_PREFIX + routerName + ".expression");
     }
 
     @Override

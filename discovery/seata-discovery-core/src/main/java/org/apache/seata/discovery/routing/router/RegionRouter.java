@@ -16,10 +16,12 @@
  */
 package org.apache.seata.discovery.routing.router;
 
+import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RoutingContext;
-import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.apache.seata.discovery.routing.region.GeoLocation;
 import org.apache.seata.discovery.routing.region.ServerWithDistance;
 import org.slf4j.Logger;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class RegionRouter extends AbstractStateRouter<ServiceInstance> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouter.class);
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private final int regionTopN;
 
@@ -44,7 +47,7 @@ public class RegionRouter extends AbstractStateRouter<ServiceInstance> {
      */
     public RegionRouter() {
         super("RegionRouter", true);
-        this.regionTopN = RoutingProperties.getRegionRouterTopN();
+        this.regionTopN = fileConfig.getInt(ConfigurationKeys.CLIENT_REGION_ROUTER_TOP_N, 5);
     }
 
     @Override

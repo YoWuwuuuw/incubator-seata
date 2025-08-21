@@ -16,9 +16,11 @@
  */
 package org.apache.seata.discovery.routing.chain;
 
+import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.config.Configuration;
+import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.RoutingContext;
-import org.apache.seata.discovery.routing.config.RoutingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,7 @@ import java.util.List;
 public class PrimaryBackupRouterChain implements RouterChain {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PrimaryBackupRouterChain.class);
+    private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private final DefaultRouterChain primaryChain;
     private final DefaultRouterChain backupChain;
@@ -42,8 +45,8 @@ public class PrimaryBackupRouterChain implements RouterChain {
      */
     public PrimaryBackupRouterChain() {
         // Use clearer naming
-        String primaryChainOrder = RoutingProperties.getPrimaryBackupOrder();
-        String fallbackChainOrder = RoutingProperties.getRouterChainOrder();
+        String primaryChainOrder = fileConfig.getConfig(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ORDER);
+        String fallbackChainOrder = fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTER_CHAIN_ORDER);
 
         this.primaryChain = createRouterChain(primaryChainOrder, "primary");
         this.backupChain = createRouterChain(fallbackChainOrder, "backup");
@@ -111,7 +114,7 @@ public class PrimaryBackupRouterChain implements RouterChain {
         }
 
         // Primary chain result is empty
-        if (!RoutingProperties.isPrimaryBackupEnabled()) {
+        if (!fileConfig.getBoolean(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ENABLED, false)) {
             // Backup chain is disabled, return primary chain's empty result
             return primaryResult;
         }
