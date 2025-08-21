@@ -48,7 +48,7 @@ public class RoutingManager {
      * Constructor
      */
     private RoutingManager() {
-        // Choose which router chain mode to use based on configuration
+        // Choose which router chain mode to use
         if (fileConfig.getBoolean(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ENABLED, false)) {
             LOGGER.info("Using PrimaryBackupRouterChain Mode");
             this.routerChain = new PrimaryBackupRouterChain();
@@ -94,7 +94,9 @@ public class RoutingManager {
 
             if (LOGGER.isDebugEnabled() || fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false)) {
                 LOGGER.debug(
-                        "Routing filter applied: original={}, filtered={}, group={}, xid={}",
+                        "Routing filter applied: original list: {}\nfiltered list:{}\noriginal size: {}\nfiltered size: {}",
+                        servers,
+                        filteredServers,
                         servers.size(),
                         filteredServers.size());
             }

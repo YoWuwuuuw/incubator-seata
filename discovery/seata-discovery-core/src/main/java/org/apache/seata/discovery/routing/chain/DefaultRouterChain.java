@@ -43,14 +43,14 @@ public class DefaultRouterChain implements RouterChain {
 
     private final List<StateRouter<ServiceInstance>> routers = new ArrayList<>();
 
-    private final boolean fallbackToAny;
+    private final boolean fallbackEnabled;
     private final boolean debugEnabled;
 
     /**
      * Default constructor
      */
     public DefaultRouterChain() {
-        this.fallbackToAny = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
+        this.fallbackEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
         this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
         loadRouters(fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTER_CHAIN_ORDER));
     }
@@ -61,7 +61,7 @@ public class DefaultRouterChain implements RouterChain {
      * @param routerOrder router order string
      */
     public DefaultRouterChain(String routerOrder) {
-        this.fallbackToAny = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
+        this.fallbackEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
         this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
         loadRouters(routerOrder);
     }
@@ -99,11 +99,11 @@ public class DefaultRouterChain implements RouterChain {
             result = router.route(result, ctx, debugEnabled, snapshots);
 
             if (result.isEmpty()) {
-                if (fallbackToAny) {
+                if (fallbackEnabled) {
                     LOGGER.warn("Router chain produced empty result, falling back to all servers");
                     return servers;
                 } else {
-                    LOGGER.warn("Router chain produced empty result, no fallback allowed");
+                    LOGGER.warn("Router chain produced empty result, no fallback allowed, return empty list");
                     return result;
                 }
             }
@@ -111,7 +111,7 @@ public class DefaultRouterChain implements RouterChain {
 
         // If debug mode is enabled, print complete snapshot information
         if (debugEnabled && snapshots != null && !snapshots.isEmpty()) {
-            logRouterChainSnapshot(snapshots, servers.size(), result.size());
+            buildRouterChainSnapshot(snapshots, servers.size(), result.size());
         }
 
         return result;
@@ -124,7 +124,7 @@ public class DefaultRouterChain implements RouterChain {
      * @param initialSize initial server count
      * @param finalSize   final server count
      */
-    private void logRouterChainSnapshot(
+    private void buildRouterChainSnapshot(
             List<RouterSnapshotNode<ServiceInstance>> snapshots, int initialSize, int finalSize) {
         StringBuilder sb = new StringBuilder();
         sb.append("\n=== Router Chain Debug ===\n");
@@ -166,14 +166,12 @@ public class DefaultRouterChain implements RouterChain {
         // Load routers according to configuration order
         for (String routerName : chainOrder) {
             if (isRouterEnabled(routerName)) {
-                List<StateRouter<ServiceInstance>> routerInstances = createRoutersByName(routerName);
-                routers.addAll(routerInstances);
-            }
-        }
+                StateRouter<ServiceInstance> routerInstances = createRoutersByName(routerName);
 
-        // Build responsibility chain
-        for (int i = 0; i < routers.size() - 1; i++) {
-            routers.get(i).setNext(routers.get(i + 1));
+                if(routerInstances != null) {
+                    routers.add(routerInstances);
+                }
+            }
         }
     }
 
@@ -206,28 +204,24 @@ public class DefaultRouterChain implements RouterChain {
      * @return router instances list
      */
     @SuppressWarnings("unchecked")
-    private List<StateRouter<ServiceInstance>> createRoutersByName(String routerName) {
-        List<StateRouter<ServiceInstance>> routerInstances = new ArrayList<>();
-
+    private StateRouter<ServiceInstance> createRoutersByName(String routerName) {
         switch (routerName) {
             case "region-router":
-                routerInstances.add(new RegionRouter());
-                break;
+                return new RegionRouter();
             case "metadata-router":
-                routerInstances.add(new MetadataRouter());
-                break;
+                return new MetadataRouter();
             default:
                 if (routerName.startsWith("metadata-router-")) {
-                    routerInstances.add(new MetadataRouter(routerName));
+                    return new MetadataRouter(routerName);
                 } else {
                     // Try to load custom router via SPI
                     try {
                         StateRouter<ServiceInstance> customRouter =
                                 EnhancedServiceLoader.load(StateRouter.class, routerName);
                         if (customRouter != null) {
-                            routerInstances.add(customRouter);
+                            return customRouter;
                         } else {
-                            LOGGER.warn(
+                            LOGGER.error(
                                     "Custom router '{}' specified in configuration but not found via SPI", routerName);
                         }
                     } catch (Exception e) {
@@ -237,7 +231,7 @@ public class DefaultRouterChain implements RouterChain {
                 break;
         }
 
-        return routerInstances;
+        return null;
     }
 
     /**
@@ -253,7 +247,7 @@ public class DefaultRouterChain implements RouterChain {
             String[] orderNames = routerOrder.split(",");
             for (String orderName : orderNames) {
                 String trimmedName = orderName.trim();
-                if (!trimmedName.isEmpty()) {
+                if (!trimmedName.isEmpty() && RouterChainUtils.isValidRouterName(trimmedName)) {
                     order.add(trimmedName);
                 }
             }
@@ -261,27 +255,7 @@ public class DefaultRouterChain implements RouterChain {
 
         // Validate configuration validity
         if (order.isEmpty()) {
-            LOGGER.warn("Router order configuration is invalid or empty, using fallback strategy");
-            order.add("region-router");
-            order.add("metadata-router");
-        } else {
-            // Validate router name validity
-            List<String> validRouters = new ArrayList<>();
-            for (String routerName : order) {
-                if (RouterChainUtils.isValidRouterName(routerName)) {
-                    validRouters.add(routerName);
-                } else {
-                    LOGGER.warn("Invalid router name in configuration: {}, skipping", routerName);
-                }
-            }
-
-            if (validRouters.isEmpty()) {
-                LOGGER.warn("No valid routers found in configuration, using fallback strategy");
-                validRouters.add("region-router");
-                validRouters.add("metadata-router");
-            }
-
-            order = validRouters;
+            LOGGER.error("Router order configuration is invalid or empty");
         }
 
         return order;

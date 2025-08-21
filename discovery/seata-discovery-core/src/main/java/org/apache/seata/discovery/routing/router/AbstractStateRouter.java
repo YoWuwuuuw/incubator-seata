@@ -67,16 +67,13 @@ public abstract class AbstractStateRouter<T> implements StateRouter<T> {
             snapshots.add(snapshot);
         }
 
-        // If result is empty, try fallback
+        // If result is empty, return original list
         if (result.isEmpty()) {
-            return fallback(servers);
+            LOGGER.info("Router {} returned empty result, returning original list", routerName);
+            return servers;
         }
 
-        // If there's a next router, continue execution
-        if (next != null) {
-            return next.route(result, ctx, debugMode, snapshots);
-        }
-
+        // Return result directly, no longer chain to next router
         return result;
     }
 
@@ -87,17 +84,6 @@ public abstract class AbstractStateRouter<T> implements StateRouter<T> {
      * @return routed service instances list
      */
     protected abstract BitList<T> doRoute(BitList<T> servers, RoutingContext ctx);
-
-    /**
-     * Fallback handling
-     * @param servers original service instances list
-     * @return fallback service instances list
-     */
-    protected BitList<T> fallback(BitList<T> servers) {
-        // Default fallback strategy: return original list
-        LOGGER.info("Using fallback strategy for router " + routerName);
-        return servers;
-    }
 
     @Override
     public boolean isRuntime() {

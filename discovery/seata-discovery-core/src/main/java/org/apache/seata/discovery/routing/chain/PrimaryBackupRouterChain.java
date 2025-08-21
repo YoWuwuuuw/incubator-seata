@@ -24,6 +24,7 @@ import org.apache.seata.discovery.routing.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,43 +39,15 @@ public class PrimaryBackupRouterChain implements RouterChain {
     private final DefaultRouterChain primaryChain;
     private final DefaultRouterChain backupChain;
 
-    private volatile boolean hasSwitchedToBackup = false; // Whether already switched to backup chain
+    private volatile boolean hasSwitchedToBackup = false;
 
-    /**
-     * Constructor
-     */
     public PrimaryBackupRouterChain() {
         // Use clearer naming
         String primaryChainOrder = fileConfig.getConfig(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ORDER);
         String fallbackChainOrder = fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTER_CHAIN_ORDER);
 
-        this.primaryChain = createRouterChain(primaryChainOrder, "primary");
-        this.backupChain = createRouterChain(fallbackChainOrder, "backup");
-
-        // If the primary chain is invalid, try to use the backup chain as the primary
-        if (this.primaryChain == null && this.backupChain != null) {
-            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
-                    .warn("Primary chain is invalid, using backup chain as primary");
-        }
-
-        // Ensure both chains are not null
-        if (this.primaryChain == null) {
-            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
-                    .warn("Primary and backup chain are invalid, using default chain");
-        }
-    }
-
-    private DefaultRouterChain createRouterChain(String order, String chainType) {
-        if (order == null || order.trim().isEmpty()) {
-            LoggerFactory.getLogger(PrimaryBackupRouterChain.class).warn("{} chain order is not configured", chainType);
-            return null;
-        }
-        if (!isValidRouterOrder(order)) {
-            LoggerFactory.getLogger(PrimaryBackupRouterChain.class)
-                    .warn("{} chain order configuration is invalid: {}", chainType, order);
-            return null;
-        }
-        return new DefaultRouterChain(order);
+        this.primaryChain = new DefaultRouterChain(primaryChainOrder);
+        this.backupChain = new DefaultRouterChain(fallbackChainOrder);
     }
 
     /**
@@ -90,43 +63,35 @@ public class PrimaryBackupRouterChain implements RouterChain {
             return servers;
         }
 
-        // If already switched to backup chain, use backup chain directly
+        List<ServiceInstance> result;
         if (hasSwitchedToBackup) {
-            List<ServiceInstance> backupResult = backupChain.filterAll(servers, ctx);
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "Using backup chain (already switched), filtered {} servers from {}",
-                        backupResult.size(),
-                        servers.size());
+            // Currently on backup chain, try backup first
+            result = backupChain.filterAll(servers, ctx);
+            if (!result.isEmpty()) {
+                return result;
             }
-            return backupResult;
-        }
-
-        // Use primary chain
-        List<ServiceInstance> primaryResult = primaryChain.filterAll(servers, ctx);
-
-        // If primary chain result is not empty, return directly
-        if (!primaryResult.isEmpty()) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Primary chain filtered {} servers from {}", primaryResult.size(), servers.size());
+            // If backup is empty, try primary
+            result = primaryChain.filterAll(servers, ctx);
+            if (!result.isEmpty()) {
+                hasSwitchedToBackup = false;
+                return result;
             }
-            return primaryResult;
+        } else {
+            // Currently on primary chain, try primary first
+            result = primaryChain.filterAll(servers, ctx);
+            if (!result.isEmpty()) {
+                return result;
+            }
+            // If primary is empty, try backup
+            result = backupChain.filterAll(servers, ctx);
+            if (!result.isEmpty()) {
+                hasSwitchedToBackup = true;
+                return result;
+            }
         }
 
-        // Primary chain result is empty
-        if (!fileConfig.getBoolean(ConfigurationKeys.CLIENT_PRIMARY_BACKUP_ENABLED, false)) {
-            // Backup chain is disabled, return primary chain's empty result
-            return primaryResult;
-        }
-
-        LOGGER.info("Primary chain produced empty result, switching to backup chain");
-        hasSwitchedToBackup = true;
-
-        List<ServiceInstance> backupResult = backupChain.filterAll(servers, ctx);
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Backup chain filtered {} servers from {}", backupResult.size(), servers.size());
-        }
-        return backupResult;
+        LOGGER.error("Primary chain and backup chain both produced empty result");
+        return new ArrayList<>();
     }
 
     /**
