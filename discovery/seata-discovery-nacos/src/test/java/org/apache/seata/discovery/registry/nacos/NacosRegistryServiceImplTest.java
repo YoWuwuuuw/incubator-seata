@@ -207,8 +207,7 @@ public class NacosRegistryServiceImplTest {
     public void testUnsubscribe() throws Exception {
         EventListener listener = new EventListener() {
             @Override
-            public void onEvent(Event event) {
-            }
+            public void onEvent(Event event) {}
         };
 
         // Subscribe first
