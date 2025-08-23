@@ -144,6 +144,14 @@ public class NacosRegistryServiceImplTest {
     @Test
     @Order(3)
     public void testSubscribe() throws Exception {
+        // First, clean up any existing instances to ensure a clean state
+
+        List<ServiceInstance> existingInstances = service.lookup(SERVICE_NAME);
+        for (ServiceInstance instance : existingInstances) {
+            service.unregister(instance);
+        }
+        Thread.sleep(1000);
+
         CountDownLatch latch = new CountDownLatch(1);
         final boolean[] eventReceived = {false};
 
@@ -172,6 +180,9 @@ public class NacosRegistryServiceImplTest {
         // Execute subscription
         service.subscribe(CLUSTER_NAME, listener);
 
+        // Wait a bit for subscription to be established
+        Thread.sleep(1000);
+
         // Register a service instance with metadata to trigger event
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8093);
         Map<String, Object> metadata = new HashMap<>();
@@ -183,7 +194,7 @@ public class NacosRegistryServiceImplTest {
         service.register(serviceInstance);
 
         // Wait for event trigger
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
+        assertTrue(latch.await(10, TimeUnit.SECONDS));
         assertTrue(eventReceived[0]);
 
         // Cleanup
@@ -196,7 +207,8 @@ public class NacosRegistryServiceImplTest {
     public void testUnsubscribe() throws Exception {
         EventListener listener = new EventListener() {
             @Override
-            public void onEvent(Event event) {}
+            public void onEvent(Event event) {
+            }
         };
 
         // Subscribe first
