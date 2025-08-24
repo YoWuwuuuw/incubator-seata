@@ -34,7 +34,9 @@ import org.mockito.MockedStatic;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.mockito.Mockito.any;
@@ -98,6 +100,24 @@ public class EurekaRegistryServiceImplTest {
         CustomEurekaInstanceConfig instanceConfig = getInstanceConfig();
         Assertions.assertEquals("127.0.0.1", instanceConfig.getIpAddress());
         Assertions.assertEquals("default", instanceConfig.getAppname());
+        verify(mockAppInfoManager).setInstanceStatus(InstanceInfo.InstanceStatus.UP);
+    }
+
+    @Test
+    public void testRegisterWithMetadata() throws Exception {
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("version", "1.0.0");
+        metadata.put("environment", "test");
+        metadata.put("region", "cn-north");
+
+        ServiceInstance instance = new ServiceInstance(address, metadata);
+        registryService.register(instance);
+
+        CustomEurekaInstanceConfig instanceConfig = getInstanceConfig();
+        Assertions.assertEquals("1.0.0", instanceConfig.getMetadata().get("version"));
+        Assertions.assertEquals("test", instanceConfig.getMetadata().get("environment"));
+        Assertions.assertEquals("cn-north", instanceConfig.getMetadata().get("region"));
         verify(mockAppInfoManager).setInstanceStatus(InstanceInfo.InstanceStatus.UP);
     }
 
@@ -184,6 +204,34 @@ public class EurekaRegistryServiceImplTest {
             Assertions.assertEquals(1, instances.size());
             Assertions.assertEquals(
                     new InetSocketAddress("192.168.1.1", 8091), instances.get(0).getAddress());
+        }
+    }
+
+    @Test
+    public void testLookupWithMetadata() {
+        Configuration mockConfig = mock(Configuration.class);
+        when(mockConfig.getConfig("service.vgroupMapping.test-group")).thenReturn("TEST-CLUSTER");
+
+        try (MockedStatic<ConfigurationFactory> mockedFactory = mockStatic(ConfigurationFactory.class)) {
+            mockedFactory.when(ConfigurationFactory::getInstance).thenReturn(mockConfig);
+
+            when(mockEurekaClient.getApplication("TEST-CLUSTER")).thenReturn(mockApplication);
+            when(mockApplication.getInstances()).thenReturn(Collections.singletonList(mockInstanceInfo));
+            when(mockInstanceInfo.getStatus()).thenReturn(InstanceInfo.InstanceStatus.UP);
+            when(mockInstanceInfo.getIPAddr()).thenReturn("192.168.1.1");
+            when(mockInstanceInfo.getPort()).thenReturn(8091);
+
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("version", "2.0.0");
+            metadata.put("environment", "prod");
+            when(mockInstanceInfo.getMetadata()).thenReturn(metadata);
+
+            List<ServiceInstance> instances = registryService.lookup("test-group");
+
+            // Verify metadata is preserved
+            Map<String, Object> instanceMetadata = instances.get(0).getMetadata();
+            Assertions.assertEquals("2.0.0", instanceMetadata.get("version"));
+            Assertions.assertEquals("prod", instanceMetadata.get("environment"));
         }
     }
 

@@ -20,6 +20,9 @@ import com.netflix.appinfo.EurekaInstanceConfig;
 import com.netflix.appinfo.MyDataCenterInstanceConfig;
 import org.apache.seata.common.util.StringUtils;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * override MyDataCenterInstanceConfig for set value,
  * eg: instanceId \ipAddress \ applicationName...
@@ -29,6 +32,7 @@ public class CustomEurekaInstanceConfig extends MyDataCenterInstanceConfig imple
     private String instanceId;
     private String ipAddress;
     private int port = -1;
+    private Map<String, Object> metadata = new HashMap<>();
 
     @Override
     public String getInstanceId() {
@@ -65,6 +69,14 @@ public class CustomEurekaInstanceConfig extends MyDataCenterInstanceConfig imple
     @Override
     public String getHostName(boolean refresh) {
         return this.getIpAddress();
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
     }
 
     public void setInstanceId(String instanceId) {
