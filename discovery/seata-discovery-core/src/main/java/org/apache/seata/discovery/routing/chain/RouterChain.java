@@ -23,7 +23,6 @@ import java.util.List;
 
 /**
  * Router chain interface
- * Unifies the interface for RouterChain and PrimaryBackupRouterChain
  */
 public interface RouterChain {
 

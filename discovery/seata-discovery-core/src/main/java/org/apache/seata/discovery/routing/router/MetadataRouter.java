@@ -20,12 +20,12 @@ import org.apache.seata.common.ConfigurationKeys;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
-import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RoutingContext;
 import org.apache.seata.discovery.routing.expression.ConditionMatcher;
 import org.apache.seata.discovery.routing.expression.ExpressionParser;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Metadata router
@@ -39,14 +39,13 @@ import java.util.List;
 public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
     private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
-
     private volatile String expression;
 
     /**
      * Default constructor
      */
     public MetadataRouter() {
-        super("MetadataRouter", false);
+        super("MetadataRouter");
         this.expression = fileConfig.getConfig(ConfigurationKeys.CLIENT_METADATA_ROUTER_EXPRESSION);
     }
 
@@ -55,12 +54,12 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
      * @param routerName router name
      */
     public MetadataRouter(String routerName) {
-        super(routerName, false);
+        super(routerName);
         this.expression = fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTING_PREFIX + routerName + ".expression");
     }
 
     @Override
-    protected BitList<ServiceInstance> doRoute(BitList<ServiceInstance> servers, RoutingContext ctx) {
+    protected List<ServiceInstance> doRoute(List<ServiceInstance> servers, RoutingContext ctx) {
         // Create a local copy to ensure consistency during method execution
         String currentExpression = this.expression;
 
@@ -75,10 +74,14 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
         // Check if it's an OR expression
         if (ExpressionParser.isOrExpression(currentExpression)) {
             // OR logic: any condition satisfied is sufficient
-            return servers.filter(server -> matchers.stream().anyMatch(m -> m.match(server, ctx)));
+            return servers.stream()
+                    .filter(server -> matchers.stream().anyMatch(m -> m.match(server, ctx)))
+                    .collect(Collectors.toList());
         } else {
             // Single expression: all conditions must be satisfied (though there's only one condition)
-            return servers.filter(server -> matchers.stream().allMatch(m -> m.match(server, ctx)));
+            return servers.stream()
+                    .filter(server -> matchers.stream().allMatch(m -> m.match(server, ctx)))
+                    .collect(Collectors.toList());
         }
     }
 

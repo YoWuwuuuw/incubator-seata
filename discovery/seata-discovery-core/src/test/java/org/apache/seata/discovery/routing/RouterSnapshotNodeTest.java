@@ -23,7 +23,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RouterSnapshotNodeTest {
@@ -37,10 +36,10 @@ public class RouterSnapshotNodeTest {
         int inputSize = 5;
         int outputSize = 3;
         List<String> selectedServers = Arrays.asList("server1", "server2", "server3");
-        String snapshot = "test-snapshot";
+        long executionTime = 15L;
 
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>(routerName, inputSize, outputSize, selectedServers, snapshot);
+                new RouterSnapshotNode<>(routerName, inputSize, outputSize, selectedServers, executionTime);
 
         assertNotNull(node);
     }
@@ -51,8 +50,7 @@ public class RouterSnapshotNodeTest {
     @Test
     public void testGetRouterName() {
         String routerName = "test-router";
-        RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>(routerName, 5, 3, Arrays.asList("server1"), "snapshot");
+        RouterSnapshotNode<String> node = new RouterSnapshotNode<>(routerName, 5, 3, Arrays.asList("server1"), 10L);
 
         assertEquals(routerName, node.getRouterName());
     }
@@ -64,7 +62,7 @@ public class RouterSnapshotNodeTest {
     public void testGetInputSize() {
         int inputSize = 10;
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", inputSize, 5, Arrays.asList("server1"), "snapshot");
+                new RouterSnapshotNode<>("router", inputSize, 5, Arrays.asList("server1"), 10L);
 
         assertEquals(inputSize, node.getInputSize());
     }
@@ -76,7 +74,7 @@ public class RouterSnapshotNodeTest {
     public void testGetOutputSize() {
         int outputSize = 7;
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", 10, outputSize, Arrays.asList("server1"), "snapshot");
+                new RouterSnapshotNode<>("router", 10, outputSize, Arrays.asList("server1"), 10L);
 
         assertEquals(outputSize, node.getOutputSize());
     }
@@ -87,21 +85,22 @@ public class RouterSnapshotNodeTest {
     @Test
     public void testGetSelectedServers() {
         List<String> selectedServers = Arrays.asList("server1", "server2", "server3");
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, selectedServers, "snapshot");
+        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, selectedServers, 10L);
 
         assertEquals(selectedServers, node.getSelectedServers());
         assertEquals(3, node.getSelectedServers().size());
     }
 
     /**
-     * Test getSnapshot
+     * Test getExecutionTimeMs
      */
     @Test
-    public void testGetSnapshot() {
-        String snapshot = "test-snapshot-info";
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), snapshot);
+    public void testGetExecutionTimeMs() {
+        long executionTime = 25L;
+        RouterSnapshotNode<String> node =
+                new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), executionTime);
 
-        assertEquals(snapshot, node.getSnapshot());
+        assertEquals(executionTime, node.getExecutionTimeMs());
     }
 
     /**
@@ -109,8 +108,7 @@ public class RouterSnapshotNodeTest {
      */
     @Test
     public void testGetTimestamp() {
-        RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), "snapshot");
+        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), 10L);
 
         long timestamp = node.getTimestamp();
         assertTrue(timestamp > 0);
@@ -129,16 +127,19 @@ public class RouterSnapshotNodeTest {
         int inputSize = 5;
         int outputSize = 3;
         List<String> selectedServers = Arrays.asList("server1", "server2");
-        String snapshot = "test-snapshot";
+        long executionTime = 15L;
 
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>(routerName, inputSize, outputSize, selectedServers, snapshot);
+                new RouterSnapshotNode<>(routerName, inputSize, outputSize, selectedServers, executionTime);
 
         String result = node.toString();
         assertTrue(result.contains(routerName));
         assertTrue(result.contains(String.valueOf(inputSize)));
         assertTrue(result.contains(String.valueOf(outputSize)));
-        assertTrue(result.contains(snapshot));
+
+        assertTrue(result.contains(String.valueOf(executionTime)));
+        assertTrue(result.contains("ms")); // time unit
+
         assertTrue(result.contains("server1"));
         assertTrue(result.contains("server2"));
     }
@@ -149,20 +150,10 @@ public class RouterSnapshotNodeTest {
     @Test
     public void testWithEmptySelectedServers() {
         List<String> emptyServers = Arrays.asList();
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 0, emptyServers, "snapshot");
+        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 0, emptyServers, 10L);
 
         assertEquals(0, node.getOutputSize());
         assertEquals(0, node.getSelectedServers().size());
-    }
-
-    /**
-     * Test with null snapshot - edge case
-     */
-    @Test
-    public void testWithNullSnapshot() {
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), null);
-
-        assertNull(node.getSnapshot());
     }
 
     /**
@@ -171,7 +162,7 @@ public class RouterSnapshotNodeTest {
     @Test
     public void testWithIntegerType() {
         List<Integer> selectedServers = Arrays.asList(1, 2, 3);
-        RouterSnapshotNode<Integer> node = new RouterSnapshotNode<>("router", 5, 3, selectedServers, "snapshot");
+        RouterSnapshotNode<Integer> node = new RouterSnapshotNode<>("router", 5, 3, selectedServers, 10L);
 
         assertEquals(selectedServers, node.getSelectedServers());
         assertEquals(3, node.getSelectedServers().size());

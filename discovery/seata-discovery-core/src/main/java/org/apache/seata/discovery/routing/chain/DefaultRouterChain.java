@@ -21,12 +21,10 @@ import org.apache.seata.common.loader.EnhancedServiceLoader;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
-import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RouterSnapshotNode;
 import org.apache.seata.discovery.routing.RoutingContext;
 import org.apache.seata.discovery.routing.StateRouter;
 import org.apache.seata.discovery.routing.router.MetadataRouter;
-import org.apache.seata.discovery.routing.router.RegionRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,27 +41,14 @@ public class DefaultRouterChain implements RouterChain {
 
     private final List<StateRouter<ServiceInstance>> routers = new ArrayList<>();
 
-    private final boolean fallbackEnabled;
     private final boolean debugEnabled;
 
     /**
      * Default constructor
      */
     public DefaultRouterChain() {
-        this.fallbackEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
         this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
-        loadRouters(fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTER_CHAIN_ORDER));
-    }
-
-    /**
-     * Constructor with specified router order
-     *
-     * @param routerOrder router order string
-     */
-    public DefaultRouterChain(String routerOrder) {
-        this.fallbackEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_FALLBACK, true);
-        this.debugEnabled = fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_DEBUG, false);
-        loadRouters(routerOrder);
+        loadRouters();
     }
 
     /**
@@ -75,13 +60,7 @@ public class DefaultRouterChain implements RouterChain {
      */
     @Override
     public List<ServiceInstance> filterAll(List<ServiceInstance> servers, RoutingContext ctx) {
-        if (servers == null || servers.isEmpty()) {
-            return servers;
-        }
-
-        BitList<ServiceInstance> bitList = BitList.fromList(servers);
-        BitList<ServiceInstance> result = route(bitList, ctx);
-        return result.toList();
+        return route(servers, ctx);
     }
 
     /**
@@ -91,26 +70,16 @@ public class DefaultRouterChain implements RouterChain {
      * @param ctx     routing context
      * @return filtered service instances list
      */
-    private BitList<ServiceInstance> route(BitList<ServiceInstance> servers, RoutingContext ctx) {
-        BitList<ServiceInstance> result = servers;
+    private List<ServiceInstance> route(List<ServiceInstance> servers, RoutingContext ctx) {
+        List<ServiceInstance> result = servers;
         List<RouterSnapshotNode<ServiceInstance>> snapshots = debugEnabled ? new ArrayList<>() : null;
 
         for (StateRouter<ServiceInstance> router : routers) {
-            result = router.route(result, ctx, debugEnabled, snapshots);
-
-            if (result.isEmpty()) {
-                if (fallbackEnabled) {
-                    LOGGER.warn("Router chain produced empty result, falling back to all servers");
-                    return servers;
-                } else {
-                    LOGGER.warn("Router chain produced empty result, no fallback allowed, return empty list");
-                    return result;
-                }
-            }
+            result = router.route(result, ctx, snapshots);
         }
 
         // If debug mode is enabled, print complete snapshot information
-        if (debugEnabled && snapshots != null && !snapshots.isEmpty()) {
+        if (debugEnabled && !snapshots.isEmpty()) {
             buildRouterChainSnapshot(snapshots, servers.size(), result.size());
         }
 
@@ -143,11 +112,6 @@ public class DefaultRouterChain implements RouterChain {
                         .append(snapshot.getSelectedServers())
                         .append("\n");
             }
-
-            // Show snapshot details
-            if (snapshot.getSnapshot() != null && !snapshot.getSnapshot().isEmpty()) {
-                sb.append("    Details: ").append(snapshot.getSnapshot()).append("\n");
-            }
         }
 
         sb.append("=== End Debug ===\n");
@@ -155,23 +119,40 @@ public class DefaultRouterChain implements RouterChain {
     }
 
     /**
-     * Load routers
-     *
-     * @param routerOrder router order string
+     * Load routers - simplified to only load metadata routers
      */
-    private void loadRouters(String routerOrder) {
-        // Parse router order
-        List<String> chainOrder = parseRouterOrder(routerOrder);
+    private void loadRouters() {
+        // Load default metadata router if enabled
+        if (isRouterEnabled("metadata-router")) {
+            StateRouter<ServiceInstance> defaultRouter = new MetadataRouter();
+            routers.add(defaultRouter);
+        }
 
-        // Load routers according to configuration order
-        for (String routerName : chainOrder) {
+        // Load additional metadata routers (metadata-router-1, metadata-router-2, etc.)
+        // Limit to a reasonable number to avoid infinite loops
+        int maxRouters = 10;
+        int index = 1;
+        while (index <= maxRouters) {
+            String routerName = "metadata-router-" + index;
             if (isRouterEnabled(routerName)) {
-                StateRouter<ServiceInstance> routerInstances = createRoutersByName(routerName);
+                StateRouter<ServiceInstance> router = new MetadataRouter(routerName);
+                routers.add(router);
+                index++;
+            } else {
+                break;
+            }
+        }
 
-                if(routerInstances != null) {
-                    routers.add(routerInstances);
+        // Load custom routers via SPI
+        try {
+            List<StateRouter> customRouters = EnhancedServiceLoader.loadAll(StateRouter.class);
+            for (StateRouter customRouter : customRouters) {
+                if (customRouter != null) {
+                    routers.add((StateRouter<ServiceInstance>) customRouter);
                 }
             }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to load custom routers via SPI", e);
         }
     }
 
@@ -187,77 +168,10 @@ public class DefaultRouterChain implements RouterChain {
             return fileConfig.getBoolean(configKey, true);
         }
 
-        switch (routerName) {
-            case "region-router":
-                return fileConfig.getBoolean(ConfigurationKeys.CLIENT_REGION_ROUTER_ENABLED, true);
-            case "metadata-router":
-                return fileConfig.getBoolean(ConfigurationKeys.CLIENT_METADATA_ROUTER_ENABLED, true);
-            default:
-                return true; // SPI routers are enabled by default
-        }
-    }
-
-    /**
-     * Create routers by name
-     *
-     * @param routerName router name
-     * @return router instances list
-     */
-    @SuppressWarnings("unchecked")
-    private StateRouter<ServiceInstance> createRoutersByName(String routerName) {
-        switch (routerName) {
-            case "region-router":
-                return new RegionRouter();
-            case "metadata-router":
-                return new MetadataRouter();
-            default:
-                if (routerName.startsWith("metadata-router-")) {
-                    return new MetadataRouter(routerName);
-                } else {
-                    // Try to load custom router via SPI
-                    try {
-                        StateRouter<ServiceInstance> customRouter =
-                                EnhancedServiceLoader.load(StateRouter.class, routerName);
-                        if (customRouter != null) {
-                            return customRouter;
-                        } else {
-                            LOGGER.error(
-                                    "Custom router '{}' specified in configuration but not found via SPI", routerName);
-                        }
-                    } catch (Exception e) {
-                        LOGGER.warn("Failed to load custom router: {}", routerName, e);
-                    }
-                }
-                break;
+        if ("metadata-router".equals(routerName)) {
+            return fileConfig.getBoolean(ConfigurationKeys.CLIENT_METADATA_ROUTER_ENABLED, true);
         }
 
-        return null;
-    }
-
-    /**
-     * Parse router order
-     *
-     * @param routerOrder router order string
-     * @return router names list
-     */
-    public static List<String> parseRouterOrder(String routerOrder) {
-        List<String> order = new ArrayList<>();
-
-        if (routerOrder != null && !routerOrder.trim().isEmpty()) {
-            String[] orderNames = routerOrder.split(",");
-            for (String orderName : orderNames) {
-                String trimmedName = orderName.trim();
-                if (!trimmedName.isEmpty() && RouterChainUtils.isValidRouterName(trimmedName)) {
-                    order.add(trimmedName);
-                }
-            }
-        }
-
-        // Validate configuration validity
-        if (order.isEmpty()) {
-            LOGGER.error("Router order configuration is invalid or empty");
-        }
-
-        return order;
+        return true; // Custom routers are enabled by default
     }
 }

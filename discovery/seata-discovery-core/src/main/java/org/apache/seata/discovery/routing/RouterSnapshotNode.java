@@ -29,29 +29,32 @@ public class RouterSnapshotNode<T> {
     private final int inputSize;
     private final int outputSize;
     private final List<T> selectedServers;
-    private final String snapshot;
+
+    private final long executionTimeMs;
     private final long timestamp;
 
     /**
      * Constructor
-     * @param routerName router name
-     * @param inputSize input size
-     * @param outputSize output size
+     *
+     * @param routerName      router name
+     * @param inputSize       input size
+     * @param outputSize      output size
      * @param selectedServers selected server list
-     * @param snapshot snapshot information
+     * @param executionTimeMs execution time in milliseconds
      */
     public RouterSnapshotNode(
-            String routerName, int inputSize, int outputSize, List<T> selectedServers, String snapshot) {
+            String routerName, int inputSize, int outputSize, List<T> selectedServers, long executionTimeMs) {
         this.routerName = routerName;
         this.inputSize = inputSize;
         this.outputSize = outputSize;
         this.selectedServers = selectedServers;
-        this.snapshot = snapshot;
+        this.executionTimeMs = executionTimeMs;
         this.timestamp = System.currentTimeMillis();
     }
 
     /**
      * Get router name
+     *
      * @return router name
      */
     public String getRouterName() {
@@ -60,6 +63,7 @@ public class RouterSnapshotNode<T> {
 
     /**
      * Get input size
+     *
      * @return input size
      */
     public int getInputSize() {
@@ -68,6 +72,7 @@ public class RouterSnapshotNode<T> {
 
     /**
      * Get output size
+     *
      * @return output size
      */
     public int getOutputSize() {
@@ -76,6 +81,7 @@ public class RouterSnapshotNode<T> {
 
     /**
      * Get selected server list
+     *
      * @return selected server list
      */
     public List<T> getSelectedServers() {
@@ -83,15 +89,17 @@ public class RouterSnapshotNode<T> {
     }
 
     /**
-     * Get snapshot information
-     * @return snapshot information
+     * Get execution time in milliseconds
+     *
+     * @return execution time
      */
-    public String getSnapshot() {
-        return snapshot;
+    public long getExecutionTimeMs() {
+        return executionTimeMs;
     }
 
     /**
      * Get timestamp
+     *
      * @return timestamp
      */
     public long getTimestamp() {
@@ -100,8 +108,14 @@ public class RouterSnapshotNode<T> {
 
     @Override
     public String toString() {
-        return String.format(
-                "%s: input=%d, output=%d, selected=%s, snapshot=%s",
-                routerName, inputSize, outputSize, selectedServers, snapshot);
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format(
+                "%s: input=%d, output=%d, time=%dms", routerName, inputSize, outputSize, executionTimeMs));
+
+        if (selectedServers != null && !selectedServers.isEmpty() && selectedServers.size() <= 3) {
+            sb.append(", selected=").append(selectedServers);
+        }
+
+        return sb.toString();
     }
 }

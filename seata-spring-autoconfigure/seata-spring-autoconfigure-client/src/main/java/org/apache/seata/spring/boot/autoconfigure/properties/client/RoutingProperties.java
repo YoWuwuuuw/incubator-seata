@@ -43,46 +43,11 @@ public class RoutingProperties {
     private boolean fallback = true;
 
     /**
-     * Router chain order, e.g. region-router,metadata-router-1,metadata-router-2
-     */
-    private String chainOrder = "";
-
-    /**
-     * Whether enable region router
-     */
-    private boolean regionRouterEnabled = true;
-
-    /**
-     * Top N servers for region router
-     */
-    private int regionRouterTopN = 5;
-
-    /**
      * Dynamic metadata router configurations
      * Key: router name (e.g. metadata-router-1, metadata-router-2, custom-router)
      * Value: router configuration
      */
     private Map<String, MetadataRouterConfig> metadataRouters = new HashMap<>();
-
-    /**
-     * Primary backup router order
-     */
-    private String primaryBackupOrder = "region-router";
-
-    /**
-     * Whether enable primary backup router
-     */
-    private boolean primaryBackupEnabled = true;
-
-    /**
-     * Client location latitude, e.g. 39.9042
-     */
-    private String locationLat = "";
-
-    /**
-     * Client location longitude, e.g. 116.4074
-     */
-    private String locationLng = "";
 
     public boolean isEnabled() {
         return enabled;
@@ -111,33 +76,6 @@ public class RoutingProperties {
         return this;
     }
 
-    public String getChainOrder() {
-        return chainOrder;
-    }
-
-    public RoutingProperties setChainOrder(String chainOrder) {
-        this.chainOrder = chainOrder;
-        return this;
-    }
-
-    public boolean isRegionRouterEnabled() {
-        return regionRouterEnabled;
-    }
-
-    public RoutingProperties setRegionRouterEnabled(boolean regionRouterEnabled) {
-        this.regionRouterEnabled = regionRouterEnabled;
-        return this;
-    }
-
-    public int getRegionRouterTopN() {
-        return regionRouterTopN;
-    }
-
-    public RoutingProperties setRegionRouterTopN(int regionRouterTopN) {
-        this.regionRouterTopN = regionRouterTopN;
-        return this;
-    }
-
     public java.util.Map<String, MetadataRouterConfig> getMetadataRouters() {
         return metadataRouters;
     }
@@ -163,41 +101,5 @@ public class RoutingProperties {
      */
     public void addMetadataRouter(String routerName, MetadataRouterConfig config) {
         metadataRouters.put(routerName, config);
-    }
-
-    public String getPrimaryBackupOrder() {
-        return primaryBackupOrder;
-    }
-
-    public RoutingProperties setPrimaryBackupOrder(String primaryBackupOrder) {
-        this.primaryBackupOrder = primaryBackupOrder;
-        return this;
-    }
-
-    public boolean isPrimaryBackupEnabled() {
-        return primaryBackupEnabled;
-    }
-
-    public RoutingProperties setPrimaryBackupEnabled(boolean primaryBackupEnabled) {
-        this.primaryBackupEnabled = primaryBackupEnabled;
-        return this;
-    }
-
-    public String getLocationLat() {
-        return locationLat;
-    }
-
-    public RoutingProperties setLocationLat(String locationLat) {
-        this.locationLat = locationLat;
-        return this;
-    }
-
-    public String getLocationLng() {
-        return locationLng;
-    }
-
-    public RoutingProperties setLocationLng(String locationLng) {
-        this.locationLng = locationLng;
-        return this;
     }
 }

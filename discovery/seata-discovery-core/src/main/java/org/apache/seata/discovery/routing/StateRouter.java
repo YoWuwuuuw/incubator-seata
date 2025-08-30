@@ -30,35 +30,14 @@ public interface StateRouter<T> {
      * Execute routing
      * @param servers service instances list
      * @param ctx routing context
-     * @param debugMode whether debug mode is enabled
      * @param snapshots snapshot list, used to collect snapshots from all routers
      * @return routed service instances list
      */
-    BitList<T> route(BitList<T> servers, RoutingContext ctx, boolean debugMode, List<RouterSnapshotNode<T>> snapshots);
-
-    /**
-     * Whether it's a runtime router
-     * Runtime router: needs to calculate dynamically based on each request's context
-     * Non-runtime router: configuration-based, only loads configuration once at startup
-     * @return whether it's a runtime router
-     */
-    boolean isRuntime();
+    List<T> route(List<T> servers, RoutingContext ctx, List<RouterSnapshotNode<T>> snapshots);
 
     /**
      * Build snapshot
      * @return snapshot string
      */
     String buildSnapshot();
-
-    /**
-     * Set next router
-     * @param next next router
-     */
-    void setNext(StateRouter<T> next);
-
-    /**
-     * Get next router
-     * @return next router
-     */
-    StateRouter<T> getNext();
 }

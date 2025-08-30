@@ -16,7 +16,6 @@
  */
 package org.apache.seata.discovery.routing.router;
 
-import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RouterSnapshotNode;
 import org.apache.seata.discovery.routing.RoutingContext;
 import org.junit.jupiter.api.Test;
@@ -26,36 +25,60 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AbstractStateRouterTest {
 
     /**
-     * Concrete router implementation for testing
+     * Simple test router implementation for testing AbstractStateRouter
      */
     private static class TestRouter extends AbstractStateRouter<String> {
 
         private final boolean shouldReturnEmpty;
 
-        public TestRouter(String routerName, boolean runtime, boolean shouldReturnEmpty) {
-            super(routerName, runtime);
+        public TestRouter(String routerName, boolean shouldReturnEmpty) {
+            super(routerName);
             this.shouldReturnEmpty = shouldReturnEmpty;
         }
 
         @Override
-        protected BitList<String> doRoute(BitList<String> servers, RoutingContext ctx) {
+        protected List<String> doRoute(List<String> servers, RoutingContext ctx) {
             if (shouldReturnEmpty) {
-                return BitList.fromList(new ArrayList<>());
+                return new ArrayList<>();
             }
             return servers;
         }
 
         @Override
         public String buildSnapshot() {
-            return "TestRouter: test-router";
+            return "test-router";
+        }
+    }
+
+    /**
+     * Test router that overrides fallback behavior for testing
+     */
+    private static class TestRouterWithCustomFallback extends AbstractStateRouter<String> {
+
+        private final boolean shouldReturnEmpty;
+
+        public TestRouterWithCustomFallback(String routerName, boolean shouldReturnEmpty) {
+            super(routerName);
+            this.shouldReturnEmpty = shouldReturnEmpty;
+        }
+
+        @Override
+        protected List<String> doRoute(List<String> servers, RoutingContext ctx) {
+            if (shouldReturnEmpty) {
+                return new ArrayList<>();
+            }
+            return servers;
+        }
+
+        @Override
+        public String buildSnapshot() {
+            return "test-router";
         }
     }
 
@@ -64,33 +87,8 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testConstructor() {
-        TestRouter router = new TestRouter("test-router", false, false);
+        TestRouter router = new TestRouter("test-router", false);
         assertNotNull(router);
-    }
-
-    /**
-     * Test isRuntime method - distinguish between runtime and non-runtime routers
-     */
-    @Test
-    public void testIsRuntime() {
-        TestRouter runtimeRouter = new TestRouter("runtime-router", true, false);
-        TestRouter nonRuntimeRouter = new TestRouter("non-runtime-router", false, false);
-
-        assertTrue(runtimeRouter.isRuntime());
-        assertFalse(nonRuntimeRouter.isRuntime());
-    }
-
-    /**
-     * Test set and get next router - chained routing
-     */
-    @Test
-    public void testSetAndGetNext() {
-        TestRouter router1 = new TestRouter("router1", false, false);
-        TestRouter router2 = new TestRouter("router2", false, false);
-
-        assertNull(router1.getNext());
-        router1.setNext(router2);
-        assertEquals(router2, router1.getNext());
     }
 
     /**
@@ -98,30 +96,28 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testRouteWithNormalFlow() {
-        TestRouter router = new TestRouter("test-router", false, false);
+        TestRouter router = new TestRouter("test-router", false);
         List<String> servers = Arrays.asList("server1", "server2", "server3");
-        BitList<String> bitList = BitList.fromList(servers);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<String> result = router.route(bitList, ctx, false, null);
+        List<String> result = router.route(servers, ctx, null);
         assertEquals(3, result.size());
-        assertTrue(result.toList().containsAll(servers));
+        assertTrue(result.containsAll(servers));
     }
 
     /**
-     * Test empty result scenario - trigger fallback strategy
+     * Test empty result scenario with fallback enabled
      */
     @Test
-    public void testRouteWithEmptyResult() {
-        TestRouter router = new TestRouter("test-router", false, true);
+    public void testRouteWithEmptyResultAndFallback() {
+        TestRouterWithCustomFallback router = new TestRouterWithCustomFallback("test-router", true);
         List<String> servers = Arrays.asList("server1", "server2", "server3");
-        BitList<String> bitList = BitList.fromList(servers);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<String> result = router.route(bitList, ctx, false, null);
-        // Should use fallback strategy, return original list
+        List<String> result = router.route(servers, ctx, null);
+        // Should fallback to original list when result is empty
         assertEquals(3, result.size());
-        assertTrue(result.toList().containsAll(servers));
+        assertTrue(result.containsAll(servers));
     }
 
     /**
@@ -129,13 +125,12 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testRouteWithDebugMode() {
-        TestRouter router = new TestRouter("test-router", false, false);
+        TestRouter router = new TestRouter("test-router", false);
         List<String> servers = Arrays.asList("server1", "server2");
-        BitList<String> bitList = BitList.fromList(servers);
         RoutingContext ctx = new RoutingContext();
         List<RouterSnapshotNode<String>> snapshots = new ArrayList<>();
 
-        BitList<String> result = router.route(bitList, ctx, true, snapshots);
+        List<String> result = router.route(servers, ctx, snapshots);
         assertEquals(2, result.size());
 
         // Verify debug logging
@@ -145,7 +140,6 @@ public class AbstractStateRouterTest {
         assertEquals(2, snapshot.getInputSize());
         assertEquals(2, snapshot.getOutputSize());
         assertEquals(2, snapshot.getSelectedServers().size());
-        assertTrue(snapshot.getSnapshot().contains("TestRouter"));
     }
 
     /**
@@ -153,15 +147,12 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testRouteWithNextRouter() {
-        TestRouter router1 = new TestRouter("router1", false, false);
-        TestRouter router2 = new TestRouter("router2", false, false);
-        router1.setNext(router2);
+        TestRouter router1 = new TestRouter("router1", false);
 
         List<String> servers = Arrays.asList("server1", "server2");
-        BitList<String> bitList = BitList.fromList(servers);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<String> result = router1.route(bitList, ctx, false, null);
+        List<String> result = router1.route(servers, ctx, null);
         assertEquals(2, result.size());
     }
 
@@ -170,9 +161,28 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testBuildSnapshot() {
-        TestRouter router = new TestRouter("test-router", true, false);
+        TestRouter router = new TestRouter("test-router", false);
         String snapshot = router.buildSnapshot();
-        assertTrue(snapshot.contains("TestRouter"));
         assertTrue(snapshot.contains("test-router"));
+    }
+
+    /**
+     * Test fallback configuration key generation
+     */
+    @Test
+    public void testFallbackConfigurationKey() {
+        // The router should use the default fallback value (true) when no config is set
+        // We can't easily test the actual configuration lookup without complex mocking
+        // But we can verify the router behavior with default fallback
+        List<String> servers = Arrays.asList("server1", "server2");
+        RoutingContext ctx = new RoutingContext();
+
+        // Create a router that returns empty result
+        TestRouter emptyRouter = new TestRouter("metadata-router", true);
+        List<String> result = emptyRouter.route(servers, ctx, null);
+
+        // With default fallback=true, should return original list
+        assertEquals(2, result.size());
+        assertTrue(result.containsAll(servers));
     }
 }

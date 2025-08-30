@@ -111,71 +111,9 @@ public class AbstractNettyRemotingClientTest {
     @AfterEach
     public void tearDown() {
         // Clean up system properties
-        System.clearProperty("clientLat");
-        System.clearProperty("clientLng");
         System.clearProperty("client.routing.enabled");
-        System.clearProperty("client.routing.region-router.enabled");
-        System.clearProperty("client.routing.region-router.topN");
         System.clearProperty("client.routing.metadata-routers.metadata-router-1.enabled");
         System.clearProperty("client.routing.metadata-routers.metadata-router-1.expression");
-        System.clearProperty("client.routing.primary-backup.enabled");
-        System.clearProperty("client.routing.primary-backup.order");
-    }
-
-    /**
-     * Test routing filter with region-based routing
-     * Test scenario: Beijing client should route to Beijing servers
-     */
-    @Test
-    public void testRoutingFilterWithRegionRouting() {
-        // Configure routing settings
-        System.setProperty("client.routing.enabled", "true");
-        System.setProperty("client.routing.region-router.enabled", "true");
-        System.setProperty("client.routing.region-router.topN", "3");
-
-        // Set client location to Beijing
-        System.setProperty("clientLat", "39.9042");
-        System.setProperty("clientLng", "116.4074");
-
-        // Create service instances with location metadata
-        List<ServiceInstance> serviceInstances = createServiceInstances(
-                new ServerConfig("127.0.0.1", 8091, new HashMap<String, Object>() {
-                    {
-                        put("lat", "39.9042");
-                        put("lng", "116.4074");
-                        put("region", "beijing");
-                    }
-                }),
-                new ServerConfig("127.0.0.2", 8092, new HashMap<String, Object>() {
-                    {
-                        put("lat", "31.2304");
-                        put("lng", "121.4737");
-                        put("region", "shanghai");
-                    }
-                }));
-
-        try (MockedStatic<RegistryFactory> mockedRegistryFactory = mockStatic(RegistryFactory.class);
-                MockedStatic<RoutingManager> mockedRoutingManager = mockStatic(RoutingManager.class)) {
-
-            // Mock RegistryFactory
-            mockedRegistryFactory.when(RegistryFactory::getInstance).thenReturn(registryService);
-            when(registryService.aliveLookup("test-group")).thenReturn(serviceInstances);
-
-            // Mock RoutingManager
-            mockedRoutingManager.when(RoutingManager::getInstance).thenReturn(routingManager);
-            when(routingManager.filter(serviceInstances))
-                    .thenReturn(serviceInstances.subList(0, 1)); // Return only Beijing server
-
-            // Test with BranchRegisterRequest
-            BranchRegisterRequest request = new BranchRegisterRequest();
-            request.setXid("test-xid-123");
-
-            String result = client.testLoadBalance("test-group", request);
-
-            assertNotNull(result);
-            // Beijing client should route to Beijing server (127.0.0.1)
-            assertEquals("127.0.0.1:8091", result);
-        }
     }
 
     /**
@@ -238,56 +176,6 @@ public class AbstractNettyRemotingClientTest {
     }
 
     /**
-     * Test routing filter with primary-backup routing
-     * Test scenario: Should prefer primary servers over backup servers
-     */
-    @Test
-    public void testRoutingFilterWithPrimaryBackupRouting() {
-        // Configure routing settings
-        System.setProperty("client.routing.enabled", "true");
-        System.setProperty("client.routing.primary-backup.enabled", "true");
-        System.setProperty("client.routing.primary-backup.order", "primary,backup");
-
-        // Create service instances with primary/backup roles
-        List<ServiceInstance> serviceInstances = createServiceInstances(
-                new ServerConfig("127.0.0.1", 8091, new HashMap<String, Object>() {
-                    {
-                        put("role", "primary");
-                        put("priority", "1");
-                    }
-                }),
-                new ServerConfig("127.0.0.2", 8092, new HashMap<String, Object>() {
-                    {
-                        put("role", "backup");
-                        put("priority", "2");
-                    }
-                }));
-
-        try (MockedStatic<RegistryFactory> mockedRegistryFactory = mockStatic(RegistryFactory.class);
-                MockedStatic<RoutingManager> mockedRoutingManager = mockStatic(RoutingManager.class)) {
-
-            // Mock RegistryFactory
-            mockedRegistryFactory.when(RegistryFactory::getInstance).thenReturn(registryService);
-            when(registryService.aliveLookup("test-group")).thenReturn(serviceInstances);
-
-            // Mock RoutingManager
-            mockedRoutingManager.when(RoutingManager::getInstance).thenReturn(routingManager);
-            when(routingManager.filter(serviceInstances))
-                    .thenReturn(serviceInstances.subList(0, 1)); // Return only primary server
-
-            // Test with BranchRegisterRequest
-            BranchRegisterRequest request = new BranchRegisterRequest();
-            request.setXid("test-xid-789");
-
-            String result = client.testLoadBalance("test-group", request);
-
-            assertNotNull(result);
-            // Should prefer primary server (127.0.0.1)
-            assertEquals("127.0.0.1:8091", result);
-        }
-    }
-
-    /**
      * Test routing filter with no routing configuration
      * Test scenario: No routing rules configured, should return original instances
      */
@@ -321,76 +209,6 @@ public class AbstractNettyRemotingClientTest {
             assertNotNull(result);
             // Should return one of the original instances
             assertTrue(result.equals("127.0.0.1:8091") || result.equals("127.0.0.2:8092"));
-        }
-    }
-
-    /**
-     * Test routing filter with multiple servers and region routing
-     * Test scenario: Shanghai client should route to Shanghai servers
-     */
-    @Test
-    public void testRoutingFilterWithMultipleServers() {
-        // Configure routing settings
-        System.setProperty("client.routing.enabled", "true");
-        System.setProperty("client.routing.region-router.enabled", "true");
-        System.setProperty("client.routing.region-router.topN", "2");
-
-        // Set client location to Shanghai
-        System.setProperty("clientLat", "31.2304");
-        System.setProperty("clientLng", "121.4737");
-
-        // Create multiple service instances with location metadata
-        List<ServiceInstance> serviceInstances = createServiceInstances(
-                new ServerConfig("127.0.0.1", 8091, new HashMap<String, Object>() {
-                    {
-                        put("lat", "39.9042");
-                        put("lng", "116.4074");
-                        put("region", "beijing");
-                    }
-                }),
-                new ServerConfig("127.0.0.2", 8092, new HashMap<String, Object>() {
-                    {
-                        put("lat", "31.2304");
-                        put("lng", "121.4737");
-                        put("region", "shanghai");
-                    }
-                }),
-                new ServerConfig("127.0.0.3", 8093, new HashMap<String, Object>() {
-                    {
-                        put("lat", "23.1291");
-                        put("lng", "113.2644");
-                        put("region", "guangzhou");
-                    }
-                }),
-                new ServerConfig("127.0.0.4", 8094, new HashMap<String, Object>() {
-                    {
-                        put("lat", "22.3193");
-                        put("lng", "114.1694");
-                        put("region", "shenzhen");
-                    }
-                }));
-
-        try (MockedStatic<RegistryFactory> mockedRegistryFactory = mockStatic(RegistryFactory.class);
-                MockedStatic<RoutingManager> mockedRoutingManager = mockStatic(RoutingManager.class)) {
-
-            // Mock RegistryFactory
-            mockedRegistryFactory.when(RegistryFactory::getInstance).thenReturn(registryService);
-            when(registryService.aliveLookup("test-group")).thenReturn(serviceInstances);
-
-            // Mock RoutingManager - return Shanghai server
-            mockedRoutingManager.when(RoutingManager::getInstance).thenReturn(routingManager);
-            when(routingManager.filter(serviceInstances))
-                    .thenReturn(serviceInstances.subList(1, 2)); // Return Shanghai server
-
-            // Test with BranchRegisterRequest
-            BranchRegisterRequest request = new BranchRegisterRequest();
-            request.setXid("test-xid-multiple");
-
-            String result = client.testLoadBalance("test-group", request);
-
-            assertNotNull(result);
-            // Shanghai client should route to Shanghai server (127.0.0.2)
-            assertEquals("127.0.0.2:8092", result);
         }
     }
 

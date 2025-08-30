@@ -340,69 +340,10 @@
       "defaultValue": true
     },
     {
-      "name": "seata.client.routing.chain.order",
-      "type": "java.lang.String",
-      "description": "Router chain order, e.g. region-router,metadata-router-1,metadata-router-2",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties"
-    },
-    {
-      "name": "seata.client.routing.region-router.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether enable region router.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
-      "defaultValue": true
-    },
-    {
-      "name": "seata.client.routing.region-router.topN",
-      "type": "java.lang.Integer",
-      "description": "Top N servers for region router.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
-      "defaultValue": 5
-    },
-    {
       "name": "seata.client.routing.metadata-routers",
       "type": "java.util.Map<java.lang.String,org.apache.seata.spring.boot.autoconfigure.properties.client.MetadataRouterConfig>",
       "description": "Dynamic metadata router configurations. Key: router name (e.g. metadata-router-1, metadata-router-2, custom-router), Value: router configuration",
       "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties"
-    },
-
-    {
-      "name": "seata.client.routing.primary-backup.order",
-      "type": "java.lang.String",
-      "description": "Primary backup router order.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
-      "defaultValue": "region-router"
-    },
-    {
-      "name": "seata.client.routing.primary-backup.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether enable primary backup router.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
-      "defaultValue": false
-    },
-    {
-      "name": "seata.client.routing.location.lat",
-      "type": "java.lang.String",
-      "description": "Client location latitude, e.g. 39.9042",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties"
-    },
-    {
-      "name": "seata.client.routing.location.lng",
-      "type": "java.lang.String",
-      "description": "Client location longitude, e.g. 116.4074",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties"
-    },
-    {
-      "name": "seata.registry.metadata.lat",
-      "type": "java.lang.String",
-      "description": "Server location latitude for region routing, e.g. 39.9042",
-      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.registry.RegistryMetadataProperties"
-    },
-    {
-      "name": "seata.registry.metadata.lng",
-      "type": "java.lang.String",
-      "description": "Server location longitude for region routing, e.g. 116.4074",
-      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.registry.RegistryMetadataProperties"
     }
   ],
   "hints": [

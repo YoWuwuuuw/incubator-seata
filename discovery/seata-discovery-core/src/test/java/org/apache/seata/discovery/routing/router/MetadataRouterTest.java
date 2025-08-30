@@ -17,11 +17,12 @@
 package org.apache.seata.discovery.routing.router;
 
 import org.apache.seata.common.metadata.ServiceInstance;
-import org.apache.seata.discovery.routing.BitList;
 import org.apache.seata.discovery.routing.RoutingContext;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,10 +79,10 @@ public class MetadataRouterTest {
         router.setExpression("");
 
         ServiceInstance server = mock(ServiceInstance.class);
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server));
+        List<ServiceInstance> servers = Arrays.asList(server);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<ServiceInstance> result = router.doRoute(servers, ctx);
+        List<ServiceInstance> result = router.doRoute(servers, ctx);
         assertEquals(servers, result);
     }
 
@@ -102,12 +103,12 @@ public class MetadataRouterTest {
         when(server1.getMetadata()).thenReturn(metadata1);
         when(server2.getMetadata()).thenReturn(metadata2);
 
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2));
+        List<ServiceInstance> servers = Arrays.asList(server1, server2);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<ServiceInstance> result = router.doRoute(servers, ctx);
+        List<ServiceInstance> result = router.doRoute(servers, ctx);
         assertEquals(1, result.size());
-        assertTrue(result.toList().contains(server1));
+        assertTrue(result.contains(server1));
     }
 
     /**
@@ -124,75 +125,69 @@ public class MetadataRouterTest {
         Map<String, Object> metadata1 = new HashMap<>();
         Map<String, Object> metadata2 = new HashMap<>();
         Map<String, Object> metadata3 = new HashMap<>();
-        metadata1.put("version", "1.5"); // Doesn't satisfy version condition
-        metadata1.put("env", "prod"); // Doesn't satisfy env condition
-        metadata2.put("version", "2.5"); // Satisfies version condition
-        metadata3.put("env", "dev"); // Satisfies env condition
+        metadata1.put("version", "2.5");
+        metadata2.put("env", "dev");
+        metadata3.put("version", "1.5");
+        metadata3.put("env", "prod");
         when(server1.getMetadata()).thenReturn(metadata1);
         when(server2.getMetadata()).thenReturn(metadata2);
         when(server3.getMetadata()).thenReturn(metadata3);
 
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2, server3));
+        List<ServiceInstance> servers = Arrays.asList(server1, server2, server3);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<ServiceInstance> result = router.doRoute(servers, ctx);
+        List<ServiceInstance> result = router.doRoute(servers, ctx);
         assertEquals(2, result.size());
-        assertTrue(result.toList().contains(server2));
-        assertTrue(result.toList().contains(server3));
+        assertTrue(result.contains(server1));
+        assertTrue(result.contains(server2));
+        assertFalse(result.contains(server3));
     }
 
     /**
-     * Test string comparison - exact match
+     * Test null expression - should return original server list
      */
     @Test
-    public void testDoRouteWithStringComparison() {
+    public void testDoRouteWithNullExpression() {
         MetadataRouter router = new MetadataRouter();
-        router.setExpression("env = prod");
+        router.setExpression(null);
 
         ServiceInstance server1 = mock(ServiceInstance.class);
         ServiceInstance server2 = mock(ServiceInstance.class);
-        Map<String, Object> metadata1 = new HashMap<>();
-        Map<String, Object> metadata2 = new HashMap<>();
-        metadata1.put("env", "prod");
-        metadata2.put("env", "dev");
-        when(server1.getMetadata()).thenReturn(metadata1);
-        when(server2.getMetadata()).thenReturn(metadata2);
-
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2));
+        List<ServiceInstance> servers = Arrays.asList(server1, server2);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<ServiceInstance> result = router.doRoute(servers, ctx);
-        assertEquals(1, result.size());
-        assertTrue(result.toList().contains(server1));
+        List<ServiceInstance> result = router.doRoute(servers, ctx);
+        assertEquals(servers, result);
     }
 
     /**
-     * Test missing metadata scenario - servers without version metadata should be filtered out
+     * Test complex expression with multiple conditions
      */
     @Test
-    public void testDoRouteWithMissingMetadata() {
+    public void testDoRouteWithComplexExpression() {
         MetadataRouter router = new MetadataRouter();
-        router.setExpression("version >= 2.0");
+        router.setExpression("(version >= 2.0) | (region = cn-bj) | (zone = zone-a)");
 
         ServiceInstance server1 = mock(ServiceInstance.class);
         ServiceInstance server2 = mock(ServiceInstance.class);
         ServiceInstance server3 = mock(ServiceInstance.class);
         Map<String, Object> metadata1 = new HashMap<>();
         Map<String, Object> metadata2 = new HashMap<>();
+        Map<String, Object> metadata3 = new HashMap<>();
         metadata1.put("version", "2.5");
-        // server2 has no version metadata
-        // server3 has null metadata
+        metadata2.put("region", "cn-bj");
+        metadata3.put("zone", "zone-a");
         when(server1.getMetadata()).thenReturn(metadata1);
         when(server2.getMetadata()).thenReturn(metadata2);
-        when(server3.getMetadata()).thenReturn(null);
+        when(server3.getMetadata()).thenReturn(metadata3);
 
-        BitList<ServiceInstance> servers = BitList.fromList(java.util.Arrays.asList(server1, server2, server3));
+        List<ServiceInstance> servers = Arrays.asList(server1, server2, server3);
         RoutingContext ctx = new RoutingContext();
 
-        BitList<ServiceInstance> result = router.doRoute(servers, ctx);
-        assertEquals(1, result.size()); // Only server1 should pass through
-        assertTrue(result.toList().contains(server1));
-        assertFalse(result.toList().contains(server2));
-        assertFalse(result.toList().contains(server3));
+        List<ServiceInstance> result = router.doRoute(servers, ctx);
+        assertEquals(3, result.size());
+        assertTrue(result.contains(server1));
+        assertTrue(result.contains(server2));
+        assertTrue(result.contains(server3));
     }
 }

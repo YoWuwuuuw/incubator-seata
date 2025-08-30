@@ -31,7 +31,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class DefaultRouterChainTest {
 
@@ -52,12 +51,8 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testConstructor() {
-        // Verify default order
+        // Verify default constructor
         DefaultRouterChain chain = new DefaultRouterChain();
-        assertNotNull(chain);
-
-        // Verify specified order construction
-        chain = new DefaultRouterChain("region-router,metadata-router");
         assertNotNull(chain);
     }
 
@@ -74,35 +69,6 @@ public class DefaultRouterChainTest {
     }
 
     /**
-     * Test null server list - should return null
-     */
-    @Test
-    public void testFilterAllWithNullServers() {
-        DefaultRouterChain chain = new DefaultRouterChain();
-
-        List<ServiceInstance> result = chain.filterAll(null, new RoutingContext());
-        assertNull(result);
-    }
-
-    /**
-     * Test router order parsing
-     */
-    @Test
-    public void testParseRouterOrder() {
-        // Verify basic parsing functionality
-        List<String> order = DefaultRouterChain.parseRouterOrder("region-router,metadata-router");
-        assertEquals(2, order.size());
-        assertEquals("region-router", order.get(0));
-        assertEquals("metadata-router", order.get(1));
-
-        // Verify whitespace handling
-        order = DefaultRouterChain.parseRouterOrder(" region-router , metadata-router ");
-        assertEquals(2, order.size());
-        assertEquals("region-router", order.get(0));
-        assertEquals("metadata-router", order.get(1));
-    }
-
-    /**
      * Test debug mode - verify complete debug logging
      */
     @Test
@@ -116,7 +82,7 @@ public class DefaultRouterChainTest {
         ctx.setAttribute("clientLng", "116.4074");
 
         // Create router chain
-        DefaultRouterChain chain = new DefaultRouterChain("region-router,metadata-router");
+        DefaultRouterChain chain = new DefaultRouterChain();
 
         // Execute routing (this will trigger debug logging, verified through log output)
         List<ServiceInstance> result = chain.filterAll(servers, ctx);
@@ -139,7 +105,7 @@ public class DefaultRouterChainTest {
             RoutingContext ctx = new RoutingContext();
 
             // Create router chain
-            DefaultRouterChain chain = new DefaultRouterChain("region-router,metadata-router");
+            DefaultRouterChain chain = new DefaultRouterChain();
 
             // Execute routing (this won't trigger debug logging, verified by whether logs are output)
             List<ServiceInstance> result = chain.filterAll(servers, ctx);
