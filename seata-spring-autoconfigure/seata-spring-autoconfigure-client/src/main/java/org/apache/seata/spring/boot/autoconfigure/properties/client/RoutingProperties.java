@@ -27,27 +27,14 @@ import static org.apache.seata.spring.boot.autoconfigure.StarterConstants.ROUTIN
 @Component
 @ConfigurationProperties(prefix = ROUTING_PREFIX)
 public class RoutingProperties {
-    /**
-     * Whether enable routing feature
-     */
+
     private boolean enabled = false;
-
-    /**
-     * Whether enable routing debug mode
-     */
     private boolean debug = false;
+    private String routers = "";
+    private MetadataRouterConfig metadataRouter = new MetadataRouterConfig();
 
-    /**
-     * Whether enable routing fallback strategy
-     */
-    private boolean fallback = true;
-
-    /**
-     * Dynamic metadata router configurations
-     * Key: router name (e.g. metadata-router-1, metadata-router-2, custom-router)
-     * Value: router configuration
-     */
-    private Map<String, MetadataRouterConfig> metadataRouters = new HashMap<>();
+    // Dynamic numbered metadata router configurations (supports any number)
+    private Map<String, MetadataRouterConfig> numberedMetadataRouters = new HashMap<>();
 
     public boolean isEnabled() {
         return enabled;
@@ -67,39 +54,37 @@ public class RoutingProperties {
         return this;
     }
 
-    public boolean isFallback() {
-        return fallback;
+    public String getRouters() {
+        return routers;
     }
 
-    public RoutingProperties setFallback(boolean fallback) {
-        this.fallback = fallback;
+    public RoutingProperties setRouters(String routers) {
+        this.routers = routers;
         return this;
     }
 
-    public java.util.Map<String, MetadataRouterConfig> getMetadataRouters() {
-        return metadataRouters;
+    public MetadataRouterConfig getMetadataRouter() {
+        return metadataRouter;
     }
 
-    public RoutingProperties setMetadataRouters(java.util.Map<String, MetadataRouterConfig> metadataRouters) {
-        this.metadataRouters = metadataRouters;
+    public RoutingProperties setMetadataRouter(MetadataRouterConfig metadataRouter) {
+        this.metadataRouter = metadataRouter;
         return this;
     }
 
-    /**
-     * Get metadata router configuration by name
-     * @param routerName router name
-     * @return metadata router configuration
-     */
-    public MetadataRouterConfig getMetadataRouter(String routerName) {
-        return metadataRouters.get(routerName);
+    public MetadataRouterConfig getNumberedMetadataRouter(String routerName) {
+        return numberedMetadataRouters.get(routerName);
     }
 
-    /**
-     * Add metadata router configuration
-     * @param routerName router name
-     * @param config router configuration
-     */
-    public void addMetadataRouter(String routerName, MetadataRouterConfig config) {
-        metadataRouters.put(routerName, config);
+    public void setNumberedMetadataRouter(String routerName, MetadataRouterConfig config) {
+        numberedMetadataRouters.put(routerName, config);
+    }
+
+    public Map<String, MetadataRouterConfig> getNumberedMetadataRouters() {
+        return numberedMetadataRouters;
+    }
+
+    public boolean hasNumberedMetadataRouter(String routerName) {
+        return numberedMetadataRouters.containsKey(routerName);
     }
 }

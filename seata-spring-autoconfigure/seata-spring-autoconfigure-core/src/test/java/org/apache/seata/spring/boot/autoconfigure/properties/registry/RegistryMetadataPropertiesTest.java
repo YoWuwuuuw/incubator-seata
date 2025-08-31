@@ -23,13 +23,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class RegistryMetadataPropertiesTest {
 
     @Test
-    public void testLocationConfiguration() {
+    public void testCommonMetadataConfiguration() {
         RegistryMetadataProperties properties = new RegistryMetadataProperties();
 
-        properties.setLat("39.9042");
-        properties.setLng("116.4074");
+        properties.setEnv("prod");
+        assertEquals("prod", properties.getEnv());
 
-        assertEquals("39.9042", properties.getLat());
-        assertEquals("116.4074", properties.getLng());
+        properties.setRegion("cn-north");
+        assertEquals("cn-north", properties.getRegion());
+
+        properties.setVersion("1.0.0");
+        assertEquals("1.0.0", properties.getVersion());
+
+        properties.setWeight("100");
+        assertEquals("100", properties.getWeight());
+    }
+
+    @Test
+    public void testMetadataMapOperations() {
+        RegistryMetadataProperties properties = new RegistryMetadataProperties();
+
+        properties.setMetadataValue("custom-key", "custom-value");
+        assertEquals("custom-value", properties.getMetadata().get("custom-key"));
+
+        properties.setEnv("staging");
+        properties.setRegion("us-east");
+        assertEquals("staging", properties.getMetadata().get("env"));
+        assertEquals("us-east", properties.getMetadata().get("region"));
     }
 }

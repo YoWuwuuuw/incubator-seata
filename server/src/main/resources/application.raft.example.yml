@@ -83,10 +83,11 @@ seata:
     type: file
     preferred-networks: 30.240.*
     metadata:
-      weight: 100
-      # Server location configuration for region routing
-      lat: ""
-      lng: ""
+      # Common metadata for routing
+      weight: 1
+      env:
+      region:
+      version:
     seata:
       server-addr: 127.0.0.1:8081
       cluster: default
@@ -184,3 +185,18 @@ seata:
       boss-thread-prefix: NettyBoss
       worker-thread-prefix: NettyServerNIOWorker
       boss-thread-size: 1
+  seata:
+    client:
+      routing:
+        enabled:
+        debug:
+        routers:
+        metadata-router:
+          enabled:
+          expression:
+        metadata-router-1:
+          enabled:
+          expression:
+        metadata-router-2:
+          enabled:
+          expression:

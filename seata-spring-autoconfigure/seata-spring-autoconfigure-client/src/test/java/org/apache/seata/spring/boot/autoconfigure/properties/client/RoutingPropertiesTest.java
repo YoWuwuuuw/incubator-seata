@@ -18,84 +18,94 @@ package org.apache.seata.spring.boot.autoconfigure.properties.client;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Test for RoutingProperties
- */
 public class RoutingPropertiesTest {
 
-    /**
-     * Test default values
-     */
     @Test
     public void testDefaultValues() {
         RoutingProperties properties = new RoutingProperties();
 
-        // Verify default values
         assertFalse(properties.isEnabled());
         assertFalse(properties.isDebug());
-        assertTrue(properties.isFallback());
-        assertNotNull(properties.getMetadataRouters());
-        assertTrue(properties.getMetadataRouters().isEmpty());
+        assertEquals("", properties.getRouters());
+        assertNotNull(properties.getMetadataRouter());
+        assertTrue(properties.getMetadataRouter().isEnabled());
+        assertNotNull(properties.getNumberedMetadataRouters());
+        assertTrue(properties.getNumberedMetadataRouters().isEmpty());
     }
 
-    /**
-     * Test dynamic metadata router configuration
-     */
     @Test
-    public void testDynamicMetadataRouters() {
+    public void testRoutersConfiguration() {
         RoutingProperties properties = new RoutingProperties();
 
-        // Create metadata router configurations
-        MetadataRouterConfig config1 = new MetadataRouterConfig();
-        config1.setEnabled(true);
-        config1.setExpression("env == 'prod'");
+        String routers = "metadata-router,metadata-router-1,spi-custom";
+        properties.setRouters(routers);
 
-        MetadataRouterConfig config2 = new MetadataRouterConfig();
-        config2.setEnabled(true);
-        config2.setExpression("version == '1.0.0'");
-
-        // Add configurations
-        properties.addMetadataRouter("metadata-router-1", config1);
-        properties.addMetadataRouter("metadata-router-2", config2);
-
-        // Verify configurations
-        assertEquals(2, properties.getMetadataRouters().size());
-        assertEquals(config1, properties.getMetadataRouter("metadata-router-1"));
-        assertEquals(config2, properties.getMetadataRouter("metadata-router-2"));
-        assertNull(properties.getMetadataRouter("non-existent"));
+        assertEquals(routers, properties.getRouters());
     }
 
-    /**
-     * Test setter and getter properties
-     */
     @Test
-    public void testSetAndGetProperties() {
+    public void testDefaultMetadataRouterConfiguration() {
         RoutingProperties properties = new RoutingProperties();
 
-        // Set properties
+        // Test default metadata router
+        MetadataRouterConfig defaultRouter = properties.getMetadataRouter();
+        assertNotNull(defaultRouter);
+        assertTrue(defaultRouter.isEnabled());
+        assertEquals("", defaultRouter.getExpression());
+
+        // Test setting default metadata router
+        defaultRouter.setEnabled(false);
+        defaultRouter.setExpression("env == prod");
+
+        assertFalse(properties.getMetadataRouter().isEnabled());
+        assertEquals("env == prod", properties.getMetadataRouter().getExpression());
+    }
+
+    @Test
+    public void testNumberedMetadataRoutersConfiguration() {
+        RoutingProperties properties = new RoutingProperties();
+
+        MetadataRouterConfig config = new MetadataRouterConfig();
+        config.setEnabled(true);
+        config.setExpression("version >= 2.0");
+
+        properties.setNumberedMetadataRouter("metadata-router-1", config);
+
+        assertTrue(properties.getNumberedMetadataRouter("metadata-router-1").isEnabled());
+        assertEquals(
+                "version >= 2.0",
+                properties.getNumberedMetadataRouter("metadata-router-1").getExpression());
+        assertNull(properties.getNumberedMetadataRouter("metadata-router-999"));
+    }
+
+    @Test
+    public void testNumberedMetadataRoutersMapOperations() {
+        RoutingProperties properties = new RoutingProperties();
+
+        assertTrue(properties.getNumberedMetadataRouters().isEmpty());
+        assertFalse(properties.hasNumberedMetadataRouter("metadata-router-1"));
+
+        MetadataRouterConfig config = new MetadataRouterConfig();
+        properties.setNumberedMetadataRouter("metadata-router-1", config);
+
+        assertTrue(properties.hasNumberedMetadataRouter("metadata-router-1"));
+        assertEquals(1, properties.getNumberedMetadataRouters().size());
+    }
+
+    @Test
+    public void testRoutingConfiguration() {
+        RoutingProperties properties = new RoutingProperties();
+
         properties.setEnabled(true);
         properties.setDebug(true);
-        properties.setFallback(false);
 
-        // Verify properties
         assertTrue(properties.isEnabled());
         assertTrue(properties.isDebug());
-        assertFalse(properties.isFallback());
-    }
-
-    /**
-     * Test fluent API
-     */
-    @Test
-    public void testFluentApi() {
-        RoutingProperties properties =
-                new RoutingProperties().setEnabled(true).setDebug(true).setFallback(false);
-
-        // Verify fluent API result
-        assertTrue(properties.isEnabled());
-        assertTrue(properties.isDebug());
-        assertFalse(properties.isFallback());
     }
 }

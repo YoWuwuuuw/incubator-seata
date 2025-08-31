@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MetadataRouterConfigTest {
@@ -29,48 +28,48 @@ public class MetadataRouterConfigTest {
     public void testDefaultValues() {
         MetadataRouterConfig config = new MetadataRouterConfig();
 
-        assertFalse(config.isEnabled());
+        assertTrue(config.isEnabled());
         assertEquals("", config.getExpression());
     }
 
     @Test
-    public void testSetAndGetProperties() {
+    public void testEnabledConfiguration() {
         MetadataRouterConfig config = new MetadataRouterConfig();
 
         config.setEnabled(false);
-        config.setExpression("version >= 2.0");
-
         assertFalse(config.isEnabled());
-        assertEquals("version >= 2.0", config.getExpression());
-    }
 
-    @Test
-    public void testFluentApi() {
-        MetadataRouterConfig config =
-                new MetadataRouterConfig().setEnabled(true).setExpression("env = prod");
-
+        config.setEnabled(true);
         assertTrue(config.isEnabled());
-        assertEquals("env = prod", config.getExpression());
     }
 
     @Test
-    public void testComplexExpression() {
+    public void testExpressionConfiguration() {
         MetadataRouterConfig config = new MetadataRouterConfig();
 
-        String complexExpression = "(version >= 2.0) | (env = dev) | (region = cn-bj)";
+        String expression = "env == prod && region == cn-north";
+        config.setExpression(expression);
+
+        assertEquals(expression, config.getExpression());
+    }
+
+    @Test
+    public void testComplexExpressionConfiguration() {
+        MetadataRouterConfig config = new MetadataRouterConfig();
+
+        String complexExpression = "(env == prod && region == cn-north) || (env == staging && region == us-east)";
         config.setExpression(complexExpression);
 
         assertEquals(complexExpression, config.getExpression());
     }
 
     @Test
-    public void testEmptyExpression() {
+    public void testVersionExpressionConfiguration() {
         MetadataRouterConfig config = new MetadataRouterConfig();
 
-        config.setExpression("");
-        assertEquals("", config.getExpression());
+        String versionExpression = "version >= 2.0 && weight >= 100";
+        config.setExpression(versionExpression);
 
-        config.setExpression(null);
-        assertNull(config.getExpression());
+        assertEquals(versionExpression, config.getExpression());
     }
 }

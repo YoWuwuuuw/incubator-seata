@@ -17,14 +17,9 @@
 package org.apache.seata.spring.boot.autoconfigure.properties.client;
 
 public class MetadataRouterConfig {
-    /**
-     * Whether enable this metadata router
-     */
-    private boolean enabled = false;
 
-    /**
-     * Expression for this metadata router, e.g. version >= 2.0
-     */
+    private boolean enabled = true;
+
     private String expression = "";
 
     public boolean isEnabled() {

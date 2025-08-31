@@ -64,34 +64,66 @@ public class RegistryMetadataProperties {
     }
 
     /**
-     * Get location latitude
-     * @return latitude value
+     * Get environment
+     * @return environment value
      */
-    public String getLat() {
-        return metadata.get("lat");
+    public String getEnv() {
+        return metadata.get("env");
     }
 
     /**
-     * Set location latitude
-     * @param lat latitude value
+     * Set environment
+     * @param env environment value
      */
-    public void setLat(String lat) {
-        metadata.put("lat", lat);
+    public void setEnv(String env) {
+        metadata.put("env", env);
     }
 
     /**
-     * Get location longitude
-     * @return longitude value
+     * Get region
+     * @return region value
      */
-    public String getLng() {
-        return metadata.get("lng");
+    public String getRegion() {
+        return metadata.get("region");
     }
 
     /**
-     * Set location longitude
-     * @param lng longitude value
+     * Set region
+     * @param region region value
      */
-    public void setLng(String lng) {
-        metadata.put("lng", lng);
+    public void setRegion(String region) {
+        metadata.put("region", region);
+    }
+
+    /**
+     * Get version
+     * @return version value
+     */
+    public String getVersion() {
+        return metadata.get("version");
+    }
+
+    /**
+     * Set version
+     * @param version version value
+     */
+    public void setVersion(String version) {
+        metadata.put("version", version);
+    }
+
+    /**
+     * Get weight
+     * @return weight value
+     */
+    public String getWeight() {
+        return metadata.get("weight");
+    }
+
+    /**
+     * Set weight
+     * @param weight weight value
+     */
+    public void setWeight(String weight) {
+        metadata.put("weight", weight);
     }
 }
