@@ -21,6 +21,7 @@ import org.apache.seata.discovery.routing.RoutingContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +80,7 @@ public class MetadataRouterTest {
         router.setExpression("");
 
         ServiceInstance server = mock(ServiceInstance.class);
-        List<ServiceInstance> servers = Arrays.asList(server);
+        List<ServiceInstance> servers = Collections.singletonList(server);
         RoutingContext ctx = new RoutingContext();
 
         List<ServiceInstance> result = router.doRoute(servers, ctx);

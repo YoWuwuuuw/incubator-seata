@@ -35,7 +35,7 @@ public class ConfigurableConditionMatcherTest {
      * Test constructor - verify condition parsing and exception handling
      */
     @Test
-    public void testConstructor() {
+    public void testConstructorWithValidAndInvalidConditions() {
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("version >= 2.3");
         assertTrue(matcher.toString().contains("key='version'"));
         assertTrue(matcher.toString().contains("operator='>='"));
@@ -51,18 +51,18 @@ public class ConfigurableConditionMatcherTest {
      * Test string comparison - equals and not equals operations
      */
     @Test
-    public void testStringComparison() {
+    public void testStringComparisonWithEqualsAndNotEquals() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("env", "prod");
         when(server.getMetadata()).thenReturn(metadata);
 
-        // Test equals with = (legacy style)
+        // Test equals with =
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("env = prod");
         assertTrue(matcher.match(server, ctx));
 
-        // Test equals with == (Java style)
+        // Test equals with ==
         matcher = new ConfigurableConditionMatcher("env == prod");
         assertTrue(matcher.match(server, ctx));
 
@@ -70,11 +70,11 @@ public class ConfigurableConditionMatcherTest {
         matcher = new ConfigurableConditionMatcher("env != dev");
         assertTrue(matcher.match(server, ctx));
 
-        // Test no match with = (legacy style)
+        // Test no match with =
         matcher = new ConfigurableConditionMatcher("env = dev");
         assertFalse(matcher.match(server, ctx));
 
-        // Test no match with == (Java style)
+        // Test no match with ==
         matcher = new ConfigurableConditionMatcher("env == dev");
         assertFalse(matcher.match(server, ctx));
     }
@@ -83,7 +83,7 @@ public class ConfigurableConditionMatcherTest {
      * Test numeric comparison - various comparison operators
      */
     @Test
-    public void testNumericComparison() {
+    public void testNumericComparisonWithVariousOperators() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();
@@ -94,15 +94,15 @@ public class ConfigurableConditionMatcherTest {
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("version >= 2.0");
         assertTrue(matcher.match(server, ctx));
 
-        // Test greater than
+        // Test >
         matcher = new ConfigurableConditionMatcher("version > 2.0");
         assertTrue(matcher.match(server, ctx));
 
-        // Test less than
+        // Test <
         matcher = new ConfigurableConditionMatcher("version < 3.0");
         assertTrue(matcher.match(server, ctx));
 
-        // Test less than or equal
+        // Test <=
         matcher = new ConfigurableConditionMatcher("version <= 2.3");
         assertTrue(matcher.match(server, ctx));
 
@@ -115,21 +115,21 @@ public class ConfigurableConditionMatcherTest {
      * Test numeric precision - handle different numeric formats
      */
     @Test
-    public void testNumericPrecision() {
+    public void testNumericPrecisionWithDifferentFormats() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("version", "1.0");
         when(server.getMetadata()).thenReturn(metadata);
 
-        // Test precision issue: 1 = 1.0 with = (legacy style)
+        // Test precision issue: 1 = 1.0 with =
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("version = 1.0");
         assertTrue(matcher.match(server, ctx));
 
         matcher = new ConfigurableConditionMatcher("version = 1");
         assertTrue(matcher.match(server, ctx));
 
-        // Test precision issue: 1 == 1.0 with == (Java style)
+        // Test precision issue: 1 == 1.0 with ==
         matcher = new ConfigurableConditionMatcher("version == 1.0");
         assertTrue(matcher.match(server, ctx));
 
@@ -141,7 +141,7 @@ public class ConfigurableConditionMatcherTest {
      * Test mixed comparison - numeric and string comparison
      */
     @Test
-    public void testMixedComparison() {
+    public void testMixedComparisonWithNumericAndString() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();
@@ -162,7 +162,7 @@ public class ConfigurableConditionMatcherTest {
      * Test missing metadata scenario - servers without corresponding metadata should not pass through
      */
     @Test
-    public void testMissingMetadata() {
+    public void testMissingMetadataScenario() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();
@@ -177,7 +177,7 @@ public class ConfigurableConditionMatcherTest {
      * Test invalid numeric comparison - perform numeric comparison on non-numeric values
      */
     @Test
-    public void testInvalidNumericComparison() {
+    public void testInvalidNumericComparisonOnNonNumericValues() {
         ServiceInstance server = mock(ServiceInstance.class);
         RoutingContext ctx = mock(RoutingContext.class);
         Map<String, Object> metadata = new HashMap<>();

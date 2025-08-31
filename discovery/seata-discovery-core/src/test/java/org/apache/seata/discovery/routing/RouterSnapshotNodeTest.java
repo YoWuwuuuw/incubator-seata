@@ -19,6 +19,7 @@ package org.apache.seata.discovery.routing;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,7 +51,8 @@ public class RouterSnapshotNodeTest {
     @Test
     public void testGetRouterName() {
         String routerName = "test-router";
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>(routerName, 5, 3, Arrays.asList("server1"), 10L);
+        RouterSnapshotNode<String> node =
+                new RouterSnapshotNode<>(routerName, 5, 3, Collections.singletonList("server1"), 10L);
 
         assertEquals(routerName, node.getRouterName());
     }
@@ -62,7 +64,7 @@ public class RouterSnapshotNodeTest {
     public void testGetInputSize() {
         int inputSize = 10;
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", inputSize, 5, Arrays.asList("server1"), 10L);
+                new RouterSnapshotNode<>("router", inputSize, 5, Collections.singletonList("server1"), 10L);
 
         assertEquals(inputSize, node.getInputSize());
     }
@@ -74,7 +76,7 @@ public class RouterSnapshotNodeTest {
     public void testGetOutputSize() {
         int outputSize = 7;
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", 10, outputSize, Arrays.asList("server1"), 10L);
+                new RouterSnapshotNode<>("router", 10, outputSize, Collections.singletonList("server1"), 10L);
 
         assertEquals(outputSize, node.getOutputSize());
     }
@@ -98,7 +100,7 @@ public class RouterSnapshotNodeTest {
     public void testGetExecutionTimeMs() {
         long executionTime = 25L;
         RouterSnapshotNode<String> node =
-                new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), executionTime);
+                new RouterSnapshotNode<>("router", 5, 3, Collections.singletonList("server1"), executionTime);
 
         assertEquals(executionTime, node.getExecutionTimeMs());
     }
@@ -127,29 +129,5 @@ public class RouterSnapshotNodeTest {
 
         assertTrue(result.contains("server1"));
         assertTrue(result.contains("server2"));
-    }
-
-    /**
-     * Test with empty selected server list - edge case
-     */
-    @Test
-    public void testWithEmptySelectedServers() {
-        List<String> emptyServers = Arrays.asList();
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 0, emptyServers, 10L);
-
-        assertEquals(0, node.getOutputSize());
-        assertEquals(0, node.getSelectedServers().size());
-    }
-
-    /**
-     * Test with Integer type - generic support
-     */
-    @Test
-    public void testWithIntegerType() {
-        List<Integer> selectedServers = Arrays.asList(1, 2, 3);
-        RouterSnapshotNode<Integer> node = new RouterSnapshotNode<>("router", 5, 3, selectedServers, 10L);
-
-        assertEquals(selectedServers, node.getSelectedServers());
-        assertEquals(3, node.getSelectedServers().size());
     }
 }

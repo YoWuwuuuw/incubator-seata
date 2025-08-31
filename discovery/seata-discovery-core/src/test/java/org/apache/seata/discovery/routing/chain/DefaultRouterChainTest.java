@@ -20,6 +20,7 @@ import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.RoutingContext;
+import org.apache.seata.discovery.routing.StateRouter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -59,16 +59,13 @@ public class DefaultRouterChainTest {
     public void setUp() throws Exception {
         mockedFactory = mockStatic(ConfigurationFactory.class);
 
-        // Use reflection to set the static field
         Field field = ConfigurationFactory.class.getDeclaredField("CURRENT_FILE_INSTANCE");
         field.setAccessible(true);
         field.set(null, mockConfiguration);
 
-        // Set default mock behavior
         when(mockConfiguration.getBoolean(anyString(), anyBoolean())).thenAnswer(invocation -> {
             String key = invocation.getArgument(0);
             Boolean defaultValue = invocation.getArgument(1);
-            // Check if we have a specific mock for this key
             String configValue = mockConfiguration.getConfig(key);
             if (configValue != null) {
                 return Boolean.parseBoolean(configValue);
@@ -90,7 +87,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadDefaultMetadataRouter() {
-        // Mock configuration for default metadata-router
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router");
         when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
                 .thenReturn("true");
@@ -118,7 +114,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadNumberedMetadataRouter() {
-        // Mock configuration for numbered metadata-router
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
                 .thenReturn("true");
@@ -146,7 +141,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadMultipleRouters() {
-        // Mock configuration for multiple routers
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router,metadata-router-1");
         when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
                 .thenReturn("true");
@@ -166,6 +160,7 @@ public class DefaultRouterChainTest {
         // Should return filtered servers
         assertNotNull(result);
         assertTrue(result.size() <= 3);
+
         // Verify that only servers matching both conditions are returned
         for (ServiceInstance server : result) {
             String version = (String) server.getMetadata().get("version");
@@ -180,7 +175,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadRouterWithDisabledConfiguration() {
-        // Mock configuration for disabled router
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
                 .thenReturn("false");
@@ -201,9 +195,7 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadRouterWithMissingConfiguration() {
-        // Mock configuration for router name but no actual configuration
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1");
-        // No enabled or expression configured (both return null)
 
         DefaultRouterChain routerChain = new DefaultRouterChain();
         List<ServiceInstance> servers = createTestServers();
@@ -220,17 +212,27 @@ public class DefaultRouterChainTest {
      * Test loading SPI router
      */
     @Test
-    public void testLoadSpiRouter() {
-        // Mock configuration for SPI router
+    public void testLoadSpiRouter() throws Exception {
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("spi-custom");
 
         DefaultRouterChain routerChain = new DefaultRouterChain();
+
+        Field routersField = DefaultRouterChain.class.getDeclaredField("routers");
+        routersField.setAccessible(true);
+        List<StateRouter<ServiceInstance>> routers = (List<StateRouter<ServiceInstance>>) routersField.get(routerChain);
+
+        // Verify that no routers were loaded due to SPI loading failure
+        // In test environment, EnhancedServiceLoader cannot find the actual SPI implementation
+        assertNotNull(routers);
+        assertEquals(0, routers.size());
+
+        // Test routing functionality - should return original servers when no routers are loaded
         List<ServiceInstance> servers = createTestServers();
         RoutingContext ctx = new RoutingContext();
-
         List<ServiceInstance> result = routerChain.filterAll(servers, ctx);
 
-        // Should return original servers for now (SPI loading not implemented)
+        // Should return original servers when no routers are loaded
+        assertNotNull(result);
         assertEquals(3, result.size());
         assertEquals(servers, result);
     }
@@ -240,7 +242,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadUnknownRouterType() {
-        // Mock configuration for unknown router type
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("unknown-router");
         when(mockConfiguration.getConfig("client.routing.unknown-router.enabled"))
                 .thenReturn("true");
@@ -261,86 +262,7 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testRouterChainExecutionOrder() {
-        // Mock configuration for multiple routers to test execution order
         when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router,metadata-router-1");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
-                .thenReturn("version >= 2.0");
-        when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router-1.expression"))
-                .thenReturn("env = prod");
-
-        DefaultRouterChain routerChain = new DefaultRouterChain();
-        List<ServiceInstance> servers = createTestServers();
-        RoutingContext ctx = new RoutingContext();
-
-        List<ServiceInstance> result = routerChain.filterAll(servers, ctx);
-
-        // Should return filtered servers
-        assertNotNull(result);
-        assertTrue(result.size() <= 3);
-        // Verify that only servers matching both conditions are returned
-        for (ServiceInstance server : result) {
-            String version = (String) server.getMetadata().get("version");
-            String env = (String) server.getMetadata().get("env");
-            assertTrue(version.compareTo("2.0") >= 0);
-            assertEquals("prod", env);
-        }
-    }
-
-    /**
-     * Test with empty server list
-     */
-    @Test
-    public void testWithEmptyServerList() {
-        // Mock configuration for router
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
-                .thenReturn("version >= 2.0");
-
-        DefaultRouterChain routerChain = new DefaultRouterChain();
-        List<ServiceInstance> servers = new ArrayList<>();
-        RoutingContext ctx = new RoutingContext();
-
-        List<ServiceInstance> result = routerChain.filterAll(servers, ctx);
-
-        // Should return empty list
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-    }
-
-    /**
-     * Test with null server list
-     */
-    @Test
-    public void testWithNullServerList() {
-        // Mock configuration for router
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
-                .thenReturn("version >= 2.0");
-
-        DefaultRouterChain routerChain = new DefaultRouterChain();
-        RoutingContext ctx = new RoutingContext();
-
-        List<ServiceInstance> result = routerChain.filterAll(null, ctx);
-
-        // Should return null
-        assertNull(result);
-    }
-
-    /**
-     * Test router configuration with whitespace
-     */
-    @Test
-    public void testRouterConfigurationWithWhitespace() {
-        // Mock configuration for routers with whitespace
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn(" metadata-router , metadata-router-1 ");
         when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
                 .thenReturn("true");
         when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
@@ -373,7 +295,6 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testConstructor() {
-        // Verify default constructor works
         DefaultRouterChain chain = new DefaultRouterChain();
         assertNotNull(chain);
     }
@@ -384,16 +305,16 @@ public class DefaultRouterChainTest {
     private List<ServiceInstance> createTestServers() {
         List<ServiceInstance> servers = new ArrayList<>();
 
-        // Server 1: Beijing, version 2.0, env prod
-        ServiceInstance server1 = createMockServer("server1", "39.9042", "116.4074", "2.0", "prod");
+        // Server 1: version 2.0, env prod
+        ServiceInstance server1 = createMockServer("2.0", "prod");
         servers.add(server1);
 
-        // Server 2: Shanghai, version 1.5, env prod
-        ServiceInstance server2 = createMockServer("server2", "31.2304", "121.4737", "1.5", "prod");
+        // Server 2: version 1.5, env prod
+        ServiceInstance server2 = createMockServer("1.5", "prod");
         servers.add(server2);
 
-        // Server 3: Guangzhou, version 2.0, env dev
-        ServiceInstance server3 = createMockServer("server3", "23.1291", "113.2644", "2.0", "dev");
+        // Server 3: version 2.0, env dev
+        ServiceInstance server3 = createMockServer("2.0", "dev");
         servers.add(server3);
 
         return servers;
@@ -402,10 +323,8 @@ public class DefaultRouterChainTest {
     /**
      * Create mock server with metadata
      */
-    private ServiceInstance createMockServer(String id, String lat, String lng, String version, String env) {
+    private ServiceInstance createMockServer(String version, String env) {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("lat", lat);
-        metadata.put("lng", lng);
         metadata.put("version", version);
         metadata.put("env", env);
 

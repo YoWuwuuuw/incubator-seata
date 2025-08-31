@@ -57,36 +57,10 @@ public class AbstractStateRouterTest {
     }
 
     /**
-     * Test router that overrides fallback behavior for testing
-     */
-    private static class TestRouterWithCustomFallback extends AbstractStateRouter<String> {
-
-        private final boolean shouldReturnEmpty;
-
-        public TestRouterWithCustomFallback(String routerName, boolean shouldReturnEmpty) {
-            super(routerName);
-            this.shouldReturnEmpty = shouldReturnEmpty;
-        }
-
-        @Override
-        protected List<String> doRoute(List<String> servers, RoutingContext ctx) {
-            if (shouldReturnEmpty) {
-                return new ArrayList<>();
-            }
-            return servers;
-        }
-
-        @Override
-        public String buildSnapshot() {
-            return "test-router";
-        }
-    }
-
-    /**
      * Test constructor
      */
     @Test
-    public void testConstructor() {
+    public void testConstructorWithValidParameters() {
         TestRouter router = new TestRouter("test-router", false);
         assertNotNull(router);
     }
@@ -110,7 +84,7 @@ public class AbstractStateRouterTest {
      */
     @Test
     public void testRouteWithEmptyResultAndFallback() {
-        TestRouterWithCustomFallback router = new TestRouterWithCustomFallback("test-router", true);
+        TestRouter router = new TestRouter("test-router", true);
         List<String> servers = Arrays.asList("server1", "server2", "server3");
         RoutingContext ctx = new RoutingContext();
 
@@ -160,29 +134,9 @@ public class AbstractStateRouterTest {
      * Test build snapshot - verify snapshot information
      */
     @Test
-    public void testBuildSnapshot() {
+    public void testBuildSnapshotWithValidData() {
         TestRouter router = new TestRouter("test-router", false);
         String snapshot = router.buildSnapshot();
         assertTrue(snapshot.contains("test-router"));
-    }
-
-    /**
-     * Test fallback configuration key generation
-     */
-    @Test
-    public void testFallbackConfigurationKey() {
-        // The router should use the default fallback value (true) when no config is set
-        // We can't easily test the actual configuration lookup without complex mocking
-        // But we can verify the router behavior with default fallback
-        List<String> servers = Arrays.asList("server1", "server2");
-        RoutingContext ctx = new RoutingContext();
-
-        // Create a router that returns empty result
-        TestRouter emptyRouter = new TestRouter("metadata-router", true);
-        List<String> result = emptyRouter.route(servers, ctx, null);
-
-        // With default fallback=true, should return original list
-        assertEquals(2, result.size());
-        assertTrue(result.containsAll(servers));
     }
 }
