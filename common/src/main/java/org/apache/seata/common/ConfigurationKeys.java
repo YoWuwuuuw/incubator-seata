@@ -279,9 +279,9 @@ public interface ConfigurationKeys {
     String CLIENT_ROUTING_DEBUG = CLIENT_ROUTING_PREFIX + "debug";
 
     /**
-     * the constant CLIENT_METADATA_ROUTER_ENABLED
+     * the constant CLIENT_ROUTING_ROUTERS
      */
-    String CLIENT_METADATA_ROUTER_ENABLED = CLIENT_ROUTING_PREFIX + "metadata-router.enabled";
+    String CLIENT_ROUTING_ROUTERS = CLIENT_ROUTING_PREFIX + "routers";
 
     /**
      * the constant CLIENT_METADATA_ROUTER_EXPRESSION

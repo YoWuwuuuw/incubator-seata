@@ -27,11 +27,6 @@ public class RoutingContext {
     private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 
     /**
-     * Constructor
-     */
-    public RoutingContext() {}
-
-    /**
      * Set attribute
      * @param key key
      * @param value value

@@ -40,7 +40,6 @@ public class DefaultRouterChain implements RouterChain {
     private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private final List<StateRouter<ServiceInstance>> routers = new ArrayList<>();
-
     private final boolean debugEnabled;
 
     /**
@@ -118,60 +117,92 @@ public class DefaultRouterChain implements RouterChain {
         LOGGER.info(sb.toString());
     }
 
-    /**
-     * Load routers - simplified to only load metadata routers
-     */
     private void loadRouters() {
-        // Load default metadata router if enabled
-        if (isRouterEnabled("metadata-router")) {
-            StateRouter<ServiceInstance> defaultRouter = new MetadataRouter();
-            routers.add(defaultRouter);
+        // Get router list from configuration 'client.routing.routers'
+        String routersConfig = fileConfig.getConfig(ConfigurationKeys.CLIENT_ROUTING_ROUTERS);
+
+        if (routersConfig == null || routersConfig.trim().isEmpty()) {
+            LOGGER.warn("No routers configured in 'client.routing.routers'. Routing will be disabled.");
+            return;
         }
 
-        // Load additional metadata routers (metadata-router-1, metadata-router-2, etc.)
-        // Limit to a reasonable number to avoid infinite loops
-        int maxRouters = 10;
-        int index = 1;
-        while (index <= maxRouters) {
-            String routerName = "metadata-router-" + index;
+        // Parse router names from configuration
+        String[] routerNames = routersConfig.split(",");
+
+        for (String routerName : routerNames) {
+            routerName = routerName.trim();
+            if (routerName.isEmpty()) {
+                continue;
+            }
+
             if (isRouterEnabled(routerName)) {
-                StateRouter<ServiceInstance> router = new MetadataRouter(routerName);
-                routers.add(router);
-                index++;
-            } else {
-                break;
-            }
-        }
-
-        // Load custom routers via SPI
-        try {
-            List<StateRouter> customRouters = EnhancedServiceLoader.loadAll(StateRouter.class);
-            for (StateRouter customRouter : customRouters) {
-                if (customRouter != null) {
-                    routers.add((StateRouter<ServiceInstance>) customRouter);
+                StateRouter<ServiceInstance> router = createRouter(routerName);
+                if (router != null) {
+                    routers.add(router);
+                    LOGGER.debug("Successfully loaded router: {}", routerName);
+                } else {
+                    LOGGER.warn("Failed to create router: {}", routerName);
                 }
+            } else {
+                LOGGER.debug("Router {} not loaded: enabled={}", routerName, isRouterEnabled(routerName));
             }
-        } catch (Exception e) {
-            LOGGER.warn("Failed to load custom routers via SPI", e);
         }
     }
 
     /**
+     * Create router instance based on router name
+     */
+    private StateRouter<ServiceInstance> createRouter(String routerName) {
+        try {
+            if (routerName.startsWith("spi-")) {
+                // SPI router (spi-custom, spi-region, etc.)
+                StateRouter<ServiceInstance> spiRouter = EnhancedServiceLoader.load(StateRouter.class, routerName);
+                if (spiRouter != null) {
+                    LOGGER.info("Successfully loaded SPI router: {}", routerName);
+                    return spiRouter;
+                } else {
+                    LOGGER.error("Failed to load SPI router: {}", routerName);
+                    return null;
+                }
+            }
+
+            // Check if metadata router has expression configuration
+            if (!hasRouterConfiguration(routerName)) {
+                LOGGER.warn("Router {} is configured but has no configuration, skip loading.", routerName);
+                return null;
+            }
+
+            if ("metadata-router".equals(routerName)) {
+                return new MetadataRouter();
+            } else if (routerName.startsWith("metadata-router-")) {
+                // Named metadata router (metadata-router-1, metadata-router-2, etc.)
+                return new MetadataRouter(routerName);
+            }
+
+            LOGGER.warn("Unknown router type: {}", routerName);
+            return null;
+        } catch (Exception e) {
+            LOGGER.error("Error creating router: {}", routerName, e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if router has any configuration
+     */
+    private boolean hasRouterConfiguration(String routerName) {
+        String enabledKey = ConfigurationKeys.CLIENT_ROUTING_PREFIX + routerName + ".enabled";
+        String expressionKey = ConfigurationKeys.CLIENT_ROUTING_PREFIX + routerName + ".expression";
+
+        // Router is considered configured if either enabled or expression is set
+        return fileConfig.getConfig(enabledKey) != null || fileConfig.getConfig(expressionKey) != null;
+    }
+
+    /**
      * Check if router is enabled
-     *
-     * @param routerName router name
-     * @return whether enabled
      */
     private boolean isRouterEnabled(String routerName) {
-        if (routerName.startsWith("metadata-router-")) {
-            String configKey = "client.routing." + routerName + ".enabled";
-            return fileConfig.getBoolean(configKey, true);
-        }
-
-        if ("metadata-router".equals(routerName)) {
-            return fileConfig.getBoolean(ConfigurationKeys.CLIENT_METADATA_ROUTER_ENABLED, true);
-        }
-
-        return true; // Custom routers are enabled by default
+        String configKey = ConfigurationKeys.CLIENT_ROUTING_PREFIX + routerName + ".enabled";
+        return fileConfig.getBoolean(configKey, true);
     }
 }

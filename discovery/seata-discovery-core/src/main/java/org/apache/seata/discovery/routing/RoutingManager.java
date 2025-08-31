@@ -67,7 +67,7 @@ public class RoutingManager {
      * @return filtered service instances list
      */
     public List<ServiceInstance> filter(List<ServiceInstance> servers) {
-        // Check if routing feature is enabled
+        // Check if routing is enabled
         if (!fileConfig.getBoolean(ConfigurationKeys.CLIENT_ROUTING_ENABLED, false)) {
             return servers;
         }
@@ -77,11 +77,9 @@ public class RoutingManager {
             RoutingContext ctx = createRoutingContext();
 
             // Execute routing filter
-            List<ServiceInstance> filteredServers = routerChain.filterAll(servers, ctx);
-
-            return filteredServers;
+            return routerChain.filterAll(servers, ctx);
         } catch (Exception e) {
-            LOGGER.warn("Routing filter failed, returning original servers: {}", e.getMessage());
+            LOGGER.warn("Routing filter failed: {}, returning original servers", e.getMessage());
             return servers;
         }
     }
@@ -92,8 +90,6 @@ public class RoutingManager {
      */
     private RoutingContext createRoutingContext() {
         RoutingContext ctx = new RoutingContext();
-
-        // Add context information
         ctx.setAttribute("timestamp", System.currentTimeMillis());
 
         return ctx;
