@@ -49,36 +49,36 @@ public class ConfigurableConditionMatcher implements ConditionMatcher {
     public boolean match(ServiceInstance server, RoutingContext ctx) {
         Map<String, Object> metadata = server.getMetadata();
 
-        // Handle null metadata case
+        // If metadata is null, don't pass through
         if (metadata == null) {
-            return false; // If metadata is null, don't pass through
+            return false;
         }
 
+        // If the attribute doesn't exist, don't pass through
         Object actualValue = metadata.get(key);
-
         if (actualValue == null) {
-            return false; // If the attribute doesn't exist, don't pass through
+            return false;
         }
 
         return compareValues(actualValue.toString(), operator, value);
     }
 
     private boolean compareValues(String actual, String operator, String expected) {
-        // = and != support both string and numeric comparison
-        if ("=".equals(operator) || "!=".equals(operator)) {
+        // == and = and != support both string and numeric comparison
+        if ("==".equals(operator) || "=".equals(operator) || "!=".equals(operator)) {
             // Try numeric comparison
             try {
                 double actualNum = Double.parseDouble(actual);
                 double expectedNum = Double.parseDouble(expected);
 
-                if ("=".equals(operator)) {
+                if ("==".equals(operator) || "=".equals(operator)) {
                     return actualNum == expectedNum;
                 } else {
                     return actualNum != expectedNum;
                 }
             } catch (NumberFormatException e) {
                 // If cannot convert to numeric, perform string comparison
-                if ("=".equals(operator)) {
+                if ("==".equals(operator) || "=".equals(operator)) {
                     return actual.equals(expected);
                 } else {
                     return !actual.equals(expected);

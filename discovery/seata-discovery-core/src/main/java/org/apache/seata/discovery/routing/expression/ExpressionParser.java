@@ -17,7 +17,6 @@
 package org.apache.seata.discovery.routing.expression;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,18 +26,20 @@ import java.util.regex.Pattern;
  * Parses routing expressions and generates condition matchers
  *
  * Supported basic syntax:
- * - key = value: exact match
+ * - key == value: exact match (Java style)
+ * - key = value: exact match (legacy style)
  * - key >= value: greater than or equal
  * - key <= value: less than or equal
  * - key > value: greater than
  * - key < value: less than
  * - key != value: not equal
  *
- * Supports two modes:
+ * Supports three modes:
  * 1. Single expression: version >= 2.3
- * 2. OR logic expression: (version >= 2.3) | (env = dev) | (region = cn-bj)
+ * 2. OR logic expression: (version >= 2.3) | (env == dev) | (region == cn-bj) or (version >= 2.3) || (env == dev) || (region == cn-bj)
+ * 3. AND logic expression: (version >= 2.3) && (env == prod) && (region == cn-bj)
  *
- * Note: AND logic is not supported, AND logic is implemented by configuring multiple MetadataRouters
+ * Note: Mixed AND/OR logic is not supported, use multiple MetadataRouters for complex logic
  */
 public class ExpressionParser {
 
@@ -51,10 +52,6 @@ public class ExpressionParser {
      * @throws IllegalArgumentException thrown when expression format is incorrect
      */
     public static List<ConditionMatcher> parse(String expression) {
-        if (expression == null || expression.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
-
         String trimmedExpression = expression.trim();
 
         // Validate expression format
@@ -63,8 +60,10 @@ public class ExpressionParser {
         }
 
         // Check if contains logical operators
-        if (trimmedExpression.contains("|")) {
+        if (trimmedExpression.contains("|") || trimmedExpression.contains("||")) {
             return parseOrExpression(trimmedExpression);
+        } else if (trimmedExpression.contains("&&")) {
+            return parseAndExpression(trimmedExpression);
         } else {
             return parseSingleExpression(trimmedExpression);
         }
@@ -78,7 +77,7 @@ public class ExpressionParser {
     private static List<ConditionMatcher> parseSingleExpression(String expression) {
         List<ConditionMatcher> matchers = new ArrayList<>();
 
-        // Remove outer parentheses only
+        // Remove outer parentheses only if both sides have parentheses
         String cleanExpression = expression.trim();
         if (cleanExpression.startsWith("(") && cleanExpression.endsWith(")")) {
             cleanExpression =
@@ -94,20 +93,41 @@ public class ExpressionParser {
 
     /**
      * Parse OR logic expression
-     * Format: (condition1) | (condition2) | (condition3)
+     * Format: (condition1) | (condition2) | (condition3) or condition1 | condition2 | condition3
+     * Also supports: (condition1) || (condition2) || (condition3) or condition1 || condition2 || condition3
      * @param expression OR logic expression
      * @return list of condition matchers
      */
     private static List<ConditionMatcher> parseOrExpression(String expression) {
         List<ConditionMatcher> matchers = new ArrayList<>();
 
-        // Split by |
-        String[] parts = expression.split("\\|");
+        // Split by | or ||, but handle || first to avoid splitting on single |
+        String[] parts;
+        if (expression.contains("||")) {
+            // Split by || first, then handle any remaining single | if they exist
+            parts = expression.split("\\|\\|");
+            // If there are single | characters in any part, split those too
+            List<String> allParts = new ArrayList<>();
+            for (String part : parts) {
+                if (part.contains("|")) {
+                    String[] subParts = part.split("\\|");
+                    for (String subPart : subParts) {
+                        allParts.add(subPart);
+                    }
+                } else {
+                    allParts.add(part);
+                }
+            }
+            parts = allParts.toArray(new String[0]);
+        } else {
+            // Split by single |
+            parts = expression.split("\\|");
+        }
 
         for (String part : parts) {
             part = part.trim();
             if (!part.isEmpty()) {
-                // Extract content inside parentheses
+                // Try to extract content inside parentheses if they exist
                 Matcher matcher = PARENTHESES_PATTERN.matcher(part);
                 if (matcher.find()) {
                     String condition = matcher.group(1).trim();
@@ -115,8 +135,48 @@ public class ExpressionParser {
                         matchers.add(new ConfigurableConditionMatcher(condition));
                     }
                 } else {
-                    // OR expression parts must have parentheses
-                    throw new IllegalArgumentException("OR expression part must be enclosed in parentheses: " + part);
+                    // No parentheses, treat the whole part as a condition
+                    if (isValidSingleExpression(part)) {
+                        matchers.add(new ConfigurableConditionMatcher(part));
+                    } else {
+                        throw new IllegalArgumentException("Invalid OR expression part: " + part);
+                    }
+                }
+            }
+        }
+
+        return matchers;
+    }
+
+    /**
+     * Parse AND logic expression
+     * Format: (condition1) && (condition2) && (condition3) or condition1 && condition2 && condition3
+     * @param expression AND logic expression
+     * @return list of condition matchers
+     */
+    private static List<ConditionMatcher> parseAndExpression(String expression) {
+        List<ConditionMatcher> matchers = new ArrayList<>();
+
+        // Split by '&&'
+        String[] parts = expression.split("&&");
+
+        for (String part : parts) {
+            part = part.trim();
+            if (!part.isEmpty()) {
+                // Try to extract content inside parentheses if they exist
+                Matcher matcher = PARENTHESES_PATTERN.matcher(part);
+                if (matcher.find()) {
+                    String condition = matcher.group(1).trim();
+                    if (!condition.isEmpty()) {
+                        matchers.add(new ConfigurableConditionMatcher(condition));
+                    }
+                } else {
+                    // No parentheses, treat the whole part as a condition
+                    if (isValidSingleExpression(part)) {
+                        matchers.add(new ConfigurableConditionMatcher(part));
+                    } else {
+                        throw new IllegalArgumentException("Invalid AND expression part: " + part);
+                    }
                 }
             }
         }
@@ -130,15 +190,13 @@ public class ExpressionParser {
      * @return whether valid
      */
     public static boolean isValidExpression(String expression) {
-        if (expression == null || expression.trim().isEmpty()) {
-            return true; // Empty expression is considered valid
-        }
-
         String trimmedExpression = expression.trim();
 
-        // Check if contains OR logic
-        if (trimmedExpression.contains("|")) {
+        // Check if contains logical operators
+        if (trimmedExpression.contains("|") || trimmedExpression.contains("||")) {
             return isValidOrExpression(trimmedExpression);
+        } else if (trimmedExpression.contains("&&")) {
+            return isValidAndExpression(trimmedExpression);
         } else {
             return isValidSingleExpression(trimmedExpression);
         }
@@ -182,11 +240,7 @@ public class ExpressionParser {
         }
 
         // Validate value: cannot be empty
-        if (value.isEmpty()) {
-            return false;
-        }
-
-        return true;
+        return !value.isEmpty();
     }
 
     /**
@@ -195,8 +249,28 @@ public class ExpressionParser {
      * @return whether valid
      */
     private static boolean isValidOrExpression(String expression) {
-        // Split by |
-        String[] parts = expression.split("\\|");
+        // Split by | or ||, but handle || first to avoid splitting on single |
+        String[] parts;
+        if (expression.contains("||")) {
+            // Split by || first, then handle any remaining single | if they exist
+            parts = expression.split("\\|\\|");
+            // If there are single | characters in any part, split those too
+            List<String> allParts = new ArrayList<>();
+            for (String part : parts) {
+                if (part.contains("|")) {
+                    String[] subParts = part.split("\\|");
+                    for (String subPart : subParts) {
+                        allParts.add(subPart);
+                    }
+                } else {
+                    allParts.add(part);
+                }
+            }
+            parts = allParts.toArray(new String[0]);
+        } else {
+            // Split by single |
+            parts = expression.split("\\|");
+        }
 
         for (String part : parts) {
             part = part.trim();
@@ -210,8 +284,42 @@ public class ExpressionParser {
                         return false;
                     }
                 } else {
-                    // OR expression without parentheses is invalid
-                    return false;
+                    // No parentheses, validate the part directly
+                    if (!isValidSingleExpression(part)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate AND expression format
+     * @param expression AND expression
+     * @return whether valid
+     */
+    private static boolean isValidAndExpression(String expression) {
+        // Split by '&&'
+        String[] parts = expression.split("&&");
+
+        for (String part : parts) {
+            part = part.trim();
+            if (!part.isEmpty()) {
+                // Check if has parentheses
+                if (part.startsWith("(") && part.endsWith(")")) {
+                    // Extract content inside parentheses
+                    String innerExpression =
+                            part.substring(1, part.length() - 1).trim();
+                    if (!isValidSingleExpression(innerExpression)) {
+                        return false;
+                    }
+                } else {
+                    // No parentheses, validate the part directly
+                    if (!isValidSingleExpression(part)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -225,8 +333,9 @@ public class ExpressionParser {
      * @return whether valid
      */
     private static boolean isValidOperator(String operator) {
-        // Strictly match valid operators, reject any other combinations
-        return "=".equals(operator)
+        // Support both Java style (==) and legacy style (=)
+        return "==".equals(operator)
+                || "=".equals(operator)
                 || "!=".equals(operator)
                 || ">".equals(operator)
                 || ">=".equals(operator)
@@ -240,6 +349,15 @@ public class ExpressionParser {
      * @return whether contains OR logic
      */
     public static boolean isOrExpression(String expression) {
-        return expression != null && expression.contains("|");
+        return expression != null && (expression.contains("|") || expression.contains("||"));
+    }
+
+    /**
+     * Check if expression contains AND logic
+     * @param expression expression string
+     * @return whether contains AND logic
+     */
+    public static boolean isAndExpression(String expression) {
+        return expression != null && expression.contains("&&");
     }
 }

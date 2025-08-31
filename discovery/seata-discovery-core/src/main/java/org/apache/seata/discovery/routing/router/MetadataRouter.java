@@ -33,11 +33,12 @@ import java.util.stream.Collectors;
 /**
  * Metadata router
  *
- * Supports two modes:
- * 1. Single expression: version >= 2.0 (AND logic)
- * 2. OR logic expression: (version >= 2.0) | (env = dev) | (region = cn-bj) (OR logic)
+ * Supports three modes:
+ * 1. Single expression: version >= 2.0
+ * 2. OR logic expression: (version >= 2.0) | (env == dev) | (region == cn-bj) or (version >= 2.0) || (env == dev) || (region == cn-bj)
+ * 3. AND logic expression: (version >= 2.0) && (env == prod) && (region == cn-bj)
  *
- * Note: AND logic is implemented by configuring multiple MetadataRouters
+ * Note: Mixed AND/OR logic is not supported, use multiple MetadataRouters for complex logic
  */
 public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
@@ -109,7 +110,6 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
     @Override
     public String buildSnapshot() {
-        return String.format(
-                "MetadataRouter: expression=%s, isOr=%s", expression, ExpressionParser.isOrExpression(expression));
+        return String.format("MetadataRouter: expression=%s", expression);
     }
 }

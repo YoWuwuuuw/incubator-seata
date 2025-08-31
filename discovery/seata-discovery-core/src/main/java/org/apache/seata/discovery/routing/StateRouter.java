@@ -20,7 +20,6 @@ import java.util.List;
 
 /**
  * State router interface
- * Defines basic behavior of routers, supports chain of responsibility pattern
  *
  * @param <T> service instance type
  */

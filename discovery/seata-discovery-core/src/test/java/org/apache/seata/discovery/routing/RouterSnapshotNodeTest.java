@@ -104,21 +104,6 @@ public class RouterSnapshotNodeTest {
     }
 
     /**
-     * Test getTimestamp - verify timestamp accuracy
-     */
-    @Test
-    public void testGetTimestamp() {
-        RouterSnapshotNode<String> node = new RouterSnapshotNode<>("router", 5, 3, Arrays.asList("server1"), 10L);
-
-        long timestamp = node.getTimestamp();
-        assertTrue(timestamp > 0);
-
-        // Timestamp should be within a reasonable range (a few seconds from now)
-        long currentTime = System.currentTimeMillis();
-        assertTrue(Math.abs(timestamp - currentTime) < 1000);
-    }
-
-    /**
      * Test toString - verify formatted output
      */
     @Test

@@ -58,16 +58,24 @@ public class ConfigurableConditionMatcherTest {
         metadata.put("env", "prod");
         when(server.getMetadata()).thenReturn(metadata);
 
-        // Test equals
+        // Test equals with = (legacy style)
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("env = prod");
+        assertTrue(matcher.match(server, ctx));
+
+        // Test equals with == (Java style)
+        matcher = new ConfigurableConditionMatcher("env == prod");
         assertTrue(matcher.match(server, ctx));
 
         // Test not equals
         matcher = new ConfigurableConditionMatcher("env != dev");
         assertTrue(matcher.match(server, ctx));
 
-        // Test no match
+        // Test no match with = (legacy style)
         matcher = new ConfigurableConditionMatcher("env = dev");
+        assertFalse(matcher.match(server, ctx));
+
+        // Test no match with == (Java style)
+        matcher = new ConfigurableConditionMatcher("env == dev");
         assertFalse(matcher.match(server, ctx));
     }
 
@@ -114,11 +122,18 @@ public class ConfigurableConditionMatcherTest {
         metadata.put("version", "1.0");
         when(server.getMetadata()).thenReturn(metadata);
 
-        // Test precision issue: 1 = 1.0
+        // Test precision issue: 1 = 1.0 with = (legacy style)
         ConfigurableConditionMatcher matcher = new ConfigurableConditionMatcher("version = 1.0");
         assertTrue(matcher.match(server, ctx));
 
         matcher = new ConfigurableConditionMatcher("version = 1");
+        assertTrue(matcher.match(server, ctx));
+
+        // Test precision issue: 1 == 1.0 with == (Java style)
+        matcher = new ConfigurableConditionMatcher("version == 1.0");
+        assertTrue(matcher.match(server, ctx));
+
+        matcher = new ConfigurableConditionMatcher("version == 1");
         assertTrue(matcher.match(server, ctx));
     }
 

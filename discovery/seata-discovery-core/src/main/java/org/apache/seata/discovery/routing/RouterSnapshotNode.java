@@ -29,9 +29,7 @@ public class RouterSnapshotNode<T> {
     private final int inputSize;
     private final int outputSize;
     private final List<T> selectedServers;
-
     private final long executionTimeMs;
-    private final long timestamp;
 
     /**
      * Constructor
@@ -49,7 +47,6 @@ public class RouterSnapshotNode<T> {
         this.outputSize = outputSize;
         this.selectedServers = selectedServers;
         this.executionTimeMs = executionTimeMs;
-        this.timestamp = System.currentTimeMillis();
     }
 
     /**
@@ -95,15 +92,6 @@ public class RouterSnapshotNode<T> {
      */
     public long getExecutionTimeMs() {
         return executionTimeMs;
-    }
-
-    /**
-     * Get timestamp
-     *
-     * @return timestamp
-     */
-    public long getTimestamp() {
-        return timestamp;
     }
 
     @Override
