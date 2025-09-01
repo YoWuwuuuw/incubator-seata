@@ -426,6 +426,9 @@
         },
         {
           "value": "RandomLoadBalance"
+        },
+        {
+          "value": "WeightedRandomLoadBalance"
         }
       ]
     },

@@ -269,22 +269,22 @@ public interface ConfigurationKeys {
     String CLIENT_ROUTING_PREFIX = CLIENT_PREFIX + "routing.";
 
     /**
-     * the constant CLIENT_ROUTING_ENABLED
+     * the constant CLIENT_ROUTING_ENABLED.
      */
     String CLIENT_ROUTING_ENABLED = CLIENT_ROUTING_PREFIX + "enabled";
 
     /**
-     * the constant CLIENT_ROUTING_DEBUG
+     * the constant CLIENT_ROUTING_DEBUG.
      */
     String CLIENT_ROUTING_DEBUG = CLIENT_ROUTING_PREFIX + "debug";
 
     /**
-     * the constant CLIENT_ROUTING_ROUTERS
+     * the constant CLIENT_ROUTING_ROUTERS.
      */
     String CLIENT_ROUTING_ROUTERS = CLIENT_ROUTING_PREFIX + "routers";
 
     /**
-     * the constant CLIENT_METADATA_ROUTER_EXPRESSION
+     * the constant CLIENT_METADATA_ROUTER_EXPRESSION.
      */
     String CLIENT_METADATA_ROUTER_EXPRESSION = CLIENT_ROUTING_PREFIX + "metadata-router.expression";
 
