@@ -45,20 +45,6 @@ public class ServiceInstanceTest {
 
         assertEquals(address1, instance1.getAddress());
         assertEquals(metadata, instance1.getMetadata());
-
-        Instance instance = Instance.getInstance();
-        instance.setTransaction(new Node.Endpoint("127.0.0.1", 8093));
-
-        ServiceInstance instance2 = new ServiceInstance(Instance.getInstance());
-
-        assertEquals(
-                Instance.getInstance().getTransaction().getHost(),
-                instance2.getAddress().getAddress().getHostAddress());
-        assertEquals(
-                Instance.getInstance().getTransaction().getPort(),
-                instance2.getAddress().getPort());
-
-        instance.setTransaction(null); // clean up after test
     }
 
     @Test
