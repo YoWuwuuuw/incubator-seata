@@ -21,6 +21,7 @@ import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.EurekaEventListener;
 import com.netflix.discovery.shared.Application;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
@@ -79,7 +80,7 @@ public class EurekaRegistryServiceImplTest {
         setStaticField(EurekaRegistryServiceImpl.class, "eurekaClient", null);
         setStaticField(EurekaRegistryServiceImpl.class, "instanceConfig", null);
         clearStaticMap(EurekaRegistryServiceImpl.class, "LISTENER_SERVICE_MAP");
-        clearStaticMap(EurekaRegistryServiceImpl.class, "CLUSTER_ADDRESS_MAP");
+        clearStaticMap(EurekaRegistryServiceImpl.class, "CLUSTER_INSTANCE_MAP");
         clearStaticMap(EurekaRegistryServiceImpl.class, "CLUSTER_LOCK");
     }
 
@@ -93,7 +94,7 @@ public class EurekaRegistryServiceImplTest {
     @Test
     public void testRegister() throws Exception {
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
-        registryService.register(address);
+        registryService.register(new ServiceInstance(address));
         CustomEurekaInstanceConfig instanceConfig = getInstanceConfig();
         Assertions.assertEquals("127.0.0.1", instanceConfig.getIpAddress());
         Assertions.assertEquals("default", instanceConfig.getAppname());
@@ -104,7 +105,7 @@ public class EurekaRegistryServiceImplTest {
     void testRegisterWhenEurekaClientIsNull() throws Exception {
         setStaticField(EurekaRegistryServiceImpl.class, "eurekaClient", null);
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
-        registryService.register(address);
+        registryService.register(new ServiceInstance(address));
         verify(mockAppInfoManager, times(0)).setInstanceStatus(any());
     }
 
@@ -153,7 +154,7 @@ public class EurekaRegistryServiceImplTest {
 
     @Test
     public void testUnregister() throws Exception {
-        registryService.unregister(new InetSocketAddress("127.0.0.1", 8091));
+        registryService.unregister(new ServiceInstance(new InetSocketAddress("127.0.0.1", 8091)));
         verify(mockAppInfoManager).setInstanceStatus(InstanceInfo.InstanceStatus.DOWN);
     }
 
@@ -172,16 +173,17 @@ public class EurekaRegistryServiceImplTest {
             when(mockInstanceInfo.getIPAddr()).thenReturn("192.168.1.1");
             when(mockInstanceInfo.getPort()).thenReturn(8091);
 
-            List<InetSocketAddress> addresses = registryService.lookup("test-group");
+            List<ServiceInstance> instances = registryService.lookup("test-group");
 
             // Verify whether the transactionServiceGroup is set correctly
             Field serviceGroupField = EurekaRegistryServiceImpl.class.getDeclaredField("transactionServiceGroup");
             serviceGroupField.setAccessible(true);
             String actualServiceGroup = (String) serviceGroupField.get(registryService);
             Assertions.assertEquals("test-group", actualServiceGroup);
-            Assertions.assertNotNull(addresses);
-            Assertions.assertEquals(1, addresses.size());
-            Assertions.assertEquals(new InetSocketAddress("192.168.1.1", 8091), addresses.get(0));
+            Assertions.assertNotNull(instances);
+            Assertions.assertEquals(1, instances.size());
+            Assertions.assertEquals(
+                    new InetSocketAddress("192.168.1.1", 8091), instances.get(0).getAddress());
         }
     }
 

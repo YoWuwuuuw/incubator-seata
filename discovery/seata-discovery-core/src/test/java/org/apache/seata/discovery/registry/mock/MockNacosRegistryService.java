@@ -14,25 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.namingserver;
+package org.apache.seata.discovery.registry.mock;
 
-import org.apache.seata.common.loader.LoadLevel;
-import org.apache.seata.discovery.registry.RegistryProvider;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.RegistryService;
 
-/**
- * Registry provider for namingserver.
- */
-@LoadLevel(name = "Seata", order = 1)
-public class NamingserverRegistryProvider implements RegistryProvider {
+import java.util.ArrayList;
+import java.util.List;
 
-    /**
-     * Provides the namingserver registryService instance.
-     *
-     * @return the namingserver registryService
-     */
+/**
+ * the mock nacos RegistryService
+ */
+public class MockNacosRegistryService implements RegistryService<Object> {
+
     @Override
-    public RegistryService provide() {
-        return NamingserverRegistryServiceImpl.getInstance();
+    public void register(ServiceInstance address) throws Exception {}
+
+    @Override
+    public void unregister(ServiceInstance address) throws Exception {}
+
+    @Override
+    public void subscribe(String cluster, Object listener) throws Exception {}
+
+    @Override
+    public void unsubscribe(String cluster, Object listener) throws Exception {}
+
+    @Override
+    public List<ServiceInstance> lookup(String key) throws Exception {
+        return new ArrayList<>();
     }
+
+    @Override
+    public void close() throws Exception {}
 }

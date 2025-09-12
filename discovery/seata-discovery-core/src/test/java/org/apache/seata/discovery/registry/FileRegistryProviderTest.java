@@ -14,25 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry.namingserver;
+package org.apache.seata.discovery.registry;
 
-import org.apache.seata.common.loader.LoadLevel;
-import org.apache.seata.discovery.registry.RegistryProvider;
-import org.apache.seata.discovery.registry.RegistryService;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-/**
- * Registry provider for namingserver.
- */
-@LoadLevel(name = "Seata", order = 1)
-public class NamingserverRegistryProvider implements RegistryProvider {
+class FileRegistryProviderTest {
 
-    /**
-     * Provides the namingserver registryService instance.
-     *
-     * @return the namingserver registryService
-     */
-    @Override
-    public RegistryService provide() {
-        return NamingserverRegistryServiceImpl.getInstance();
+    @Test
+    void testProvide() {
+        RegistryProvider provider = new FileRegistryProvider();
+        RegistryService<?> service = provider.provide();
+
+        Assertions.assertNotNull(service);
+        Assertions.assertInstanceOf(FileRegistryServiceImpl.class, service);
     }
 }

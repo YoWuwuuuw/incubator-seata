@@ -16,6 +16,7 @@
  */
 package org.apache.seata.discovery.registry.redis;
 
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
@@ -66,12 +67,12 @@ public class RedisRegisterServiceImplTest {
     @Test
     @Order(1)
     public void testFlow() {
-
-        redisRegistryService.register(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        redisRegistryService.register(serviceInstance);
 
         Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
 
-        redisRegistryService.unregister(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+        redisRegistryService.unregister(serviceInstance);
 
         Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
     }
@@ -80,19 +81,19 @@ public class RedisRegisterServiceImplTest {
     @Order(2)
     public void testRemoveServerAddressByPushEmptyProtection()
             throws NoSuchFieldException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-
         MockedStatic<ConfigurationFactory> configurationFactoryMockedStatic = mockStatic(ConfigurationFactory.class);
         Configuration configuration = mock(Configuration.class);
         when(configuration.getConfig(anyString())).thenReturn("cluster");
 
         configurationFactoryMockedStatic.when(ConfigurationFactory::getInstance).thenReturn(configuration);
 
-        Field field = RedisRegistryServiceImpl.class.getDeclaredField("CLUSTER_ADDRESS_MAP");
+        Field field = RedisRegistryServiceImpl.class.getDeclaredField("CLUSTER_INSTANCE_MAP");
         field.setAccessible(true);
 
-        ConcurrentMap<String, Set<InetSocketAddress>> CLUSTER_ADDRESS_MAP =
-                (ConcurrentMap<String, Set<InetSocketAddress>>) field.get(null);
-        CLUSTER_ADDRESS_MAP.put("cluster", Sets.newSet(NetUtil.toInetSocketAddress("127.0.0.1:8091")));
+        ConcurrentMap<String, Set<ServiceInstance>> CLUSTER_INSTANCE_MAP =
+                (ConcurrentMap<String, Set<ServiceInstance>>) field.get(null);
+        CLUSTER_INSTANCE_MAP.put(
+                "cluster", Sets.newSet(new ServiceInstance(NetUtil.toInetSocketAddress("127.0.0.1:8091"))));
 
         Method method = RedisRegistryServiceImpl.class.getDeclaredMethod(
                 "removeServerAddressByPushEmptyProtection", String.class, String.class);
@@ -100,7 +101,7 @@ public class RedisRegisterServiceImplTest {
         method.invoke(redisRegistryService, "cluster", "127.0.0.1:8091");
 
         // test the push empty protection situation
-        Assertions.assertEquals(1, CLUSTER_ADDRESS_MAP.get("cluster").size());
+        Assertions.assertEquals(1, CLUSTER_INSTANCE_MAP.get("cluster").size());
 
         when(configuration.getConfig(anyString())).thenReturn("mycluster");
 
@@ -108,7 +109,7 @@ public class RedisRegisterServiceImplTest {
         configurationFactoryMockedStatic.close();
 
         // test the normal remove situation
-        Assertions.assertEquals(0, CLUSTER_ADDRESS_MAP.get("cluster").size());
+        Assertions.assertEquals(0, CLUSTER_INSTANCE_MAP.get("cluster").size());
     }
 
     @Test

@@ -27,6 +27,7 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.RetryNTimes;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.NetUtil;
 import org.apache.seata.common.util.StringUtils;
@@ -81,7 +82,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
             ZK_PATH_SPLIT_CHAR + FILE_ROOT_REGISTRY + ZK_PATH_SPLIT_CHAR + REGISTRY_TYPE + ZK_PATH_SPLIT_CHAR;
     private static final String ROOT_PATH_WITHOUT_SUFFIX =
             ZK_PATH_SPLIT_CHAR + FILE_ROOT_REGISTRY + ZK_PATH_SPLIT_CHAR + REGISTRY_TYPE;
-    private static final ConcurrentMap<String, List<InetSocketAddress>> CLUSTER_ADDRESS_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, List<ServiceInstance>> CLUSTER_INSTANCE_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, List<CuratorCacheListener>> LISTENER_SERVICE_MAP =
             new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Object> CLUSTER_LOCK = new ConcurrentHashMap<>();
@@ -107,7 +108,8 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     }
 
     @Override
-    public void register(InetSocketAddress address) throws Exception {
+    public void register(ServiceInstance instance) throws Exception {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
 
         String path = getRegisterPathByPath(address);
@@ -145,7 +147,8 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     }
 
     @Override
-    public void unregister(InetSocketAddress address) throws Exception {
+    public void unregister(ServiceInstance instance) {
+        InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
 
         String path = getRegisterPathByPath(address);
@@ -154,7 +157,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     }
 
     @Override
-    public void subscribe(String cluster, CuratorCacheListener listener) throws Exception {
+    public void subscribe(String cluster, CuratorCacheListener listener) {
         if (cluster == null) {
             return;
         }
@@ -185,7 +188,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     }
 
     @Override
-    public void unsubscribe(String cluster, CuratorCacheListener listener) throws Exception {
+    public void unsubscribe(String cluster, CuratorCacheListener listener) {
         if (cluster == null) {
             return;
         }
@@ -208,7 +211,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
      * @throws Exception the exception
      */
     @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
+    public List<ServiceInstance> lookup(String key) throws Exception {
         transactionServiceGroup = key;
         String clusterName = getServiceGroup(key);
 
@@ -221,7 +224,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     }
 
     // visible for test.
-    List<InetSocketAddress> doLookup(String clusterName) throws Exception {
+    List<ServiceInstance> doLookup(String clusterName) throws Exception {
         if (!LISTENER_SERVICE_MAP.containsKey(clusterName)) {
             Object lock = CLUSTER_LOCK.putIfAbsent(clusterName, new Object());
             if (null == lock) {
@@ -236,13 +239,13 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
 
                     List<String> childClusterPath =
                             getClientInstance().getChildren().forPath(ROOT_PATH + clusterName);
-                    refreshClusterAddressMap(clusterName, childClusterPath);
+                    refreshClusterInstanceMap(clusterName, childClusterPath);
                     subscribeCluster(clusterName);
                 }
             }
         }
 
-        return CLUSTER_ADDRESS_MAP.get(clusterName);
+        return CLUSTER_INSTANCE_MAP.get(clusterName);
     }
 
     @Override
@@ -338,10 +341,10 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
                                 List<String> currentChilds =
                                         getClientInstance().getChildren().forPath(path);
                                 if (CollectionUtils.isEmpty(currentChilds)
-                                        && CLUSTER_ADDRESS_MAP.get(cluster) != null) {
-                                    CLUSTER_ADDRESS_MAP.remove(cluster);
+                                        && CLUSTER_INSTANCE_MAP.get(cluster) != null) {
+                                    CLUSTER_INSTANCE_MAP.remove(cluster);
                                 } else if (!CollectionUtils.isEmpty(currentChilds)) {
-                                    ZookeeperRegisterServiceImpl.this.refreshClusterAddressMap(cluster, currentChilds);
+                                    ZookeeperRegisterServiceImpl.this.refreshClusterInstanceMap(cluster, currentChilds);
                                 }
                             }
                         })
@@ -350,23 +353,24 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
         subscribe(cluster, listener);
     }
 
-    private void refreshClusterAddressMap(String clusterName, List<String> instances) {
-        List<InetSocketAddress> newAddressList = new ArrayList<>();
+    private void refreshClusterInstanceMap(String clusterName, List<String> instances) {
+        List<ServiceInstance> newInstanceList = new ArrayList<>();
         if (instances == null) {
-            CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
+            CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
             return;
         }
         for (String path : instances) {
             try {
                 String[] ipAndPort = NetUtil.splitIPPortStr(path);
-                newAddressList.add(new InetSocketAddress(ipAndPort[0], Integer.parseInt(ipAndPort[1])));
+                newInstanceList.add(
+                        new ServiceInstance(new InetSocketAddress(ipAndPort[0], Integer.parseInt(ipAndPort[1]))));
             } catch (Exception e) {
                 LOGGER.warn("The cluster instance info is error, instance info:{}", path);
             }
         }
-        CLUSTER_ADDRESS_MAP.put(clusterName, newAddressList);
+        CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
 
-        removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newAddressList);
+        removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newInstanceList);
     }
 
     private String getClusterName() {

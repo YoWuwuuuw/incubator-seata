@@ -14,34 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seata.discovery.registry;
+package org.apache.seata.discovery.registry.namingserver;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
- * the mock nacos RegistryService
+ * Test for NamingserverRegistryProvider
  */
-public class MockNacosRegistryService implements RegistryService<Object> {
+public class NamingserverRegistryProviderTest {
 
-    @Override
-    public void register(InetSocketAddress address) throws Exception {}
-
-    @Override
-    public void unregister(InetSocketAddress address) throws Exception {}
-
-    @Override
-    public void subscribe(String cluster, Object listener) throws Exception {}
-
-    @Override
-    public void unsubscribe(String cluster, Object listener) throws Exception {}
-
-    @Override
-    public List<InetSocketAddress> lookup(String key) throws Exception {
-        return new ArrayList<>();
+    @Test
+    public void testProvide() {
+        NamingserverRegistryProvider provider = new NamingserverRegistryProvider();
+        Assertions.assertInstanceOf(NamingserverRegistryServiceImpl.class, provider.provide());
     }
-
-    @Override
-    public void close() throws Exception {}
 }
