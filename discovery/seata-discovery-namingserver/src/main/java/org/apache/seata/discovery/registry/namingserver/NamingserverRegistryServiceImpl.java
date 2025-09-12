@@ -545,7 +545,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      *
      * @return a randomly selected healthy naming server address
      */
-    private String getNamingAddr() {
+    public String getNamingAddr() {
         if (namingServerAddressCache != null) {
             return namingServerAddressCache;
         }

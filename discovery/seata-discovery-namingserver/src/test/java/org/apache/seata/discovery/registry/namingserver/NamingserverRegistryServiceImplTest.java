@@ -18,12 +18,11 @@ package org.apache.seata.discovery.registry.namingserver;
 
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.entity.ContentType;
-import org.apache.http.protocol.HTTP;
 import org.apache.seata.common.holder.ObjectHolder;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.common.util.HttpClientUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -114,7 +113,6 @@ class NamingserverRegistryServiceImplTest {
 
     @Test
     public void testWatchCoversRefreshToken() throws Exception {
-
         NamingserverRegistryServiceImpl spyService = Mockito.spy(NamingserverRegistryServiceImpl.getInstance());
         doReturn("127.0.0.1:8081").when(spyService).getNamingAddr();
 
