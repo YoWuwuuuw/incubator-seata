@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * entity for packaging inetSocketAddress and metadata for loadBalance
+ * Entity for packaging inetSocketAddress and metadata for loadBalance
  */
 public class ServiceInstance {
     private InetSocketAddress address;

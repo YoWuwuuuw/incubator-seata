@@ -277,6 +277,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 .getKVClient()
                 .get(buildRegistryKeyPrefix(cluster), getOption)
                 .get();
+        
         // 2.add to list
         List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceList(getResponse.getKvs().stream()
                 .map(keyValue -> {
