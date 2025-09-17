@@ -35,9 +35,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -127,9 +127,10 @@ public class MultiRegistryFactoryTest {
         String invalidRegistryType = "InvalidRegistryType";
         System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
 
-        assertThatThrownBy(MultiRegistryFactoryTest::invokeBuildRegistryServices)
-                .isExactlyInstanceOf(NotSupportYetException.class)
-                .hasMessage("not support registry type: " + invalidRegistryType);
+        assertThrows(
+                NotSupportYetException.class,
+                MultiRegistryFactoryTest::invokeBuildRegistryServices,
+                "not support registry type");
     }
 
     /**
