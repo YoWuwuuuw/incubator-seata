@@ -58,16 +58,21 @@ public class ConsulRegistryServiceImplTest {
 
     @Test
     public void testMetadataRegistrationAndDiscovery() throws Exception {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("version", "1.0.0");
-        metadata.put("environment", "test");
-        metadata.put("weight", 100);
+        Map<String, Object> metadata1 = new HashMap<>();
+        metadata1.put("version", "1.0.0");
+        metadata1.put("environment", "test");
+        metadata1.put("weight", 100);
 
-        ServiceInstance instance = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8080), metadata);
+        ServiceInstance instance1 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8080), metadata1);
+        registryService.register(instance1);
 
-        registryService.register(instance);
+        Map<String, Object> metadata2 = new HashMap<>();
+        metadata2.put("version", "2.0.0");
+        metadata2.put("zone", "bj");
 
-        // Wait for TTL check to complete
+        ServiceInstance instance2 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 9090), metadata2);
+        registryService.register(instance2);
+
         Thread.sleep(3000);
 
         List<ServiceInstance> instances = registryService.lookup("default_tx_group");
@@ -75,19 +80,30 @@ public class ConsulRegistryServiceImplTest {
         assertNotNull(instances);
         assertFalse(instances.isEmpty());
 
-        ServiceInstance foundInstance = instances.stream()
-                .filter(inst -> inst.getAddress().equals(instance.getAddress()))
+        ServiceInstance foundInstance1 = instances.stream()
+                .filter(inst -> inst.getAddress().equals(instance1.getAddress()))
                 .findFirst()
                 .orElse(null);
 
-        assertNotNull(foundInstance);
+        assertNotNull(foundInstance1);
+        Map<String, Object> foundMetadata1 = foundInstance1.getMetadata();
+        assertNotNull(foundMetadata1);
+        assertEquals("1.0.0", foundMetadata1.get("version"));
+        assertEquals("test", foundMetadata1.get("environment"));
+        assertEquals("100", foundMetadata1.get("weight"));
 
-        Map<String, Object> foundMetadata = foundInstance.getMetadata();
-        assertNotNull(foundMetadata);
-        assertEquals("1.0.0", foundMetadata.get("version"));
-        assertEquals("test", foundMetadata.get("environment"));
-        assertEquals("100", foundMetadata.get("weight"));
+        ServiceInstance foundInstance2 = instances.stream()
+                .filter(inst -> inst.getAddress().equals(instance2.getAddress()))
+                .findFirst()
+                .orElse(null);
 
-        registryService.unregister(instance);
+        assertNotNull(foundInstance2);
+        Map<String, Object> foundMetadata2 = foundInstance2.getMetadata();
+        assertNotNull(foundMetadata2);
+        assertEquals("2.0.0", foundMetadata2.get("version"));
+        assertEquals("bj", foundMetadata2.get("zone"));
+
+        registryService.unregister(instance1);
+        registryService.unregister(instance2);
     }
 }
