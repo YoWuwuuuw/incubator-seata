@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * entity for packaging inetSocketAddress and metadata for loadBalance
+ * Entity for packaging inetSocketAddress and metadata for loadBalance
  */
 public class ServiceInstance {
     private InetSocketAddress address;
@@ -37,12 +37,6 @@ public class ServiceInstance {
     public ServiceInstance(InetSocketAddress address, Map<String, Object> metadata) {
         this.address = address;
         this.metadata = metadata;
-    }
-
-    public ServiceInstance(Instance instance) {
-        this.address = new InetSocketAddress(
-                instance.getTransaction().getHost(), instance.getTransaction().getPort());
-        this.metadata = instance.getMetadata();
     }
 
     public ServiceInstance(InetSocketAddress address) {
@@ -70,7 +64,7 @@ public class ServiceInstance {
      * @param addresses list of InetSocketAddress
      * @return list of ServiceInstance
      */
-    public static List<ServiceInstance> convertToServiceInstanceSet(List<InetSocketAddress> addresses) {
+    public static List<ServiceInstance> convertToServiceInstanceList(List<InetSocketAddress> addresses) {
         List<ServiceInstance> serviceInstances = new ArrayList<>();
         if (addresses != null && !addresses.isEmpty()) {
             for (InetSocketAddress address : addresses) {
@@ -109,23 +103,6 @@ public class ServiceInstance {
             metadata.putAll(stringMap);
         }
         return new ServiceInstance(address, metadata);
-    }
-
-    /**
-     * Converts a Map<String, Object> to Map<String, String>.
-     * @param metadata the original metadata
-     * @return converted Map<String, String>
-     */
-    public static Map<String, String> toStringMap(Map<String, Object> metadata) {
-        Map<String, String> stringMap = new HashMap<>();
-        if (metadata != null) {
-            for (Map.Entry<String, Object> entry : metadata.entrySet()) {
-                stringMap.put(
-                        entry.getKey(),
-                        entry.getValue() == null ? null : entry.getValue().toString());
-            }
-        }
-        return stringMap;
     }
 
     @Override

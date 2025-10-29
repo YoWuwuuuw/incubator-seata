@@ -16,14 +16,18 @@
  */
 package org.apache.seata.discovery.registry.namingserver;
 
+import org.apache.http.StatusLine;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.seata.common.holder.ObjectHolder;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.metadata.ServiceInstance;
+import org.apache.seata.common.util.HttpClientUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MutablePropertySources;
@@ -43,6 +47,13 @@ import static org.apache.seata.common.Constants.OBJECT_KEY_SPRING_CONFIGURABLE_E
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * Test for NamingserverRegistryServiceImpl
@@ -98,6 +109,21 @@ class NamingserverRegistryServiceImplTest {
         System.clearProperty("registry.seata.username");
         System.clearProperty("registry.seata.password");
         System.clearProperty("registry.seata.metadataMaxAgeMs");
+    }
+
+    @Test
+    public void testWatchCoversRefreshToken() throws Exception {
+        NamingserverRegistryServiceImpl spyService = Mockito.spy(NamingserverRegistryServiceImpl.getInstance());
+        doReturn("127.0.0.1:8081").when(spyService).getNamingAddr();
+
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        StatusLine mockStatusLine = mock(StatusLine.class);
+        when(mockStatusLine.getStatusCode()).thenReturn(200);
+        when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+        mockStatic(HttpClientUtil.class);
+        when(HttpClientUtil.doPost(anyString(), anyString(), anyMap(), anyInt()))
+                .thenReturn(mockResponse);
+        spyService.watch("testGroup");
     }
 
     @Test

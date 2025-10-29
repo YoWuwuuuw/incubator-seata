@@ -264,6 +264,31 @@ public interface ConfigurationKeys {
     String DEFAULT_GLOBAL_TRANSACTION_TIMEOUT = CLIENT_TM_PREFIX + "defaultGlobalTransactionTimeout";
 
     /**
+     * The constant CLIENT_ROUTING_PREFIX.
+     */
+    String CLIENT_ROUTING_PREFIX = CLIENT_PREFIX + "routing.";
+
+    /**
+     * the constant CLIENT_ROUTING_ENABLED.
+     */
+    String CLIENT_ROUTING_ENABLED = CLIENT_ROUTING_PREFIX + "enabled";
+
+    /**
+     * the constant CLIENT_ROUTING_DEBUG.
+     */
+    String CLIENT_ROUTING_DEBUG = CLIENT_ROUTING_PREFIX + "debug";
+
+    /**
+     * the constant CLIENT_ROUTING_ROUTERS.
+     */
+    String CLIENT_ROUTING_ROUTERS = CLIENT_ROUTING_PREFIX + "routers";
+
+    /**
+     * the constant CLIENT_METADATA_ROUTER_EXPRESSION.
+     */
+    String CLIENT_METADATA_ROUTER_EXPRESSION = CLIENT_ROUTING_PREFIX + "metadata-router.expression";
+
+    /**
      * The constant SERIALIZE_FOR_RPC.
      */
     String SERIALIZE_FOR_RPC = TRANSPORT_PREFIX + "serialization";
@@ -1134,6 +1159,19 @@ public interface ConfigurationKeys {
      * The constant SERVER_RAFT_COMPRESSOR.
      */
     String SERVER_RAFT_COMPRESSOR = SERVER_RAFT + "compressor";
+
+    /**
+     * The constant SERVER_HTTP.
+     */
+    String SERVER_HTTP = SERVER_PREFIX + "http.";
+
+    String SERVER_HTTP_FILTER_PREFIX = SERVER_HTTP + "filter.";
+
+    /**
+     * The constant SERVER_HTTP_FILTER_XSS_FILTER_KEYWORDS.
+     *
+     */
+    String SERVER_HTTP_FILTER_XSS_FILTER_KEYWORDS = SERVER_HTTP_FILTER_PREFIX + "xss.keywords";
 
     /**
      * The constant IS_USE_CLOUD_NAMESPACE_PARSING.

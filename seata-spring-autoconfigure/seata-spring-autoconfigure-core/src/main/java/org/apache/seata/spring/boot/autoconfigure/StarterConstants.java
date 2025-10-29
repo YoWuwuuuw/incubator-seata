@@ -36,6 +36,7 @@ public interface StarterConstants {
     String UNDO_PREFIX = CLIENT_PREFIX + ".undo";
     String LOAD_BALANCE_PREFIX_KEBAB_STYLE = CLIENT_PREFIX + ".load-balance";
     String LOAD_BALANCE_PREFIX = CLIENT_PREFIX + ".loadBalance";
+    String ROUTING_PREFIX = CLIENT_PREFIX + ".routing";
     String HTTP_PREFIX = CLIENT_PREFIX + ".http";
     String LOG_PREFIX = SEATA_PREFIX + ".log";
     String COMPRESS_PREFIX = UNDO_PREFIX + ".compress";
@@ -76,6 +77,12 @@ public interface StarterConstants {
     String SERVER_RAFT_SSL_CLIENT_KEYSTORE_PREFIX = SERVER_RAFT_SSL_PREFIX + ".client.keystore";
     String SERVER_RAFT_SSL_SERVER_KEYSTORE_PREFIX = SERVER_RAFT_SSL_PREFIX + ".server.keystore";
     String SERVER_RECOVERY_PREFIX = SERVER_PREFIX + ".recovery";
+
+    String SERVER_HTTP_PREFIX = SERVER_PREFIX + ".http";
+
+    String SERVER_HTTP_FILTER_PREFIX = SERVER_HTTP_PREFIX + ".filter";
+
+    String SERVER_HTTP_FILTER_XSS_PREFIX = SERVER_HTTP_FILTER_PREFIX + ".xss";
 
     String METRICS_PREFIX = SEATA_PREFIX + ".metrics";
 
