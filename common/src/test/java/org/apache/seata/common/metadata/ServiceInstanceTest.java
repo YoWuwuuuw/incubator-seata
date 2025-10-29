@@ -67,7 +67,7 @@ public class ServiceInstanceTest {
         addresses.add(address1);
         addresses.add(address2);
 
-        List<ServiceInstance> serviceInstances = ServiceInstance.convertToServiceInstanceSet(addresses);
+        List<ServiceInstance> serviceInstances = ServiceInstance.convertToServiceInstanceList(addresses);
 
         assertEquals(2, serviceInstances.size());
         assertEquals(address1, serviceInstances.get(0).getAddress());
