@@ -41,7 +41,6 @@ public class WeightedRandomLoadBalance implements LoadBalance {
     private static final int DEFAULT_WEIGHT = 1;
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> T select(List<T> invokers, String xid) throws Exception {
         // Check if all instances have no weight, if so downgrade to random load balancing
         if (!hasAnyWeight(invokers)) {

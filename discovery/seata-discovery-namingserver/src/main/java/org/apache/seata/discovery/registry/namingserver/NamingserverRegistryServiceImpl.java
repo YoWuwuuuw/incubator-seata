@@ -487,7 +487,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         return clusterInstanceMap.put(transactionServiceGroup, aliveInstances);
     }
 
-    private static void refreshToken(String tcAddress) throws RetryableException {
+    private static void refreshToken(String namingServerAddress) throws RetryableException {
         // if username and password is not in config , return
         if (StringUtils.isBlank(USERNAME) || StringUtils.isBlank(PASSWORD)) {
             return;
@@ -500,7 +500,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
         header.put(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
         String response = null;
         try (CloseableHttpResponse httpResponse =
-                HttpClientUtil.doPost("http://" + tcAddress + "/api/v1/auth/login", param, header, 1000)) {
+                HttpClientUtil.doPost("http://" + namingServerAddress + "/api/v1/auth/login", param, header, 1000)) {
             if (httpResponse != null) {
                 if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                     response = EntityUtils.toString(httpResponse.getEntity(), StandardCharsets.UTF_8);
@@ -545,7 +545,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
      *
      * @return a randomly selected healthy naming server address
      */
-    private String getNamingAddr() {
+    public String getNamingAddr() {
         if (namingServerAddressCache != null) {
             return namingServerAddressCache;
         }

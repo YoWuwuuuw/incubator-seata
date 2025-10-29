@@ -49,6 +49,7 @@ import org.apache.seata.core.rpc.processor.Pair;
 import org.apache.seata.core.rpc.processor.RemotingProcessor;
 import org.apache.seata.discovery.loadbalance.LoadBalanceFactory;
 import org.apache.seata.discovery.registry.RegistryFactory;
+import org.apache.seata.discovery.routing.RoutingManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,9 +288,12 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
     protected String loadBalance(String transactionServiceGroup, Object msg) {
         InetSocketAddress address = null;
         try {
-            @SuppressWarnings("unchecked")
             List<ServiceInstance> serviceInstances =
                     RegistryFactory.getInstance().aliveLookup(transactionServiceGroup);
+
+            // Apply routing filter
+            serviceInstances = applyRoutingFilter(serviceInstances);
+
             address = this.doSelect(serviceInstances, msg);
         } catch (Exception ex) {
             LOGGER.error("Select the address failed: {}", ex.getMessage());
@@ -298,6 +302,29 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             throw new FrameworkException(NoAvailableService);
         }
         return NetUtil.toStringAddress(address);
+    }
+
+    /**
+     * Apply routing filter
+     *
+     * @param serviceInstances original service instances list
+     * @return filtered service instances list
+     */
+    private List<ServiceInstance> applyRoutingFilter(List<ServiceInstance> serviceInstances) {
+        try {
+            if (serviceInstances == null || serviceInstances.isEmpty()) {
+                return serviceInstances;
+            }
+
+            // Get routing manager
+            RoutingManager routingManager = RoutingManager.getInstance();
+
+            // Execute routing filter
+            return routingManager.filter(serviceInstances);
+        } catch (Exception e) {
+            LOGGER.warn("Routing filter failed, using original service instances", e);
+            return serviceInstances;
+        }
     }
 
     protected InetSocketAddress doSelect(List<ServiceInstance> list, Object msg) throws Exception {
@@ -684,8 +711,13 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("channel inactive: {}", ctx.channel());
             }
-            clientChannelManager.releaseChannel(
-                    ctx.channel(), NetUtil.toStringAddress(ctx.channel().remoteAddress()));
+            timerExecutor.execute(() -> {
+                try {
+                    clientChannelManager.releaseChannel(ctx.channel(), getAddressFromChannel(ctx.channel()));
+                } catch (Throwable throwable) {
+                    LOGGER.error("release channel error: {}", throwable.getMessage(), throwable);
+                }
+            });
             super.channelInactive(ctx);
         }
 
@@ -704,7 +736,18 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
                     } catch (Exception exx) {
                         LOGGER.error(exx.getMessage());
                     } finally {
-                        clientChannelManager.releaseChannel(ctx.channel(), getAddressFromContext(ctx));
+                        try {
+                            timerExecutor.execute(() -> {
+                                try {
+                                    clientChannelManager.releaseChannel(
+                                            ctx.channel(), getAddressFromChannel(ctx.channel()));
+                                } catch (Throwable throwable) {
+                                    LOGGER.error("release channel error: {}", throwable.getMessage(), throwable);
+                                }
+                            });
+                        } catch (Exception e) {
+                            LOGGER.error("failed to schedule releaseChannel: {}", e.getMessage(), e);
+                        }
                     }
                 }
                 if (idleStateEvent == IdleStateEvent.WRITER_IDLE_STATE_EVENT) {
@@ -726,7 +769,13 @@ public abstract class AbstractNettyRemotingClient extends AbstractNettyRemoting 
                     FrameworkErrorCode.ExceptionCaught.getErrCode(),
                     NetUtil.toStringAddress(ctx.channel().remoteAddress()) + "connect exception. " + cause.getMessage(),
                     cause);
-            clientChannelManager.releaseChannel(ctx.channel(), getAddressFromChannel(ctx.channel()));
+            timerExecutor.execute(() -> {
+                try {
+                    clientChannelManager.releaseChannel(ctx.channel(), getAddressFromChannel(ctx.channel()));
+                } catch (Throwable throwable) {
+                    LOGGER.error("release channel error: {}", throwable.getMessage(), throwable);
+                }
+            });
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("remove exception rm channel:{}", ctx.channel());
             }

@@ -48,17 +48,6 @@ public class ServiceInstanceTest {
 
         Instance instance = Instance.getInstance();
         instance.setTransaction(new Node.Endpoint("127.0.0.1", 8093));
-
-        ServiceInstance instance2 = new ServiceInstance(Instance.getInstance());
-
-        assertEquals(
-                Instance.getInstance().getTransaction().getHost(),
-                instance2.getAddress().getAddress().getHostAddress());
-        assertEquals(
-                Instance.getInstance().getTransaction().getPort(),
-                instance2.getAddress().getPort());
-
-        instance.setTransaction(null); // clean up after test
     }
 
     @Test
@@ -67,7 +56,7 @@ public class ServiceInstanceTest {
         addresses.add(address1);
         addresses.add(address2);
 
-        List<ServiceInstance> serviceInstances = ServiceInstance.convertToServiceInstanceSet(addresses);
+        List<ServiceInstance> serviceInstances = ServiceInstance.convertToServiceInstanceList(addresses);
 
         assertEquals(2, serviceInstances.size());
         assertEquals(address1, serviceInstances.get(0).getAddress());

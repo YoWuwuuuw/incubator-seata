@@ -135,17 +135,16 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
     public void register(ServiceInstance instance) throws Exception {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        doRegister(instance);
-        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, this::doRegister);
+        doRegister(address);
+        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, this::doRegister);
     }
 
     /**
      * do registry
      *
-     * @param instance
+     * @param address
      */
-    private void doRegister(ServiceInstance instance) throws Exception {
-        InetSocketAddress address = instance.getAddress();
+    private void doRegister(InetSocketAddress address) throws Exception {
         PutOption putOption = PutOption.newBuilder().withLeaseId(getLeaseId()).build();
         getClient()
                 .getKVClient()
@@ -278,8 +277,9 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 .getKVClient()
                 .get(buildRegistryKeyPrefix(cluster), getOption)
                 .get();
+
         // 2.add to list
-        List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceSet(getResponse.getKvs().stream()
+        List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceList(getResponse.getKvs().stream()
                 .map(keyValue -> {
                     String[] instanceInfo =
                             NetUtil.splitIPPortStr(keyValue.getValue().toString(UTF_8));

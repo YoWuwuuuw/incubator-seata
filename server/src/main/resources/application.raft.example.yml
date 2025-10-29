@@ -79,11 +79,15 @@ seata:
       server-addr: http://localhost:2379
       key: seata.properties
   registry:
-    # support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa
+    # support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa 、 seata
     type: file
     preferred-networks: 30.240.*
     metadata:
-      weight: 100
+      # Common metadata for routing
+      weight: 1
+      env:
+      region:
+      version:
     seata:
       server-addr: 127.0.0.1:8081
       cluster: default
@@ -152,6 +156,10 @@ seata:
       bucketTokenNumPerSecond: 999999
       bucketTokenMaxNum: 999999
       bucketTokenInitialNum: 999999
+    http:
+      filter:
+        xss:
+          keywords: ["<script>", "</script>", "javascript:", "vbscript:"]
   store:
     # support: file
     mode: raft
