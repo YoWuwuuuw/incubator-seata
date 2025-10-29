@@ -79,6 +79,19 @@ public class CustomEurekaInstanceConfig extends MyDataCenterInstanceConfig imple
         this.metadata = metadata;
     }
 
+    @Override
+    public Map<String, String> getMetadataMap() {
+        Map<String, String> stringMap = new HashMap<>();
+        if (metadata != null) {
+            for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+                if (entry.getValue() != null) {
+                    stringMap.put(entry.getKey(), String.valueOf(entry.getValue()));
+                }
+            }
+        }
+        return stringMap;
+    }
+
     public void setInstanceId(String instanceId) {
         this.instanceId = instanceId;
     }
