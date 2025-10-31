@@ -91,6 +91,7 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
     private static final int REGISTERED_PATH_SET_SIZE = 1;
     private static final Set<String> REGISTERED_PATH_SET =
             Collections.synchronizedSet(new HashSet<>(REGISTERED_PATH_SET_SIZE));
+    private static final ConcurrentMap<String, String> REGISTERED_PATH_DATA_MAP = new ConcurrentHashMap<>();
 
     private String transactionServiceGroup;
 
@@ -113,6 +114,8 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
         NetUtil.validAddress(address);
 
         String path = getRegisterPathByPath(address);
+        String data = serializeMetadata(instance.getMetadata());
+        REGISTERED_PATH_DATA_MAP.put(path, data);
         doRegister(path);
     }
 
@@ -121,7 +124,8 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
             return false;
         }
         createParentIfNotPresent(path);
-        createEphemeral(path, Boolean.TRUE.toString());
+        String data = REGISTERED_PATH_DATA_MAP.getOrDefault(path, Boolean.TRUE.toString());
+        createEphemeral(path, data);
         REGISTERED_PATH_SET.add(path);
         return true;
     }
@@ -359,18 +363,70 @@ public class ZookeeperRegisterServiceImpl implements RegistryService<CuratorCach
             CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
             return;
         }
-        for (String path : instances) {
+        String basePath = ROOT_PATH + clusterName + ZK_PATH_SPLIT_CHAR;
+        for (String nodeName : instances) {
             try {
-                String[] ipAndPort = NetUtil.splitIPPortStr(path);
-                newInstanceList.add(
-                        new ServiceInstance(new InetSocketAddress(ipAndPort[0], Integer.parseInt(ipAndPort[1]))));
+                String[] ipAndPort = NetUtil.splitIPPortStr(nodeName);
+                InetSocketAddress address = new InetSocketAddress(ipAndPort[0], Integer.parseInt(ipAndPort[1]));
+                byte[] dataBytes = null;
+                try {
+                    dataBytes = getClientInstance().getData().forPath(basePath + nodeName);
+                } catch (Exception ignored) {
+                }
+                Map<String, String> metadata = parseMetadata(dataBytes);
+                ServiceInstance serviceInstance = metadata == null
+                        ? new ServiceInstance(address)
+                        : ServiceInstance.fromStringMap(address, metadata);
+                newInstanceList.add(serviceInstance);
             } catch (Exception e) {
-                LOGGER.warn("The cluster instance info is error, instance info:{}", path);
+                LOGGER.warn("The cluster instance info is error, instance info:{}", nodeName);
             }
         }
         CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);
 
         removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, newInstanceList);
+    }
+
+    private String serializeMetadata(Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+            String key = entry.getKey() == null ? "" : entry.getKey();
+            String value = entry.getValue() == null ? "" : String.valueOf(entry.getValue());
+            // simple line-based format: key=value\n
+            sb.append(key.replace("\n", " "))
+                    .append("=")
+                    .append(value.replace("\n", " "))
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    private Map<String, String> parseMetadata(byte[] dataBytes) {
+        if (dataBytes == null || dataBytes.length == 0) {
+            return null;
+        }
+        String data = new String(dataBytes, CHARSET);
+        if (StringUtils.isBlank(data)) {
+            return null;
+        }
+        Map<String, String> map = new HashMap<>();
+        String[] lines = data.split("\n");
+        for (String line : lines) {
+            if (StringUtils.isBlank(line)) {
+                continue;
+            }
+            int idx = line.indexOf('=');
+            if (idx <= 0) {
+                continue;
+            }
+            String k = line.substring(0, idx);
+            String v = line.substring(idx + 1);
+            map.put(k, v);
+        }
+        return map.isEmpty() ? null : map;
     }
 
     private String getClusterName() {
