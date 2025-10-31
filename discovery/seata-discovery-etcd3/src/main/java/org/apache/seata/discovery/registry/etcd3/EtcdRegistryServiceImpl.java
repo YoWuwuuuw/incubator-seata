@@ -42,8 +42,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -69,6 +71,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
     private static final String REGISTRY_CLUSTER = "cluster";
     private static final String DEFAULT_CLUSTER_NAME = "default";
     private static final String REGISTRY_KEY_PREFIX = "registry-seata-";
+    private static final String REGISTRY_META_KEY_PREFIX = "registry-seata-meta-";
     private static final String FILE_CONFIG_KEY_PREFIX =
             FILE_ROOT_REGISTRY + FILE_CONFIG_SPLIT_CHAR + REGISTRY_TYPE + FILE_CONFIG_SPLIT_CHAR;
     private static final int MAP_INITIAL_CAPACITY = 8;
@@ -135,7 +138,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
     public void register(ServiceInstance instance) throws Exception {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        doRegister(address);
+        doRegister(instance);
         RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, this::doRegister);
     }
 
@@ -150,6 +153,24 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 .getKVClient()
                 .put(buildRegistryKey(address), buildRegistryValue(address), putOption)
                 .get();
+    }
+
+    private void doRegister(ServiceInstance instance) throws Exception {
+        InetSocketAddress address = instance.getAddress();
+        PutOption putOption = PutOption.newBuilder().withLeaseId(getLeaseId()).build();
+        // 1) write live key with lease
+        getClient()
+                .getKVClient()
+                .put(buildRegistryKey(address), buildRegistryValue(address), putOption)
+                .get();
+        // 2) write metadata with same lease if present
+        if (instance.getMetadata() != null && !instance.getMetadata().isEmpty()) {
+            byte[] metaBytes = serializeMetadata(instance.getMetadata()).getBytes(UTF_8);
+            getClient()
+                    .getKVClient()
+                    .put(buildRegistryMetaKey(address), ByteSequence.from(metaBytes), putOption)
+                    .get();
+        }
     }
 
     @Override
@@ -167,6 +188,7 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
      */
     private void doUnregister(InetSocketAddress address) throws Exception {
         getClient().getKVClient().delete(buildRegistryKey(address)).get();
+        getClient().getKVClient().delete(buildRegistryMetaKey(address)).get();
     }
 
     @Override
@@ -278,14 +300,36 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 .get(buildRegistryKeyPrefix(cluster), getOption)
                 .get();
 
+        // 1.1 load metadata map by prefix
+        GetOption metaGetOption = GetOption.newBuilder()
+                .withPrefix(buildRegistryMetaKeyPrefix(cluster))
+                .build();
+        GetResponse metaResponse = getClient()
+                .getKVClient()
+                .get(buildRegistryMetaKeyPrefix(cluster), metaGetOption)
+                .get();
+        Map<String, Map<String, String>> addrToMeta = new HashMap<>();
+        metaResponse.getKvs().forEach(kv -> {
+            String key = kv.getKey().toString(UTF_8);
+            // key format: registry-seata-meta-{cluster}-{ip:port}
+            String addr = key.substring((REGISTRY_META_KEY_PREFIX + cluster + "-").length());
+            Map<String, String> meta = parseMetadata(kv.getValue().toString(UTF_8));
+            if (meta != null && !meta.isEmpty()) {
+                addrToMeta.put(addr, meta);
+            }
+        });
+
         // 2.add to list
-        List<ServiceInstance> instanceList = ServiceInstance.convertToServiceInstanceList(getResponse.getKvs().stream()
+        List<ServiceInstance> instanceList = getResponse.getKvs().stream()
                 .map(keyValue -> {
                     String[] instanceInfo =
                             NetUtil.splitIPPortStr(keyValue.getValue().toString(UTF_8));
-                    return new InetSocketAddress(instanceInfo[0], Integer.parseInt(instanceInfo[1]));
+                    InetSocketAddress addr = new InetSocketAddress(instanceInfo[0], Integer.parseInt(instanceInfo[1]));
+                    String addrStr = instanceInfo[0] + ":" + instanceInfo[1];
+                    Map<String, String> meta = addrToMeta.get(addrStr);
+                    return meta == null ? new ServiceInstance(addr) : ServiceInstance.fromStringMap(addr, meta);
                 })
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
         clusterAddressMap.put(cluster, new Pair<>(getResponse.getHeader().getRevision(), instanceList));
 
         removeOfflineAddressesIfNecessary(transactionServiceGroup, cluster, instanceList);
@@ -348,6 +392,11 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
                 REGISTRY_KEY_PREFIX + getClusterName() + "-" + NetUtil.toStringAddress(address), UTF_8);
     }
 
+    private ByteSequence buildRegistryMetaKey(InetSocketAddress address) {
+        return ByteSequence.from(
+                REGISTRY_META_KEY_PREFIX + getClusterName() + "-" + NetUtil.toStringAddress(address), UTF_8);
+    }
+
     /**
      * build registry key prefix
      *
@@ -355,6 +404,10 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
      */
     private ByteSequence buildRegistryKeyPrefix(String cluster) {
         return ByteSequence.from(REGISTRY_KEY_PREFIX + cluster, UTF_8);
+    }
+
+    private ByteSequence buildRegistryMetaKeyPrefix(String cluster) {
+        return ByteSequence.from(REGISTRY_META_KEY_PREFIX + cluster, UTF_8);
     }
 
     /**
@@ -365,6 +418,43 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
      */
     private ByteSequence buildRegistryValue(InetSocketAddress address) {
         return ByteSequence.from(NetUtil.toStringAddress(address), UTF_8);
+    }
+
+    private String serializeMetadata(Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+            String key = entry.getKey() == null ? "" : entry.getKey();
+            String value = entry.getValue() == null ? "" : String.valueOf(entry.getValue());
+            sb.append(key.replace('\n', ' '))
+                    .append('=')
+                    .append(value.replace('\n', ' '))
+                    .append('\n');
+        }
+        return sb.toString();
+    }
+
+    private Map<String, String> parseMetadata(String data) {
+        if (StringUtils.isBlank(data)) {
+            return null;
+        }
+        Map<String, String> map = new java.util.HashMap<>();
+        String[] lines = data.split("\n");
+        for (String line : lines) {
+            if (StringUtils.isBlank(line)) {
+                continue;
+            }
+            int idx = line.indexOf('=');
+            if (idx <= 0) {
+                continue;
+            }
+            String k = line.substring(0, idx);
+            String v = line.substring(idx + 1);
+            map.put(k, v);
+        }
+        return map.isEmpty() ? null : map;
     }
 
     /**

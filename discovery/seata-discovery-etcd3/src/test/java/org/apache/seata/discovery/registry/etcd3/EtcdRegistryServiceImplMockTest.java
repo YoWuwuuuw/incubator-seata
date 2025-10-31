@@ -51,7 +51,9 @@ import org.mockito.MockitoAnnotations;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -174,6 +176,31 @@ public class EtcdRegistryServiceImplMockTest {
 
     @Order(2)
     @Test
+    public void testRegisterWithMetadata() throws Exception {
+        long leaseId = 2L;
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8092);
+
+        // lease
+        LeaseGrantResponse leaseGrantResponse = mock(LeaseGrantResponse.class);
+        when(leaseGrantResponse.getID()).thenReturn(leaseId);
+        when(mockLeaseClient.grant(anyLong())).thenReturn(CompletableFuture.completedFuture(leaseGrantResponse));
+
+        // put live and meta
+        when(mockKVClient.put(any(), any(), any(PutOption.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("zone", "A");
+        meta.put("version", "v1");
+
+        registryService.register(new ServiceInstance(address, meta));
+
+        // live key + meta key
+        verify(mockKVClient, times(2)).put(any(), any(), any(PutOption.class));
+        // lifeKeeper may already be started in previous test; do not assert here
+    }
+
+    @Order(3)
+    @Test
     public void testUnregister() throws Exception {
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8091);
 
@@ -183,17 +210,25 @@ public class EtcdRegistryServiceImplMockTest {
         // Act
         registryService.unregister(new ServiceInstance(address));
 
-        // Verify
-        verify(mockKVClient, times(1)).delete(any());
+        // Verify live + meta deleted
+        verify(mockKVClient, times(2)).delete(any());
     }
 
-    @Order(3)
+    @Order(4)
     @Test
     public void testLookup() throws Exception {
         List<String> services = Arrays.asList("127.0.0.1:8091", "127.0.0.1:8092", "127.0.0.1:8093");
-        GetResponse mockGetResponse = createMockGetResponse(services);
-        when(mockKVClient.get(any(ByteSequence.class), any(GetOption.class)))
-                .thenReturn(CompletableFuture.completedFuture(mockGetResponse));
+        GetResponse liveResponse = createMockGetResponse(services);
+        // meta response contains only 8092 with metadata
+        GetResponse metaResponse = createMockMetaGetResponse("127.0.0.1:8092", new String[] {"zone=A", "version=v1"});
+        when(mockKVClient.get(any(ByteSequence.class), any(GetOption.class))).thenAnswer(invocation -> {
+            ByteSequence key = invocation.getArgument(0);
+            String keyStr = key.toString(UTF_8);
+            if (keyStr.startsWith("registry-seata-meta-")) {
+                return CompletableFuture.completedFuture(metaResponse);
+            }
+            return CompletableFuture.completedFuture(liveResponse);
+        });
 
         try (MockedStatic<ConfigurationFactory> mockConfig = Mockito.mockStatic(ConfigurationFactory.class)) {
             // 1. run success case
@@ -208,6 +243,15 @@ public class EtcdRegistryServiceImplMockTest {
 
             // assert
             assertEquals(lookupServices, services);
+            // metadata assertion on 8092
+            ServiceInstance target = lookup.stream()
+                    .filter(si -> si.getAddress().getPort() == 8092)
+                    .findFirst()
+                    .orElse(null);
+            Assertions.assertNotNull(target);
+            Assertions.assertNotNull(target.getMetadata());
+            Assertions.assertEquals("A", target.getMetadata().get("zone"));
+            Assertions.assertEquals("v1", target.getMetadata().get("version"));
 
             // 2. config not found case
             when(configuration.getConfig(any())).thenReturn(null);
@@ -217,7 +261,7 @@ public class EtcdRegistryServiceImplMockTest {
         }
     }
 
-    @Order(4)
+    @Order(5)
     @Test
     public void testSubscribe() {
         Watch.Listener mockListener = mock(Watch.Listener.class);
@@ -227,7 +271,7 @@ public class EtcdRegistryServiceImplMockTest {
         verify(executorService, times(1)).submit(any(Runnable.class));
     }
 
-    @Order(5)
+    @Order(6)
     @Test
     public void testUnsubscribe() throws Exception {
         Watch.Listener mockListener = mock(Watch.Listener.class);
@@ -246,7 +290,7 @@ public class EtcdRegistryServiceImplMockTest {
         assertEquals(0, latch.getCount(), "Latch should be 0");
     }
 
-    @Order(6)
+    @Order(7)
     @Test
     public void testClose() throws Exception {
         // 1.condition: executorService shutdown with exception
@@ -296,6 +340,28 @@ public class EtcdRegistryServiceImplMockTest {
         // Create mock GetResponse
         GetResponse mockGetResponse = spy(new GetResponse(mockRangeResponse, ByteSequence.EMPTY));
         when(mockGetResponse.getKvs()).thenReturn(mockKeyValues);
+        return mockGetResponse;
+    }
+
+    private GetResponse createMockMetaGetResponse(String address, String[] kvs) {
+        // header
+        ResponseHeader mockHeader =
+                ResponseHeader.newBuilder().setRevision(22345L).build();
+        // meta key and value
+        KeyValue metaKeyValue = mock(KeyValue.class);
+        String cluster = CLUSTER_NAME;
+        String key = "registry-seata-meta-" + cluster + "-" + address;
+        StringBuilder sb = new StringBuilder();
+        for (String line : kvs) {
+            sb.append(line).append('\n');
+        }
+        when(metaKeyValue.getKey()).thenReturn(ByteSequence.from(key, UTF_8));
+        when(metaKeyValue.getValue()).thenReturn(ByteSequence.from(sb.toString(), UTF_8));
+
+        RangeResponse mockRangeResponse =
+                RangeResponse.newBuilder().setHeader(mockHeader).build();
+        GetResponse mockGetResponse = spy(new GetResponse(mockRangeResponse, ByteSequence.EMPTY));
+        when(mockGetResponse.getKvs()).thenReturn(java.util.Collections.singletonList(metaKeyValue));
         return mockGetResponse;
     }
 }

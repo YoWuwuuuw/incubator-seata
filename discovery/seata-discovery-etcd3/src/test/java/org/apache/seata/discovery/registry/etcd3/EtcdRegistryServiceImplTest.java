@@ -16,145 +16,141 @@
  */
 package org.apache.seata.discovery.registry.etcd3;
 
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.Client;
 import io.etcd.jetcd.Watch;
-import io.etcd.jetcd.launcher.junit4.EtcdClusterResource;
-import io.etcd.jetcd.options.DeleteOption;
-import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.watch.WatchResponse;
 import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.discovery.registry.RegistryService;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static io.netty.util.CharsetUtil.UTF_8;
 import static org.apache.seata.common.DefaultValues.DEFAULT_TX_GROUP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled
 public class EtcdRegistryServiceImplTest {
-    private static final String REGISTRY_KEY_PREFIX = "registry-seata-";
+    // not used directly in tests anymore
     private static final String CLUSTER_NAME = "default";
-
-    @Rule
-    private static final EtcdClusterResource etcd = new EtcdClusterResource(CLUSTER_NAME, 1);
-
-    private final Client client =
-            Client.builder().endpoints(etcd.getClientEndpoints()).build();
     private static final String HOST = "127.0.0.1";
     private static final int PORT = 8091;
 
     @BeforeAll
     public static void beforeClass() throws Exception {
-        System.setProperty(
-                EtcdRegistryServiceImpl.TEST_ENDPONT,
-                etcd.getClientEndpoints().get(0).toString());
+        // 设置事务组映射，便于 lookup 按默认集群解析
+        System.setProperty("service.vgroupMapping.default", CLUSTER_NAME);
     }
 
     @AfterAll
     public static void afterClass() throws Exception {
-        System.setProperty(EtcdRegistryServiceImpl.TEST_ENDPONT, "");
+        System.clearProperty("service.vgroupMapping.default");
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testRegister() throws Exception {
-        RegistryService registryService = new EtcdRegistryProvider().provide();
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(HOST, PORT);
         // 1.register
         registryService.register(new ServiceInstance(inetSocketAddress));
-        // 2.get instance information
-        GetOption getOption =
-                GetOption.newBuilder().withPrefix(buildRegistryKeyPrefix()).build();
-        long count = client.getKVClient().get(buildRegistryKeyPrefix(), getOption).get().getKvs().stream()
-                .filter(keyValue -> {
-                    String[] instanceInfo = keyValue.getValue().toString(UTF_8).split(":");
-                    return HOST.equals(instanceInfo[0]) && PORT == Integer.parseInt(instanceInfo[1]);
-                })
-                .count();
-        assertThat(count).isEqualTo(1);
+        // 2.lookup should see 1 instance
+        List<ServiceInstance> serviceInstances = registryService.lookup(DEFAULT_TX_GROUP);
+        assertThat(serviceInstances).size().isEqualTo(1);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testUnregister() throws Exception {
-        RegistryService registryService = new EtcdRegistryProvider().provide();
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
         ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(HOST, PORT));
         // 1.register
         registryService.register(serviceInstance);
-        // 2.get instance information
-        GetOption getOption =
-                GetOption.newBuilder().withPrefix(buildRegistryKeyPrefix()).build();
-        long count = client.getKVClient().get(buildRegistryKeyPrefix(), getOption).get().getKvs().stream()
-                .filter(keyValue -> {
-                    String[] instanceInfo = keyValue.getValue().toString(UTF_8).split(":");
-                    return HOST.equals(instanceInfo[0]) && PORT == Integer.parseInt(instanceInfo[1]);
-                })
-                .count();
-        assertThat(count).isEqualTo(1);
+        // 2.lookup should see 1 instance
+        List<ServiceInstance> list = registryService.lookup(DEFAULT_TX_GROUP);
+        assertThat(list).size().isEqualTo(1);
         // 3.unregister
         registryService.unregister(serviceInstance);
-        // 4.again get instance information
-        getOption = GetOption.newBuilder().withPrefix(buildRegistryKeyPrefix()).build();
-        count = client.getKVClient().get(buildRegistryKeyPrefix(), getOption).get().getKvs().stream()
-                .filter(keyValue -> {
-                    String[] instanceInfo = keyValue.getValue().toString(UTF_8).split(":");
-                    return HOST.equals(instanceInfo[0]) && PORT == Integer.parseInt(instanceInfo[1]);
-                })
-                .count();
-        assertThat(count).isEqualTo(0);
+        // 4.lookup should see 0 instance
+        list = registryService.lookup(DEFAULT_TX_GROUP);
+        assertThat(list).isEmpty();
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void testRegisterWithMetadataAndLookup() throws Exception {
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
+        InetSocketAddress inetSocketAddress = new InetSocketAddress(HOST, PORT);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("zone", "az1");
+        metadata.put("version", "1.0.0");
+        ServiceInstance instanceWithMeta = new ServiceInstance(inetSocketAddress, metadata);
+
+        // 1.register with metadata
+        registryService.register(instanceWithMeta);
+
+        // 2.lookup and assert metadata propagated
+        List<ServiceInstance> serviceInstances = registryService.lookup(DEFAULT_TX_GROUP);
+        assertThat(serviceInstances).isNotEmpty();
+        ServiceInstance found = serviceInstances.get(0);
+        assertThat(found.getMetadata()).isNotNull();
+        assertThat(found.getMetadata().get("zone")).isEqualTo("az1");
+        assertThat(found.getMetadata().get("version")).isEqualTo("1.0.0");
+
+        // 4.cleanup
+        registryService.unregister(instanceWithMeta);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void testSubscribe() throws Exception {
-        RegistryService registryService = new EtcdRegistryProvider().provide();
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(HOST, PORT);
         // 1.register
         registryService.register(new ServiceInstance(inetSocketAddress));
         // 2.subscribe
         EtcdListener etcdListener = new EtcdListener();
         registryService.subscribe(CLUSTER_NAME, etcdListener);
-        // 3.delete instance,see if the listener can be notified
-        DeleteOption deleteOption =
-                DeleteOption.newBuilder().withPrefix(buildRegistryKeyPrefix()).build();
-        client.getKVClient().delete(buildRegistryKeyPrefix(), deleteOption).get();
+        // 3.unregister instance to trigger event
+        registryService.unregister(new ServiceInstance(inetSocketAddress));
         assertThat(etcdListener.isNotified()).isTrue();
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testUnsubscribe() throws Exception {
-        RegistryService registryService = new EtcdRegistryProvider().provide();
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(HOST, PORT);
         // 1.register
         registryService.register(new ServiceInstance(inetSocketAddress));
         // 2.subscribe
         EtcdListener etcdListener = new EtcdListener();
         registryService.subscribe(CLUSTER_NAME, etcdListener);
-        // 3.delete instance,see if the listener can be notified
-        DeleteOption deleteOption =
-                DeleteOption.newBuilder().withPrefix(buildRegistryKeyPrefix()).build();
-        client.getKVClient().delete(buildRegistryKeyPrefix(), deleteOption).get();
+        // 3.unregister instance to trigger event
+        registryService.unregister(new ServiceInstance(inetSocketAddress));
         assertThat(etcdListener.isNotified()).isTrue();
         // 4.unsubscribe
         registryService.unsubscribe(CLUSTER_NAME, etcdListener);
         // 5.reset
         etcdListener.reset();
-        // 6.put instance,the listener should not be notified
-        client.getKVClient()
-                .put(buildRegistryKeyPrefix(), ByteSequence.from("test", UTF_8))
-                .get();
+        // 6.register again, the listener should not be notified now
+        registryService.register(new ServiceInstance(inetSocketAddress));
         assertThat(etcdListener.isNotified()).isFalse();
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testLookup() throws Exception {
-        RegistryService registryService = new EtcdRegistryProvider().provide();
+        RegistryService<Watch.Listener> registryService =
+                (RegistryService<Watch.Listener>) new EtcdRegistryProvider().provide();
         InetSocketAddress inetSocketAddress = new InetSocketAddress(HOST, PORT);
         // 1.register
         registryService.register(new ServiceInstance(inetSocketAddress));
@@ -163,14 +159,7 @@ public class EtcdRegistryServiceImplTest {
         assertThat(serviceInstances).size().isEqualTo(1);
     }
 
-    /**
-     * build registry key prefix
-     *
-     * @return
-     */
-    private ByteSequence buildRegistryKeyPrefix() {
-        return ByteSequence.from(REGISTRY_KEY_PREFIX, UTF_8);
-    }
+    // helper methods no longer needed as we operate via RegistryService
 
     /**
      * etcd listener
