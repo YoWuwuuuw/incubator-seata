@@ -33,8 +33,12 @@ import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.config.exception.ConfigNotFoundException;
 import org.apache.seata.discovery.registry.RegistryService;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -109,15 +113,17 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
         String clusterName = registryProps.getProperty(PRO_CLUSTER_KEY);
         PublisherRegistration publisherRegistration = new PublisherRegistration(clusterName);
         publisherRegistration.setGroup(registryProps.getProperty(PRO_GROUP_KEY));
-        String serviceData = address.getAddress().getHostAddress() + HOST_SEPERATOR + address.getPort();
-        getRegistryInstance().register(publisherRegistration, serviceData);
+        String serviceData = buildServiceData(address, instance.getMetadata());
+        RegistryClient cli = getRegistryInstance();
+        cli.register(publisherRegistration, serviceData);
     }
 
     @Override
     public void unregister(ServiceInstance instance) {
         NetUtil.validAddress(instance.getAddress());
         String clusterName = registryProps.getProperty(PRO_CLUSTER_KEY);
-        getRegistryInstance().unregister(clusterName, registryProps.getProperty(PRO_GROUP_KEY), RegistryType.PUBLISHER);
+        RegistryClient cli = getRegistryInstance();
+        cli.unregister(clusterName, registryProps.getProperty(PRO_GROUP_KEY), RegistryType.PUBLISHER);
     }
 
     private RegistryClient getRegistryInstance() {
@@ -126,7 +132,6 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
                 if (registryClient == null) {
                     String address = registryProps.getProperty(PRO_SERVER_ADDR_KEY);
                     final String portStr = StringUtils.substringAfter(address, HOST_SEPERATOR);
-
                     RegistryClientConfig config = DefaultRegistryClientConfigBuilder.start()
                             .setAppName(getApplicationName())
                             .setDataCenter(registryProps.getProperty(PRO_DATACENTER_KEY))
@@ -194,13 +199,86 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
 
         for (Map.Entry<String, List<String>> entry : instances.entrySet()) {
             for (String str : entry.getValue()) {
-                String ip = StringUtils.substringBeforeLast(str, HOST_SEPERATOR);
-                String port = StringUtils.substringAfterLast(str, HOST_SEPERATOR);
+                // support legacy "ip:port" and enhanced "ip:port|meta=k1=v1&k2=v2"
+                String raw = str;
+                String metaPart = null;
+                if (raw.contains("|meta=")) {
+                    metaPart = StringUtils.substringAfter(raw, "|meta=");
+                    raw = StringUtils.substringBefore(raw, "|meta=");
+                }
+
+                String ip = StringUtils.substringBeforeLast(raw, HOST_SEPERATOR);
+                String port = StringUtils.substringAfterLast(raw, HOST_SEPERATOR);
                 InetSocketAddress inetSocketAddress = new InetSocketAddress(ip, Integer.parseInt(port));
-                result.add(new ServiceInstance(inetSocketAddress));
+                Map<String, Object> metadata = decodeMetadata(metaPart);
+                if (metadata == null || metadata.isEmpty()) {
+                    result.add(new ServiceInstance(inetSocketAddress));
+                } else {
+                    result.add(new ServiceInstance(inetSocketAddress, metadata));
+                }
             }
         }
         return result;
+    }
+
+    private String buildServiceData(InetSocketAddress address, Map<String, Object> metadata) {
+        String base = address.getAddress().getHostAddress() + HOST_SEPERATOR + address.getPort();
+        if (metadata == null || metadata.isEmpty()) {
+            return base;
+        }
+        return base + "|meta=" + encodeMetadata(metadata);
+    }
+
+    private String encodeMetadata(Map<String, Object> metadata) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Object> e : metadata.entrySet()) {
+            if (!first) {
+                sb.append('&');
+            }
+            first = false;
+            String k = e.getKey() == null ? "" : e.getKey();
+            String v = e.getValue() == null ? "" : String.valueOf(e.getValue());
+            sb.append(urlEncode(k)).append('=').append(urlEncode(v));
+        }
+        return sb.toString();
+    }
+
+    private Map<String, Object> decodeMetadata(String metaPart) {
+        if (StringUtils.isBlank(metaPart)) {
+            return null;
+        }
+        Map<String, Object> map = new HashMap<>();
+        String[] pairs = metaPart.split("&");
+        for (String pair : pairs) {
+            if (StringUtils.isBlank(pair)) {
+                continue;
+            }
+            int idx = pair.indexOf('=');
+            if (idx <= 0) {
+                continue;
+            }
+            String k = urlDecode(pair.substring(0, idx));
+            String v = urlDecode(pair.substring(idx + 1));
+            map.put(k, v);
+        }
+        return map;
+    }
+
+    private String urlEncode(String value) {
+        try {
+            return URLEncoder.encode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("UTF-8 not supported", e);
+        }
+    }
+
+    private String urlDecode(String value) {
+        try {
+            return URLDecoder.decode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("UTF-8 not supported", e);
+        }
     }
 
     @Override
