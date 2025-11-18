@@ -40,7 +40,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -102,6 +104,8 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
         instanceConfig.setPort(address.getPort());
         instanceConfig.setApplicationName(getApplicationName());
         instanceConfig.setInstanceId(getInstanceId());
+        instanceConfig.setMetadata(instance.getMetadata());
+
         getEurekaClient(true);
         applicationInfoManager.setInstanceStatus(InstanceInfo.InstanceStatus.UP);
     }
@@ -168,14 +172,20 @@ public class EurekaRegistryServiceImpl implements RegistryService<EurekaEventLis
         if (application == null || CollectionUtils.isEmpty(application.getInstances())) {
             LOGGER.info("refresh cluster success,but cluster empty! cluster name:{}", clusterName);
         } else {
-            List<ServiceInstance> onlineInstanceList =
-                    ServiceInstance.convertToServiceInstanceList(application.getInstances().stream()
-                            .filter(instance -> InstanceInfo.InstanceStatus.UP.equals(instance.getStatus())
-                                    && instance.getIPAddr() != null
-                                    && instance.getPort() > 0
-                                    && instance.getPort() < 0xFFFF)
-                            .map(instance -> new InetSocketAddress(instance.getIPAddr(), instance.getPort()))
-                            .collect(Collectors.toList()));
+            List<ServiceInstance> onlineInstanceList = application.getInstances().stream()
+                    .filter(instance -> InstanceInfo.InstanceStatus.UP.equals(instance.getStatus())
+                            && instance.getIPAddr() != null
+                            && instance.getPort() > 0
+                            && instance.getPort() < 0xFFFF)
+                    .map(instance -> {
+                        InetSocketAddress address = new InetSocketAddress(instance.getIPAddr(), instance.getPort());
+                        Map<String, Object> metadata = new HashMap<>();
+                        if (instance.getMetadata() != null) {
+                            metadata.putAll(instance.getMetadata());
+                        }
+                        return new ServiceInstance(address, metadata);
+                    })
+                    .collect(Collectors.toList());
             CLUSTER_INSTANCE_MAP.put(clusterName, onlineInstanceList);
 
             removeOfflineAddressesIfNecessary(transactionServiceGroup, clusterName, onlineInstanceList);

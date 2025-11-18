@@ -39,6 +39,12 @@ public class ServiceInstance {
         this.metadata = metadata;
     }
 
+    public ServiceInstance(Instance instance) {
+        this.address = new InetSocketAddress(
+                instance.getTransaction().getHost(), instance.getTransaction().getPort());
+        this.metadata = instance.getMetadata();
+    }
+
     public ServiceInstance(InetSocketAddress address) {
         this.address = address;
     }
