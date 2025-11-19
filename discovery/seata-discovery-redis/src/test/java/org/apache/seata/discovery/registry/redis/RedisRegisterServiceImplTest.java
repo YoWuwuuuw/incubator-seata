@@ -35,6 +35,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,15 +69,24 @@ public class RedisRegisterServiceImplTest {
 
     @Test
     @Order(1)
-    public void testFlow() {
-        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(NetUtil.getLocalIp(), 8091));
+    public void testRegisterWithMetadataAndLookup() {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("zone", "A");
+        meta.put("version", "v1");
+        ServiceInstance serviceInstance = new ServiceInstance(new InetSocketAddress(NetUtil.getLocalIp(), 8092), meta);
         redisRegistryService.register(serviceInstance);
 
-        Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
+        List<ServiceInstance> instances = redisRegistryService.lookup("default_tx_group");
+        ServiceInstance target = instances.stream()
+                .filter(si -> si.getAddress().getPort() == 8092)
+                .findFirst()
+                .orElse(null);
+        Assertions.assertNotNull(target);
+        Assertions.assertNotNull(target.getMetadata());
+        Assertions.assertEquals("A", target.getMetadata().get("zone"));
+        Assertions.assertEquals("v1", target.getMetadata().get("version"));
 
         redisRegistryService.unregister(serviceInstance);
-
-        Assertions.assertTrue(redisRegistryService.lookup("default_tx_group").size() > 0);
     }
 
     @Test
