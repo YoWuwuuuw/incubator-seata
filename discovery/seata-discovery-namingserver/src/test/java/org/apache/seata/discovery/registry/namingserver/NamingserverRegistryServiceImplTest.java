@@ -54,6 +54,13 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * Test for NamingserverRegistryServiceImpl
@@ -113,6 +120,22 @@ class NamingserverRegistryServiceImplTest {
 
     @Test
     public void testWatchCoversRefreshToken() throws Exception {
+        NamingserverRegistryServiceImpl spyService = Mockito.spy(NamingserverRegistryServiceImpl.getInstance());
+        doReturn("127.0.0.1:8081").when(spyService).getNamingAddr();
+
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        StatusLine mockStatusLine = mock(StatusLine.class);
+        when(mockStatusLine.getStatusCode()).thenReturn(200);
+        when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+        mockStatic(HttpClientUtil.class);
+        when(HttpClientUtil.doPost(anyString(), anyString(), anyMap(), anyInt()))
+                .thenReturn(mockResponse);
+        spyService.watch("testGroup");
+    }
+
+    @Test
+    public void testWatchCoversRefreshToken() throws Exception {
+
         NamingserverRegistryServiceImpl spyService = Mockito.spy(NamingserverRegistryServiceImpl.getInstance());
         doReturn("127.0.0.1:8081").when(spyService).getNamingAddr();
 
