@@ -22,7 +22,6 @@ import org.apache.seata.config.ConfigurationFactory;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +53,7 @@ public interface RegistryService<T> {
     /**
      * Set of service group names.
      */
-    Set<String> SERVICE_GROUP_NAME = new HashSet<>();
+    Set<String> SERVICE_GROUP_NAME = ConcurrentHashMap.newKeySet();
 
     /**
      * Current instance cache map for service node health check.

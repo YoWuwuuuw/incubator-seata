@@ -72,9 +72,9 @@ public class ConfigurableConditionMatcher implements ConditionMatcher {
                 double expectedNum = Double.parseDouble(expected);
 
                 if ("==".equals(operator) || "=".equals(operator)) {
-                    return actualNum == expectedNum;
+                    return Double.compare(actualNum, expectedNum) == 0;
                 } else {
-                    return actualNum != expectedNum;
+                    return Double.compare(actualNum, expectedNum) != 0;
                 }
             } catch (NumberFormatException e) {
                 // If cannot convert to numeric, perform string comparison

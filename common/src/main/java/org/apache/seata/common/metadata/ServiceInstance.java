@@ -36,17 +36,19 @@ public class ServiceInstance {
 
     public ServiceInstance(InetSocketAddress address, Map<String, Object> metadata) {
         this.address = address;
-        this.metadata = metadata;
+        this.metadata = (metadata == null) ? new HashMap<>() : metadata;
     }
 
     public ServiceInstance(Instance instance) {
-        this.address = new InetSocketAddress(
-                instance.getTransaction().getHost(), instance.getTransaction().getPort());
-        this.metadata = instance.getMetadata();
+        this(
+                new InetSocketAddress(
+                        instance.getTransaction().getHost(),
+                        instance.getTransaction().getPort()),
+                instance.getMetadata());
     }
 
     public ServiceInstance(InetSocketAddress address) {
-        this.address = address;
+        this(address, null);
     }
 
     public InetSocketAddress getAddress() {
@@ -120,16 +122,11 @@ public class ServiceInstance {
             return false;
         }
         ServiceInstance that = (ServiceInstance) o;
-        return Objects.equals(address, that.address) && Objects.equals(metadata, that.metadata);
+        return Objects.equals(address, that.address);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(address, metadata);
-    }
-
-    @Override
-    public String toString() {
-        return "ServiceInstance{" + "address=" + address + ", metadata=" + metadata + '}';
+        return Objects.hash(address);
     }
 }

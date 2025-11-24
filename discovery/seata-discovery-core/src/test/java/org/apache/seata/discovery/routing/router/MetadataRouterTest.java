@@ -118,7 +118,7 @@ public class MetadataRouterTest {
     @Test
     public void testDoRouteWithOrExpression() {
         MetadataRouter router = new MetadataRouter();
-        router.setExpression("(version >= 2.0) | (env = dev)");
+        router.setExpression("(version >= 2.0) || (env = dev)");
 
         ServiceInstance server1 = mock(ServiceInstance.class);
         ServiceInstance server2 = mock(ServiceInstance.class);
@@ -167,7 +167,7 @@ public class MetadataRouterTest {
     @Test
     public void testDoRouteWithComplexExpression() {
         MetadataRouter router = new MetadataRouter();
-        router.setExpression("(version >= 2.0) | (region = cn-bj) | (zone = zone-a)");
+        router.setExpression("(version >= 2.0) || (region = cn-bj) || (zone = zone-a)");
 
         ServiceInstance server1 = mock(ServiceInstance.class);
         ServiceInstance server2 = mock(ServiceInstance.class);

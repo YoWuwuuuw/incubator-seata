@@ -52,26 +52,12 @@ public class ExpressionParserTest {
      */
     @Test
     public void testParseWithComplexExpressionsWithParentheses() {
-        // Test OR expressions with parentheses (single pipe)
-        String orExpression = "(version >= 2.3) | (env == dev) | (region == cn-bj)";
+        // Test OR expressions with parentheses (double pipe)
+        String orExpression = "(version >= 2.3) || (env == dev) || (region == cn-bj)";
         List<ConditionMatcher> orMatchers = ExpressionParser.parse(orExpression);
         assertEquals(3, orMatchers.size());
         assertTrue(ExpressionParser.isOrExpression(orExpression));
         assertFalse(ExpressionParser.isAndExpression(orExpression));
-
-        // Test OR expressions with parentheses (double pipe)
-        String orExpressionDouble = "(version >= 2.3) || (env == dev) || (region == cn-bj)";
-        List<ConditionMatcher> orMatchersDouble = ExpressionParser.parse(orExpressionDouble);
-        assertEquals(3, orMatchersDouble.size());
-        assertTrue(ExpressionParser.isOrExpression(orExpressionDouble));
-        assertFalse(ExpressionParser.isAndExpression(orExpressionDouble));
-
-        // Test mixed OR expressions with | and ||
-        String mixedOrExpression = "(version >= 2.3) | (env == dev) || (region == cn-bj)";
-        List<ConditionMatcher> mixedOrMatchers = ExpressionParser.parse(mixedOrExpression);
-        assertEquals(3, mixedOrMatchers.size());
-        assertTrue(ExpressionParser.isOrExpression(mixedOrExpression));
-        assertFalse(ExpressionParser.isAndExpression(mixedOrExpression));
 
         // Test AND expressions with parentheses
         String andExpression = "(version >= 2.3) && (env == prod) && (region == cn-bj)";
@@ -87,7 +73,7 @@ public class ExpressionParserTest {
     @Test
     public void testParseWithExpressionsWithoutParentheses() {
         // Test OR expression without parentheses
-        String orExpression = "version >= 2.3 | env == dev | region == cn-bj";
+        String orExpression = "version >= 2.3 || env == dev || region == cn-bj";
         List<ConditionMatcher> orMatchers = ExpressionParser.parse(orExpression);
         assertEquals(3, orMatchers.size());
         assertTrue(ExpressionParser.isOrExpression(orExpression));
@@ -105,7 +91,7 @@ public class ExpressionParserTest {
     @Test
     public void testParseWithExpressionsWithMixedParentheses() {
         // Test OR expression with mixed parentheses
-        String orExpression = "(version >= 2.3) | env == dev | (region == cn-bj)";
+        String orExpression = "(version >= 2.3) || env == dev || (region == cn-bj)";
         List<ConditionMatcher> orMatchers = ExpressionParser.parse(orExpression);
         assertEquals(3, orMatchers.size());
         assertTrue(ExpressionParser.isOrExpression(orExpression));
@@ -134,16 +120,10 @@ public class ExpressionParserTest {
      */
     @Test
     public void testIsOrExpression() {
-        // Test with single pipe |
-        assertTrue(ExpressionParser.isOrExpression("(version >= 2.3) | (env == dev)"));
-        assertTrue(ExpressionParser.isOrExpression("version >= 2.3 | env == dev"));
-
         // Test with double pipe ||
         assertTrue(ExpressionParser.isOrExpression("(version >= 2.3) || (env == dev)"));
         assertTrue(ExpressionParser.isOrExpression("version >= 2.3 || env == dev"));
-
-        // Test mixed pipes
-        assertTrue(ExpressionParser.isOrExpression("(version >= 2.3) | (env == dev) || (region == cn-bj)"));
+        assertTrue(ExpressionParser.isOrExpression("(version >= 2.3) || (env == dev) || (region == cn-bj)"));
 
         // Test non-OR expressions
         assertFalse(ExpressionParser.isOrExpression("version >= 2.3"));
@@ -175,10 +155,6 @@ public class ExpressionParserTest {
         assertTrue(ExpressionParser.isValidExpression("my_key == value"));
 
         // OR expressions
-        assertTrue(ExpressionParser.isValidExpression("(version >= 2.3) | (env == dev)"));
-        assertTrue(ExpressionParser.isValidExpression("version >= 2.3 | env == dev"));
-        assertTrue(ExpressionParser.isValidExpression("(version >= 2.3) | env == dev"));
-        assertTrue(ExpressionParser.isValidExpression("version >= 2.3 | (env == dev)"));
         assertTrue(ExpressionParser.isValidExpression("(version >= 2.3) || (env == dev)"));
         assertTrue(ExpressionParser.isValidExpression("version >= 2.3 || env == dev"));
         assertTrue(ExpressionParser.isValidExpression("(version >= 2.3) || env == dev"));
@@ -256,11 +232,11 @@ public class ExpressionParserTest {
     public void testMixedAndOrLogicNotSupported() {
         // These should throw exceptions as mixed logic is not supported
         assertThrows(IllegalArgumentException.class, () -> {
-            ExpressionParser.parse("(version >= 2.3) | (env == dev) && (region == cn-bj)");
+            ExpressionParser.parse("(version >= 2.3) || (env == dev) && (region == cn-bj)");
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            ExpressionParser.parse("(version >= 2.3) && (env == prod) | (region == cn-bj)");
+            ExpressionParser.parse("(version >= 2.3) && (env == prod) || (region == cn-bj)");
         });
     }
 }

@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  *
  * Supports three modes:
  * 1. Single expression: version >= 2.0
- * 2. OR logic expression: (version >= 2.0) | (env == dev) | (region == cn-bj) or (version >= 2.0) || (env == dev) || (region == cn-bj)
+ * 2. OR logic expression: (version >= 2.0) || (env == dev) || (region == cn-bj)
  * 3. AND logic expression: (version >= 2.0) && (env == prod) && (region == cn-bj)
  *
  * Note: Mixed AND/OR logic is not supported, use multiple MetadataRouters for complex logic

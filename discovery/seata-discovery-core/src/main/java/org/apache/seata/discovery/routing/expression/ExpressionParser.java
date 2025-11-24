@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
  *
  * Supports three modes:
  * 1. Single expression: version >= 2.3
- * 2. OR logic expression: (version >= 2.3) | (env == dev) | (region == cn-bj) or (version >= 2.3) || (env == dev) || (region == cn-bj)
+ * 2. OR logic expression: (version >= 2.3) || (env == dev) || (region == cn-bj)
  * 3. AND logic expression: (version >= 2.3) && (env == prod) && (region == cn-bj)
  *
  * Note: Mixed AND/OR logic is not supported, use multiple MetadataRouters for complex logic
@@ -60,7 +60,7 @@ public class ExpressionParser {
         }
 
         // Check if contains logical operators
-        if (trimmedExpression.contains("|") || trimmedExpression.contains("||")) {
+        if (trimmedExpression.contains("||")) {
             return parseOrExpression(trimmedExpression);
         } else if (trimmedExpression.contains("&&")) {
             return parseAndExpression(trimmedExpression);
@@ -93,36 +93,15 @@ public class ExpressionParser {
 
     /**
      * Parse OR logic expression
-     * Format: (condition1) | (condition2) | (condition3) or condition1 | condition2 | condition3
-     * Also supports: (condition1) || (condition2) || (condition3) or condition1 || condition2 || condition3
+     * Format: (condition1) || (condition2) || (condition3) or condition1 || condition2 || condition3
      * @param expression OR logic expression
      * @return list of condition matchers
      */
     private static List<ConditionMatcher> parseOrExpression(String expression) {
         List<ConditionMatcher> matchers = new ArrayList<>();
 
-        // Split by | or ||, but handle || first to avoid splitting on single |
-        String[] parts;
-        if (expression.contains("||")) {
-            // Split by || first, then handle any remaining single | if they exist
-            parts = expression.split("\\|\\|");
-            // If there are single | characters in any part, split those too
-            List<String> allParts = new ArrayList<>();
-            for (String part : parts) {
-                if (part.contains("|")) {
-                    String[] subParts = part.split("\\|");
-                    for (String subPart : subParts) {
-                        allParts.add(subPart);
-                    }
-                } else {
-                    allParts.add(part);
-                }
-            }
-            parts = allParts.toArray(new String[0]);
-        } else {
-            // Split by single |
-            parts = expression.split("\\|");
-        }
+        // Split by ||
+        String[] parts = expression.split("\\|\\|");
 
         for (String part : parts) {
             part = part.trim();
@@ -193,7 +172,7 @@ public class ExpressionParser {
         String trimmedExpression = expression.trim();
 
         // Check if contains logical operators
-        if (trimmedExpression.contains("|") || trimmedExpression.contains("||")) {
+        if (trimmedExpression.contains("||")) {
             return isValidOrExpression(trimmedExpression);
         } else if (trimmedExpression.contains("&&")) {
             return isValidAndExpression(trimmedExpression);
@@ -249,28 +228,8 @@ public class ExpressionParser {
      * @return whether valid
      */
     private static boolean isValidOrExpression(String expression) {
-        // Split by | or ||, but handle || first to avoid splitting on single |
-        String[] parts;
-        if (expression.contains("||")) {
-            // Split by || first, then handle any remaining single | if they exist
-            parts = expression.split("\\|\\|");
-            // If there are single | characters in any part, split those too
-            List<String> allParts = new ArrayList<>();
-            for (String part : parts) {
-                if (part.contains("|")) {
-                    String[] subParts = part.split("\\|");
-                    for (String subPart : subParts) {
-                        allParts.add(subPart);
-                    }
-                } else {
-                    allParts.add(part);
-                }
-            }
-            parts = allParts.toArray(new String[0]);
-        } else {
-            // Split by single |
-            parts = expression.split("\\|");
-        }
+        // Split by ||
+        String[] parts = expression.split("\\|\\|");
 
         for (String part : parts) {
             part = part.trim();
@@ -349,7 +308,7 @@ public class ExpressionParser {
      * @return whether contains OR logic
      */
     public static boolean isOrExpression(String expression) {
-        return expression != null && (expression.contains("|") || expression.contains("||"));
+        return expression != null && expression.contains("||");
     }
 
     /**

@@ -53,6 +53,7 @@ public class DefaultRouterChainTest {
     @Mock
     private Configuration mockConfiguration;
 
+    private Configuration originalConfiguration;
     private MockedStatic<ConfigurationFactory> mockedFactory;
 
     @BeforeEach
@@ -61,6 +62,7 @@ public class DefaultRouterChainTest {
 
         Field field = ConfigurationFactory.class.getDeclaredField("CURRENT_FILE_INSTANCE");
         field.setAccessible(true);
+        originalConfiguration = (Configuration) field.get(null);
         field.set(null, mockConfiguration);
 
         when(mockConfiguration.getBoolean(anyString(), anyBoolean())).thenAnswer(invocation -> {
@@ -76,9 +78,14 @@ public class DefaultRouterChainTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    public void tearDown() throws Exception {
         if (mockedFactory != null) {
             mockedFactory.close();
+        }
+        if (originalConfiguration != null) {
+            Field field = ConfigurationFactory.class.getDeclaredField("CURRENT_FILE_INSTANCE");
+            field.setAccessible(true);
+            field.set(null, originalConfiguration);
         }
     }
 

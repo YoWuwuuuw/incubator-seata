@@ -127,10 +127,9 @@ public class MultiRegistryFactoryTest {
         String invalidRegistryType = "InvalidRegistryType";
         System.setProperty(REGISTRY_TYPE_KEY, invalidRegistryType);
 
-        assertThrows(
-                NotSupportYetException.class,
-                MultiRegistryFactoryTest::invokeBuildRegistryServices,
-                "not support registry type");
+        NotSupportYetException exception =
+                assertThrows(NotSupportYetException.class, MultiRegistryFactoryTest::invokeBuildRegistryServices);
+        assertTrue(exception.getMessage().contains("not support registry type"));
     }
 
     /**
