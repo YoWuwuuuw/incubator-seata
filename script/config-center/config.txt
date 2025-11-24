@@ -67,27 +67,12 @@ service.disableGlobalTransaction=false
 # Client routing configuration
 client.routing.enabled=false
 client.routing.debug=false
-client.routing.fallback=true
-# e.g. region-router,metadata-router-1,metadata-router-2
-client.routing.chain.order=
-client.routing.region-router.enabled=true
-client.routing.region-router.topN=5
 
 # Dynamic metadata-router configuration examples
 # client.routing.metadata-routers.metadata-router-1.enabled=false
 # client.routing.metadata-routers.metadata-router-1.expression=
 # client.routing.metadata-routers.metadata-router-2.enabled=false
 # client.routing.metadata-routers.metadata-router-2.expression=
-# client.routing.metadata-routers.custom-router.enabled=false
-# client.routing.metadata-routers.custom-router.expression=
-
-client.routing.primary-backup.order=
-client.routing.primary-backup.enabled=false
-
-# e.g. 39.9042
-client.routing.location.lat=
-# e.g. 116.4074
-client.routing.location.lng=
 
 client.metadataMaxAgeMs=30000
 #Transaction rule configuration, only for the client

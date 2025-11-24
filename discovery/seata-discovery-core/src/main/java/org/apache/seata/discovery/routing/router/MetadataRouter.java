@@ -21,7 +21,6 @@ import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.config.Configuration;
 import org.apache.seata.config.ConfigurationFactory;
 import org.apache.seata.discovery.routing.RoutingContext;
-import org.apache.seata.discovery.routing.RoutingManager;
 import org.apache.seata.discovery.routing.expression.ConditionMatcher;
 import org.apache.seata.discovery.routing.expression.ExpressionParser;
 import org.slf4j.Logger;
@@ -42,7 +41,7 @@ import java.util.stream.Collectors;
  */
 public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RoutingManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MetadataRouter.class);
     private final Configuration fileConfig = ConfigurationFactory.CURRENT_FILE_INSTANCE;
 
     private volatile String expression;

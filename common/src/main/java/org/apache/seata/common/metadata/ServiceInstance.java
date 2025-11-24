@@ -129,4 +129,9 @@ public class ServiceInstance {
     public int hashCode() {
         return Objects.hash(address);
     }
+
+    @Override
+    public String toString() {
+        return "ServiceInstance{" + "address=" + address + ", metadata=" + metadata + '}';
+    }
 }

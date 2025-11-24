@@ -171,8 +171,10 @@ public class SofaRegistryServiceImpl implements RegistryService<SubscriberDataOb
             CountDownLatch respondRegistries = new CountDownLatch(1);
             subscribe(clusterName, (dataId, data) -> {
                 Map<String, List<String>> instances = data.getZoneData();
-                if (instances == null && CLUSTER_INSTANCE_MAP.get(clusterName) != null) {
-                    CLUSTER_INSTANCE_MAP.remove(clusterName);
+                if (instances == null) {
+                    if (CLUSTER_INSTANCE_MAP.get(clusterName) != null) {
+                        CLUSTER_INSTANCE_MAP.remove(clusterName);
+                    }
                 } else {
                     List<ServiceInstance> newInstanceList = flatData(instances);
                     CLUSTER_INSTANCE_MAP.put(clusterName, newInstanceList);

@@ -322,14 +322,14 @@
       "name": "seata.client.routing.enabled",
       "type": "java.lang.Boolean",
       "description": "Whether enable routing feature.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
+      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties",
       "defaultValue": false
     },
     {
       "name": "seata.client.routing.debug",
       "type": "java.lang.Boolean",
       "description": "Whether enable routing debug mode.",
-      "sourceType": "org.apache.seata.discovery.routing.config.RoutingProperties",
+      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties",
       "defaultValue": false
     },
     {

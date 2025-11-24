@@ -50,7 +50,11 @@ public class RegistryMetadataProperties {
     }
 
     public RegistryMetadataProperties setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+        if (metadata != null) {
+            this.metadata = new ConcurrentHashMap<>(metadata);
+        } else {
+            this.metadata = new ConcurrentHashMap<>();
+        }
         return this;
     }
 
