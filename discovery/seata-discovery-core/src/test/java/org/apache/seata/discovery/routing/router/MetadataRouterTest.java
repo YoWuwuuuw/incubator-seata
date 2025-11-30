@@ -40,12 +40,8 @@ public class MetadataRouterTest {
      */
     @Test
     public void testConstructor() {
-        // Default constructor
-        MetadataRouter router = new MetadataRouter();
-        assertNotNull(router);
-
-        // Named constructor
-        router = new MetadataRouter("metadata-router-1");
+        // Constructor with router name
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         assertNotNull(router);
     }
 
@@ -54,7 +50,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testSetAndGetExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("version >= 2.0");
         assertEquals("version >= 2.0", router.getExpression());
     }
@@ -64,7 +60,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testBuildSnapshot() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("version >= 2.0");
         String snapshot = router.buildSnapshot();
         assertTrue(snapshot.contains("MetadataRouter"));
@@ -76,7 +72,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testDoRouteWithEmptyExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("");
 
         ServiceInstance server = mock(ServiceInstance.class);
@@ -92,7 +88,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testDoRouteWithSingleExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("version >= 2.0");
 
         ServiceInstance server1 = mock(ServiceInstance.class);
@@ -117,7 +113,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testDoRouteWithOrExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("(version >= 2.0) || (env = dev)");
 
         ServiceInstance server1 = mock(ServiceInstance.class);
@@ -149,7 +145,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testDoRouteWithNullExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression(null);
 
         ServiceInstance server1 = mock(ServiceInstance.class);
@@ -166,7 +162,7 @@ public class MetadataRouterTest {
      */
     @Test
     public void testDoRouteWithComplexExpression() {
-        MetadataRouter router = new MetadataRouter();
+        MetadataRouter router = new MetadataRouter("metadata-router-1");
         router.setExpression("(version >= 2.0) || (region = cn-bj) || (zone = zone-a)");
 
         ServiceInstance server1 = mock(ServiceInstance.class);

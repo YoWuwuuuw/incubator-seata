@@ -341,32 +341,13 @@
     {
       "name": "seata.client.routing.routers",
       "type": "java.lang.String",
-      "description": "Comma-separated list of router names to load. Supports metadata-router, metadata-router-1, metadata-router-2, and spi- prefixed routers",
+      "description": "Comma-separated list of router names to load. Supports metadata-router-1, metadata-router-2, etc., and spi- prefixed routers",
       "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties"
-    },
-    {
-      "name": "seata.client.routing.metadata-router",
-      "type": "org.apache.seata.spring.boot.autoconfigure.properties.client.MetadataRouterConfig",
-      "description": "Default metadata router configuration",
-      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties"
-    },
-    {
-      "name": "seata.client.routing.metadata-router.expression",
-      "type": "java.lang.String",
-      "description": "Default expression for metadata router. Example: env == prod && region == cn-north",
-      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.MetadataRouterConfig"
-    },
-    {
-      "name": "seata.client.routing.metadata-router.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether enable the default metadata router",
-      "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.MetadataRouterConfig",
-      "defaultValue": true
     },
     {
       "name": "seata.client.routing.metadata-router-*",
       "type": "org.apache.seata.spring.boot.autoconfigure.properties.client.MetadataRouterConfig",
-      "description": "Numbered metadata router configuration. Replace * with any number (e.g., metadata-router-1, metadata-router-42)",
+      "description": "Numbered metadata router configuration. Replace * with any number (e.g., metadata-router-1, metadata-router-2). For single router, use metadata-router-1. For multiple routers, use metadata-router-1, metadata-router-2, etc.",
       "sourceType": "org.apache.seata.spring.boot.autoconfigure.properties.client.RoutingProperties"
     },
     {
@@ -512,16 +493,16 @@
       "name": "seata.client.routing.routers",
       "values": [
         {
-          "value": "metadata-router",
-          "description": "Default metadata router with basic configuration"
-        },
-        {
           "value": "metadata-router-1",
-          "description": "First numbered metadata router"
+          "description": "First metadata router (use for single router)"
         },
         {
           "value": "metadata-router-2",
-          "description": "Second numbered metadata router"
+          "description": "Second metadata router"
+        },
+        {
+          "value": "metadata-router-1,metadata-router-2",
+          "description": "Multiple metadata routers"
         },
         {
           "value": "spi-custom",
@@ -534,7 +515,7 @@
       ]
     },
     {
-      "name": "seata.client.routing.metadata-router.expression",
+      "name": "seata.client.routing.metadata-router-*.expression",
       "values": [
         {
           "value": "env == prod",

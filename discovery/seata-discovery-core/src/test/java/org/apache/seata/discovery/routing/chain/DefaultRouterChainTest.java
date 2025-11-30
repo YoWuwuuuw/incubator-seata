@@ -90,14 +90,14 @@ public class DefaultRouterChainTest {
     }
 
     /**
-     * Test loading default metadata-router successfully
+     * Test loading numbered metadata-router successfully
      */
     @Test
-    public void testLoadDefaultMetadataRouter() {
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
+    public void testLoadNumberedMetadataRouter1() {
+        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
                 .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
+        when(mockConfiguration.getConfig("client.routing.metadata-router-1.expression"))
                 .thenReturn("version >= 2.0");
 
         DefaultRouterChain routerChain = new DefaultRouterChain();
@@ -117,14 +117,14 @@ public class DefaultRouterChainTest {
     }
 
     /**
-     * Test loading numbered metadata-router successfully
+     * Test loading numbered metadata-router with different expression
      */
     @Test
-    public void testLoadNumberedMetadataRouter() {
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1");
-        when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
+    public void testLoadNumberedMetadataRouter2() {
+        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-2");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.enabled"))
                 .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router-1.expression"))
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.expression"))
                 .thenReturn("env = prod");
 
         DefaultRouterChain routerChain = new DefaultRouterChain();
@@ -148,14 +148,14 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testLoadMultipleRouters() {
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router,metadata-router-1");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
-                .thenReturn("version >= 2.0");
+        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1,metadata-router-2");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
                 .thenReturn("true");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.expression"))
+                .thenReturn("version >= 2.0");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.enabled"))
+                .thenReturn("true");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.expression"))
                 .thenReturn("env = prod");
 
         DefaultRouterChain routerChain = new DefaultRouterChain();
@@ -269,14 +269,14 @@ public class DefaultRouterChainTest {
      */
     @Test
     public void testRouterChainExecutionOrder() {
-        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router,metadata-router-1");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.enabled"))
-                .thenReturn("true");
-        when(mockConfiguration.getConfig("client.routing.metadata-router.expression"))
-                .thenReturn("version >= 2.0");
+        when(mockConfiguration.getConfig("client.routing.routers")).thenReturn("metadata-router-1,metadata-router-2");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.enabled"))
                 .thenReturn("true");
         when(mockConfiguration.getConfig("client.routing.metadata-router-1.expression"))
+                .thenReturn("version >= 2.0");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.enabled"))
+                .thenReturn("true");
+        when(mockConfiguration.getConfig("client.routing.metadata-router-2.expression"))
                 .thenReturn("env = prod");
 
         DefaultRouterChain routerChain = new DefaultRouterChain();

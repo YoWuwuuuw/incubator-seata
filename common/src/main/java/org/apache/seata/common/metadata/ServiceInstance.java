@@ -64,7 +64,7 @@ public class ServiceInstance {
     }
 
     public void setMetadata(Map<String, Object> metadata) {
-        this.metadata = metadata;
+        this.metadata = (metadata == null) ? new HashMap<>() : metadata;
     }
 
     /**

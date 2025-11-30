@@ -23,6 +23,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelId;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
+import org.apache.seata.common.metadata.ServiceInstance;
 import org.apache.seata.common.thread.NamedThreadFactory;
 import org.apache.seata.core.protocol.AbstractMessage;
 import org.apache.seata.core.protocol.HeartbeatMessage;
@@ -38,6 +39,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -547,8 +550,8 @@ public class AbstractNettyRemotingClientTest {
         GlobalBeginRequest request = new GlobalBeginRequest();
         request.setTransactionName("test-tx");
 
-        java.util.List<InetSocketAddress> list = new java.util.ArrayList<>();
-        list.add(new InetSocketAddress("127.0.0.1", 8080));
+        List<ServiceInstance> list = new ArrayList<>();
+        list.add(new ServiceInstance(new InetSocketAddress("127.0.0.1", 8080)));
 
         InetSocketAddress address = client.doSelect(list, request);
         assertNotNull(address);

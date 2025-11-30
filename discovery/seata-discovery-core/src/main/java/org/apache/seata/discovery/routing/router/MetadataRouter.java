@@ -47,16 +47,8 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
     private volatile String expression;
 
     /**
-     * Default constructor
-     */
-    public MetadataRouter() {
-        super("MetadataRouter");
-        this.expression = fileConfig.getConfig(ConfigurationKeys.CLIENT_METADATA_ROUTER_EXPRESSION);
-    }
-
-    /**
-     * Named instance constructor
-     * @param routerName router name
+     * Constructor with router name
+     * @param routerName router name (e.g., metadata-router-1, metadata-router-2)
      */
     public MetadataRouter(String routerName) {
         super(routerName);
@@ -75,7 +67,13 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
         }
 
         // Parse expression
-        List<ConditionMatcher> matchers = ExpressionParser.parse(currentExpression);
+        List<ConditionMatcher> matchers;
+        try {
+            matchers = ExpressionParser.parse(currentExpression);
+        } catch (IllegalArgumentException e) {
+            LOGGER.error("Failed to parse expression: {}, return original server list.", currentExpression);
+            return servers;
+        }
 
         // Check if it's an OR expression
         if (ExpressionParser.isOrExpression(currentExpression)) {
@@ -84,7 +82,7 @@ public class MetadataRouter extends AbstractStateRouter<ServiceInstance> {
                     .filter(server -> matchers.stream().anyMatch(m -> m.match(server, ctx)))
                     .collect(Collectors.toList());
         } else {
-            // Single expression: all conditions must be satisfied (though there's only one condition)
+            // Single expression or AND logic: all conditions must be satisfied
             return servers.stream()
                     .filter(server -> matchers.stream().allMatch(m -> m.match(server, ctx)))
                     .collect(Collectors.toList());

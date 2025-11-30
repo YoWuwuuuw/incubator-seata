@@ -172,10 +172,8 @@ public class DefaultRouterChain implements RouterChain {
                 return null;
             }
 
-            if ("metadata-router".equals(routerName)) {
-                return new MetadataRouter();
-            } else if (routerName.startsWith("metadata-router-")) {
-                // Named metadata router (metadata-router-1, metadata-router-2, etc.)
+            if (routerName.startsWith("metadata-router-")) {
+                // Numbered metadata router (metadata-router-1, metadata-router-2, etc.)
                 return new MetadataRouter(routerName);
             }
 

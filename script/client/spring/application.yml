@@ -69,28 +69,21 @@ seata:
     routing:
       enabled: false
       debug: false
-      fallback: true
-      # Client location configuration for region router
-      location:
-        lat: ""
-        lng: ""
-      chain:
-        order: ""
-      region-router:
-        enabled: true
-        topN: 5
-      # Dynamic metadata-router configuration
-      metadata-routers:
-        metadata-router-1:
-          enabled: true
-          expression: ""
-        metadata-router-2:
-          enabled: true
-          expression: ""
-      primary-backup:
-        # backup chain order
-        order: ""
-        enabled: false
+      routers: ""
+      # Metadata-router configuration examples (using numbered format)
+      # Single router: use metadata-router-1
+      # routers: metadata-router-1
+      # metadata-router-1:
+      #   enabled: true
+      #   expression: version >= 2.0
+      # Multiple routers: use metadata-router-1, metadata-router-2, etc.
+      # routers: metadata-router-1,metadata-router-2
+      # metadata-router-1:
+      #   enabled: true
+      #   expression: version >= 2.0
+      # metadata-router-2:
+      #   enabled: true
+      #   expression: env == prod
   service:
     vgroup-mapping:
       default_tx_group: default

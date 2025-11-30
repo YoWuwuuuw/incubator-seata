@@ -284,11 +284,6 @@ public interface ConfigurationKeys {
     String CLIENT_ROUTING_ROUTERS = CLIENT_ROUTING_PREFIX + "routers";
 
     /**
-     * the constant CLIENT_METADATA_ROUTER_EXPRESSION.
-     */
-    String CLIENT_METADATA_ROUTER_EXPRESSION = CLIENT_ROUTING_PREFIX + "metadata-router.expression";
-
-    /**
      * The constant SERIALIZE_FOR_RPC.
      */
     String SERIALIZE_FOR_RPC = TRANSPORT_PREFIX + "serialization";
