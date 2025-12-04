@@ -138,7 +138,7 @@ public class NacosRegistryServiceImplTest {
 
         // Verify unregistration success
         List<ServiceInstance> instancesAfter = service.lookup(SERVICE_NAME);
-        assertTrue(instancesAfter.size() == 1);
+        assertEquals(1, instancesAfter.size());
     }
 
     @Test
