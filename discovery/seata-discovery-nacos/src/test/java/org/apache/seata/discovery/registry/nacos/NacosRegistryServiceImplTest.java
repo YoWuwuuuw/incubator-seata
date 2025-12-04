@@ -85,7 +85,7 @@ public class NacosRegistryServiceImplTest {
         }
 
         List<ServiceInstance> instances = service.lookup(SERVICE_NAME);
-        assertTrue(instances.size() > 0);
+        assertFalse(instances.isEmpty());
 
         // Cleanup
         service.unregister(serviceInstance);
