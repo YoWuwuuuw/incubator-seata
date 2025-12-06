@@ -109,7 +109,7 @@ public class NacosRegistryServiceImplTest {
         metadata.put("weight", 1.0);
 
         ServiceInstance serviceInstance = new ServiceInstance(address, metadata);
-        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8092);
+        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8093);
 
         ServiceInstance serviceInstance1 = new ServiceInstance(address1, metadata);
 
@@ -184,7 +184,7 @@ public class NacosRegistryServiceImplTest {
         Thread.sleep(1000);
 
         // Register a service instance with metadata to trigger event
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8093);
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8094);
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("version", "1.0.0");
         metadata.put("weight", 1.0);
