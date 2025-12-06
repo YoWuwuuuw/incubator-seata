@@ -335,7 +335,6 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
                 })
                 .collect(Collectors.toList());
 
-        System.out.println("service instances:" + instances);
         clusterAddressMap.put(cluster, instances);
 
         removeOfflineAddressesIfNecessary(transactionServiceGroup, cluster, instances);

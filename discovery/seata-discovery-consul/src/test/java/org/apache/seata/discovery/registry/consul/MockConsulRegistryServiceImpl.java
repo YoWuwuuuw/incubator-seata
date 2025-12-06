@@ -138,14 +138,12 @@ public class MockConsulRegistryServiceImpl implements RegistryService<ConsulList
 
     private void doRegister(ServiceInstance instance) {
         NewService service = createService(instance);
-        System.out.println("Mock: Registering service: " + service.getId() + " with check: " + service.getCheck());
         getConsulClient().agentServiceRegister(service, getAclToken());
     }
 
     private void doTtlCheck(ServiceInstance instance) throws Exception {
         // Send TTL check to keep service healthy
         String checkId = "service:" + createServiceId(instance.getAddress());
-        System.out.println("Mock: Sending TTL check for: " + checkId);
         getConsulClient().agentCheckPass(checkId, getAclToken());
     }
 
@@ -318,7 +316,6 @@ public class MockConsulRegistryServiceImpl implements RegistryService<ConsulList
             return;
         }
         Response<List<HealthService>> response = getHealthyServices(cluster, -1, -1);
-        System.out.println("Mock: healthy services:" + response.getValue().toString());
         if (response == null) {
             return;
         }
@@ -348,7 +345,6 @@ public class MockConsulRegistryServiceImpl implements RegistryService<ConsulList
                 })
                 .collect(Collectors.toList());
 
-        System.out.println("Mock: service instances:" + instances);
         clusterAddressMap.put(cluster, instances);
 
         removeOfflineAddressesIfNecessary(transactionServiceGroup, cluster, instances);
