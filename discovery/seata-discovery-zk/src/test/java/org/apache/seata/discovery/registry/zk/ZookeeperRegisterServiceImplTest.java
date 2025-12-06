@@ -79,7 +79,10 @@ public class ZookeeperRegisterServiceImplTest {
 
     @Test
     public void testAll() throws Exception {
-        service.register(new ServiceInstance(new InetSocketAddress(NetUtil.getLocalAddress(), 33333)));
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("zone", "A");
+        meta.put("version", "v1");
+        service.register(new ServiceInstance(new InetSocketAddress(NetUtil.getLocalAddress(), 33333), meta));
 
         Assertions.assertThrows(ConfigNotFoundException.class, new Executable() {
             @Override
@@ -89,6 +92,9 @@ public class ZookeeperRegisterServiceImplTest {
         });
         List<ServiceInstance> lookup2 = service.doLookup("default");
         Assertions.assertEquals(1, lookup2.size());
+        Assertions.assertNotNull(lookup2.get(0).getMetadata());
+        Assertions.assertEquals("A", lookup2.get(0).getMetadata().get("zone"));
+        Assertions.assertEquals("v1", lookup2.get(0).getMetadata().get("version"));
 
         final List<String> data = new ArrayList<>();
         final CountDownLatch latch = new CountDownLatch(1);
