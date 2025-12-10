@@ -98,6 +98,23 @@ public class ServiceInstance {
     }
 
     /**
+     * Converts a Map<String, Object> to Map<String, String>.
+     * @param metadata the original metadata
+     * @return converted Map<String, String>
+     */
+    public static Map<String, String> toStringMap(Map<String, Object> metadata) {
+        Map<String, String> stringMap = new HashMap<>();
+        if (metadata != null) {
+            for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+                stringMap.put(
+                        entry.getKey(),
+                        entry.getValue() == null ? null : entry.getValue().toString());
+            }
+        }
+        return stringMap;
+    }
+
+    /**
      * Creates a ServiceInstance from an InetSocketAddress and a Map<String, String> of metadata.
      * @param address the InetSocketAddress
      * @param stringMap the map of string metadata
