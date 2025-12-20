@@ -50,12 +50,16 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener> {
+/**
+ * Mock implementation of ConsulRegistryServiceImpl for testing purposes.
+ * Uses TTL checks instead of TCP checks to avoid connection issues in test environment.
+ */
+public class MockConsulRegistryServiceImpl implements RegistryService<ConsulListener> {
 
-    private static volatile ConsulRegistryServiceImpl instance;
+    private static volatile MockConsulRegistryServiceImpl instance;
     private static volatile ConsulClient client;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConsulRegistryServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockConsulRegistryServiceImpl.class);
     private static final Configuration FILE_CONFIG = ConfigurationFactory.CURRENT_FILE_INSTANCE;
     private static final String FILE_ROOT_REGISTRY = "registry";
     private static final String FILE_CONFIG_SPLIT_CHAR = ".";
@@ -79,14 +83,6 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     private String transactionServiceGroup;
 
     /**
-     * default tcp check interval
-     */
-    private static final String DEFAULT_CHECK_INTERVAL = "10s";
-    /**
-     * default tcp check timeout
-     */
-    private static final String DEFAULT_CHECK_TIMEOUT = "1s";
-    /**
      * default deregister critical server after
      */
     private static final String DEFAULT_DEREGISTER_TIME = "20s";
@@ -95,7 +91,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
      */
     private static final int DEFAULT_WATCH_TIMEOUT = 60;
 
-    private ConsulRegistryServiceImpl() {
+    private MockConsulRegistryServiceImpl() {
         // initial the capacity with 8
         clusterAddressMap = new ConcurrentHashMap<>(MAP_INITIAL_CAPACITY);
         listenerMap = new ConcurrentHashMap<>(MAP_INITIAL_CAPACITY);
@@ -110,15 +106,15 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     /**
-     * get instance of ConsulRegistryServiceImpl
+     * get instance of MockConsulRegistryServiceImpl
      *
      * @return instance
      */
-    static ConsulRegistryServiceImpl getInstance() {
+    static MockConsulRegistryServiceImpl getInstance() {
         if (instance == null) {
-            synchronized (ConsulRegistryServiceImpl.class) {
+            synchronized (MockConsulRegistryServiceImpl.class) {
                 if (instance == null) {
-                    instance = new ConsulRegistryServiceImpl();
+                    instance = new MockConsulRegistryServiceImpl();
                 }
             }
         }
@@ -128,20 +124,34 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     @Override
     public void register(ServiceInstance instance) throws Exception {
         InetSocketAddress address = instance.getAddress();
-        NetUtil.validAddress(address);
+        // Skip address validation for testing
+        // NetUtil.validAddress(address);
 
         doRegister(instance);
+        // Immediately send TTL check to make service healthy
+        doTtlCheck(instance);
+        // Add heartbeat for re-registration and TTL check
         RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, this::doRegister);
+        // Add TTL check to keep service healthy
+        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, 15000, this::doTtlCheck);
     }
 
     private void doRegister(ServiceInstance instance) {
-        getConsulClient().agentServiceRegister(createService(instance), getAclToken());
+        NewService service = createService(instance);
+        getConsulClient().agentServiceRegister(service, getAclToken());
+    }
+
+    private void doTtlCheck(ServiceInstance instance) throws Exception {
+        // Send TTL check to keep service healthy
+        String checkId = "service:" + createServiceId(instance.getAddress());
+        getConsulClient().agentCheckPass(checkId, getAclToken());
     }
 
     @Override
     public void unregister(ServiceInstance instance) {
         InetSocketAddress address = instance.getAddress();
-        NetUtil.validAddress(address);
+        // Skip address validation for testing
+        // NetUtil.validAddress(address);
         getConsulClient().agentServiceDeregister(createServiceId(address), getAclToken());
     }
 
@@ -194,7 +204,7 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
      */
     private ConsulClient getConsulClient() {
         if (client == null) {
-            synchronized (ConsulRegistryServiceImpl.class) {
+            synchronized (MockConsulRegistryServiceImpl.class) {
                 if (client == null) {
                     String serverAddr = FILE_CONFIG.getConfig(FILE_CONFIG_KEY_PREFIX + SERVER_ADDR_KEY);
                     InetSocketAddress inetSocketAddress = NetUtil.toInetSocketAddress(serverAddr);
@@ -264,16 +274,16 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
     }
 
     /**
-     * create service check based on TCP
+     * create service check based on TTL (for testing purposes)
+     * This allows the service to be considered healthy without actually running on the port
      *
      * @param address
      * @return
      */
     private NewService.Check createCheck(InetSocketAddress address) {
         NewService.Check check = new NewService.Check();
-        check.setTcp(NetUtil.toStringAddress(address));
-        check.setInterval(DEFAULT_CHECK_INTERVAL);
-        check.setTimeout(DEFAULT_CHECK_TIMEOUT);
+        // Use TTL check instead of TCP check for testing
+        check.setTtl("30s");
         check.setDeregisterCriticalServiceAfter(DEFAULT_DEREGISTER_TIME);
         return check;
     }

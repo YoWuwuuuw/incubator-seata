@@ -117,26 +117,14 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
     public void register(ServiceInstance instance) throws Exception {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        getNamingInstance()
-                .registerInstance(
-                        getServiceName(),
-                        getServiceGroup(),
-                        address.getAddress().getHostAddress(),
-                        address.getPort(),
-                        getClusterName());
+        getNamingInstance().registerInstance(getServiceName(), getServiceGroup(), getNacosInstance(instance));
     }
 
     @Override
     public void unregister(ServiceInstance instance) throws Exception {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        getNamingInstance()
-                .deregisterInstance(
-                        getServiceName(),
-                        getServiceGroup(),
-                        address.getAddress().getHostAddress(),
-                        address.getPort(),
-                        getClusterName());
+        getNamingInstance().deregisterInstance(getServiceName(), getServiceGroup(), getNacosInstance(instance));
     }
 
     @Override
@@ -250,6 +238,16 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
                 namingMaintain = null;
             }
         }
+    }
+
+    private Instance getNacosInstance(ServiceInstance instance) {
+        Instance nacosInstance = new Instance();
+        nacosInstance.setClusterName(getClusterName());
+        InetSocketAddress address = instance.getAddress();
+        nacosInstance.setIp(address.getAddress().getHostAddress());
+        nacosInstance.setPort(address.getPort());
+        nacosInstance.setMetadata(ServiceInstance.toStringMap(instance.getMetadata()));
+        return nacosInstance;
     }
 
     /**
