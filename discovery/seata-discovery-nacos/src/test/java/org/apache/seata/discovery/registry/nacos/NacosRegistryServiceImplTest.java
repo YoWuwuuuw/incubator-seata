@@ -149,7 +149,7 @@ public class NacosRegistryServiceImplTest {
         for (ServiceInstance instance : existingInstances) {
             service.unregister(instance);
         }
-        Thread.sleep(1000);
+        Thread.sleep(5000);
 
         CountDownLatch latch = new CountDownLatch(1);
         final boolean[] eventReceived = {false};
@@ -170,9 +170,9 @@ public class NacosRegistryServiceImplTest {
                         assertEquals("1.0", metadata.get("weight"));
                         assertEquals("true", metadata.get("healthy"));
                         eventReceived[0] = true;
+                        latch.countDown();
                     }
                 }
-                latch.countDown();
             }
         };
 
