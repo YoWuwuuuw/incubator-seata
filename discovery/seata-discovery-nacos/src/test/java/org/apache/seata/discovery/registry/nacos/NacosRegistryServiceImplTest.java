@@ -68,19 +68,19 @@ public class NacosRegistryServiceImplTest {
         metadata.put("weight", 1.0);
         metadata.put("healthy", true);
 
-        ServiceInstance serviceInstance = new ServiceInstance(address, metadata);
+        ServiceInstance serviceInstance1 = new ServiceInstance(address, metadata);
 
         // Verify ServiceInstance metadata
-        assertNotNull(serviceInstance.getMetadata());
-        assertEquals("1.0.0", serviceInstance.getMetadata().get("version"));
-        assertEquals(1.0, serviceInstance.getMetadata().get("weight"));
-        assertEquals(true, serviceInstance.getMetadata().get("healthy"));
+        assertNotNull(serviceInstance1.getMetadata());
+        assertEquals("1.0.0", serviceInstance1.getMetadata().get("version"));
+        assertEquals(1.0, serviceInstance1.getMetadata().get("weight"));
+        assertEquals(true, serviceInstance1.getMetadata().get("healthy"));
 
-        service.register(serviceInstance);
+        service.register(serviceInstance1);
 
         // Verify registration success
         long startTime = System.currentTimeMillis();
-        while (service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 10000) {
+        while (service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 5000) {
             Thread.sleep(100);
         }
 
@@ -88,7 +88,7 @@ public class NacosRegistryServiceImplTest {
         assertFalse(instances.isEmpty());
 
         // Cleanup
-        service.unregister(serviceInstance);
+        service.unregister(serviceInstance1);
     }
 
     @Test
@@ -103,56 +103,66 @@ public class NacosRegistryServiceImplTest {
     @Test
     @Order(2)
     public void testUnregister() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8092);
+        InetSocketAddress address2 = new InetSocketAddress("127.0.0.1", 8092);
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("version", "1.0.0");
         metadata.put("weight", 1.0);
+        ServiceInstance serviceInstance2 = new ServiceInstance(address2, metadata);
 
-        ServiceInstance serviceInstance = new ServiceInstance(address, metadata);
-        InetSocketAddress address1 = new InetSocketAddress("127.0.0.1", 8093);
-
-        ServiceInstance serviceInstance1 = new ServiceInstance(address1, metadata);
+        InetSocketAddress address3 = new InetSocketAddress("127.0.0.1", 8093);
+        ServiceInstance serviceInstance3 = new ServiceInstance(address3, metadata);
 
         // Verify ServiceInstance metadata
-        assertNotNull(serviceInstance.getMetadata());
-        assertEquals("1.0.0", serviceInstance.getMetadata().get("version"));
-        assertEquals(1.0, serviceInstance.getMetadata().get("weight"));
+        assertNotNull(serviceInstance2.getMetadata());
+        assertEquals("1.0.0", serviceInstance2.getMetadata().get("version"));
+        assertEquals(1.0, serviceInstance2.getMetadata().get("weight"));
 
-        service.register(serviceInstance);
-        service.register(serviceInstance1);
+        service.register(serviceInstance2);
+        service.register(serviceInstance3);
 
         long startTime = System.currentTimeMillis();
-        while (service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 10000) {
+        while (service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 5000) {
             Thread.sleep(100);
         }
 
         List<ServiceInstance> instancesBefore = service.lookup(SERVICE_NAME);
         assertFalse(instancesBefore.isEmpty());
 
-        service.unregister(serviceInstance);
+        service.unregister(serviceInstance2);
 
         startTime = System.currentTimeMillis();
-        while (!service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 10000) {
+        while (!service.lookup(SERVICE_NAME).isEmpty() && System.currentTimeMillis() - startTime < 5000) {
             Thread.sleep(100);
         }
 
         // Verify unregistration success
         List<ServiceInstance> instancesAfter = service.lookup(SERVICE_NAME);
         assertEquals(1, instancesAfter.size());
+
+        service.unregister(serviceInstance3);
     }
 
     @Test
     @Order(3)
     public void testSubscribe() throws Exception {
-        // First, clean up any existing instances to ensure a clean state
+        // Clean up any existing instances to avoid test pollution
         List<ServiceInstance> existingInstances = service.lookup(SERVICE_NAME);
         for (ServiceInstance instance : existingInstances) {
             service.unregister(instance);
         }
-        Thread.sleep(5000);
+        Thread.sleep(1000);
 
         CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] eventReceived = {false};
+
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8094);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("version", "1.0.0");
+        metadata.put("weight", 1.0);
+        metadata.put("healthy", true);
+
+        ServiceInstance serviceInstance = new ServiceInstance(address, metadata);
+        final String expectedIp = address.getAddress().getHostAddress();
+        final int expectedPort = address.getPort();
 
         // Create test listener
         EventListener listener = new EventListener() {
@@ -161,40 +171,29 @@ public class NacosRegistryServiceImplTest {
                 if (event instanceof NamingEvent) {
                     NamingEvent namingEvent = (NamingEvent) event;
                     List<Instance> instances = namingEvent.getInstances();
+
                     if (instances != null && !instances.isEmpty()) {
-                        // Verify instance metadata
-                        Instance instance = instances.get(0);
-                        Map<String, String> metadata = instance.getMetadata();
-                        assertNotNull(metadata);
-                        assertEquals("1.0.0", metadata.get("version"));
-                        assertEquals("1.0", metadata.get("weight"));
-                        assertEquals("true", metadata.get("healthy"));
-                        eventReceived[0] = true;
-                        latch.countDown();
+                        for (Instance instance : instances) {
+                            if (expectedIp.equals(instance.getIp()) && expectedPort == instance.getPort()) {
+                                Map<String, String> instanceMetadata = instance.getMetadata();
+                                assertNotNull(instanceMetadata);
+                                assertEquals("1.0.0", instanceMetadata.get("version"));
+                                assertEquals("1.0", instanceMetadata.get("weight"));
+                                assertEquals("true", instanceMetadata.get("healthy"));
+                                latch.countDown();
+                                return;
+                            }
+                        }
                     }
                 }
             }
         };
 
-        // Execute subscription
         service.subscribe(CLUSTER_NAME, listener);
-
-        // Wait a bit for subscription to be established
         Thread.sleep(1000);
 
-        // Register a service instance with metadata to trigger event
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8094);
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("version", "1.0.0");
-        metadata.put("weight", 1.0);
-        metadata.put("healthy", true);
-
-        ServiceInstance serviceInstance = new ServiceInstance(address, metadata);
         service.register(serviceInstance);
-
-        // Wait for event trigger
         assertTrue(latch.await(10, TimeUnit.SECONDS));
-        assertTrue(eventReceived[0]);
 
         // Cleanup
         service.unregister(serviceInstance);
