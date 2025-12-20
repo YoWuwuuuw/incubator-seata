@@ -145,7 +145,6 @@ public class NacosRegistryServiceImplTest {
     @Order(3)
     public void testSubscribe() throws Exception {
         // First, clean up any existing instances to ensure a clean state
-
         List<ServiceInstance> existingInstances = service.lookup(SERVICE_NAME);
         for (ServiceInstance instance : existingInstances) {
             service.unregister(instance);

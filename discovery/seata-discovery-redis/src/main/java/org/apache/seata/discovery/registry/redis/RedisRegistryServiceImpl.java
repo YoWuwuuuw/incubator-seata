@@ -155,20 +155,20 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
     public void register(ServiceInstance instance) {
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
-        // 1) set alive key to ensure key exists
-        doRegisterOrExpire(instance);
-        // 2) write metadata once and set ttl; subsequent heartbeats will refresh ttl only
         String serverAddr = NetUtil.toStringAddress(address);
+        String key = getRedisRegistryKey() + "_" + serverAddr;
         String metaKey = getRedisRegistryMetaKey(serverAddr);
         try (Jedis jedis = jedisPool.getResource();
                 Pipeline pipelined = jedis.pipelined()) {
+            // 1) set alive key
+            pipelined.setex(key, KEY_TTL, ManagementFactory.getRuntimeMXBean().getName());
+            // 2) write metadata and set ttl
             if (instance.getMetadata() != null && !instance.getMetadata().isEmpty()) {
                 for (Map.Entry<String, Object> e : instance.getMetadata().entrySet()) {
                     String value = e.getValue() == null ? "" : String.valueOf(e.getValue());
                     pipelined.hset(metaKey, e.getKey(), value);
                 }
             }
-            // ensure metadata key ttl
             pipelined.expire(metaKey, (int) KEY_TTL);
             // 3) publish register after metadata prepared
             pipelined.publish(getRedisRegistryKey(), serverAddr + "-" + RedisListener.REGISTER);

@@ -1581,28 +1581,28 @@ public class AbstractNettyRemotingClientTest {
             method.setAccessible(true);
 
             List<ServiceInstance> serviceInstances = new ArrayList<>();
-            
+
             // Instance 1: version=1.5 (should be filtered out)
             Map<String, Object> metadata1 = new HashMap<>();
             metadata1.put("version", "1.5");
             metadata1.put("zone", "zone-a");
             ServiceInstance instance1 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8091), metadata1);
             serviceInstances.add(instance1);
-            
+
             // Instance 2: version=2.0 (should pass the filter)
             Map<String, Object> metadata2 = new HashMap<>();
             metadata2.put("version", "2.0");
             metadata2.put("zone", "zone-b");
             ServiceInstance instance2 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8092), metadata2);
             serviceInstances.add(instance2);
-            
+
             // Instance 3: version=2.5 (should pass the filter)
             Map<String, Object> metadata3 = new HashMap<>();
             metadata3.put("version", "2.5");
             metadata3.put("zone", "zone-a");
             ServiceInstance instance3 = new ServiceInstance(new InetSocketAddress("127.0.0.1", 8093), metadata3);
             serviceInstances.add(instance3);
-            
+
             // Instance 4: no version metadata (should be filtered out)
             Map<String, Object> metadata4 = new HashMap<>();
             metadata4.put("zone", "zone-c");

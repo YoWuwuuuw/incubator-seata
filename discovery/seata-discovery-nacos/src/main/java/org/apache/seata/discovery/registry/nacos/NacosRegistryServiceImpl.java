@@ -246,7 +246,7 @@ public class NacosRegistryServiceImpl implements RegistryService<EventListener> 
         InetSocketAddress address = instance.getAddress();
         nacosInstance.setIp(address.getAddress().getHostAddress());
         nacosInstance.setPort(address.getPort());
-        nacosInstance.setMetadata(ServiceInstance.toStringMap(instance.getMetadata()));
+        nacosInstance.setMetadata(ServiceInstance.getStringMap(instance.getMetadata()));
         return nacosInstance;
     }
 
