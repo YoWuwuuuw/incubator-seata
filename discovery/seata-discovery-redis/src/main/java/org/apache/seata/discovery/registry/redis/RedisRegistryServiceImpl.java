@@ -156,7 +156,7 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
         InetSocketAddress address = instance.getAddress();
         NetUtil.validAddress(address);
         // 1) set alive key to ensure key exists
-        doRegisterOrExpire(address);
+        doRegisterOrExpire(instance);
         // 2) write metadata once and set ttl; subsequent heartbeats will refresh ttl only
         String serverAddr = NetUtil.toStringAddress(address);
         String metaKey = getRedisRegistryMetaKey(serverAddr);
@@ -174,11 +174,11 @@ public class RedisRegistryServiceImpl implements RegistryService<RedisListener> 
             pipelined.publish(getRedisRegistryKey(), serverAddr + "-" + RedisListener.REGISTER);
             pipelined.sync();
         }
-        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, KEY_REFRESH_PERIOD, this::doRegisterOrExpire);
+        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, KEY_REFRESH_PERIOD, this::doRegisterOrExpire);
     }
 
-    private void doRegisterOrExpire(InetSocketAddress address) {
-        String serverAddr = NetUtil.toStringAddress(address);
+    private void doRegisterOrExpire(ServiceInstance instance) {
+        String serverAddr = NetUtil.toStringAddress(instance.getAddress());
         String key = getRedisRegistryKey() + "_" + serverAddr; // key = registry.redis.${cluster}_ip:port
         try (Jedis jedis = jedisPool.getResource();
                 Pipeline pipelined = jedis.pipelined()) {

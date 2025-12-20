@@ -133,22 +133,20 @@ public class EtcdRegistryServiceImpl implements RegistryService<Watch.Listener> 
 
     @Override
     public void register(ServiceInstance instance) throws Exception {
-        InetSocketAddress address = instance.getAddress();
-        NetUtil.validAddress(address);
-        doRegister(address);
-        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, address, this::doRegister);
+        doRegister(instance);
+        RegistryHeartBeats.addHeartBeat(REGISTRY_TYPE, instance, this::doRegister);
     }
 
     /**
      * do registry
      *
-     * @param address
+     * @param instance
      */
-    private void doRegister(InetSocketAddress address) throws Exception {
+    private void doRegister(ServiceInstance instance) throws Exception {
         PutOption putOption = PutOption.newBuilder().withLeaseId(getLeaseId()).build();
         getClient()
                 .getKVClient()
-                .put(buildRegistryKey(address), buildRegistryValue(address), putOption)
+                .put(buildRegistryKey(instance.getAddress()), buildRegistryValue(instance.getAddress()), putOption)
                 .get();
     }
 
