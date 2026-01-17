@@ -395,7 +395,7 @@ public class NamingserverRegistryServiceImpl implements RegistryService<NamingLi
                 .collect(Collectors.toList());
     }
 
-    private List<ServiceInstance> refreshGroup(String vGroup) throws IOException, RetryableException {
+    List<ServiceInstance> refreshGroup(String vGroup) throws IOException, RetryableException {
         Map<String, String> paraMap = new HashMap<>();
         String namingAddr = getNamingAddr();
         if (isTokenExpired()) {

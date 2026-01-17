@@ -16,20 +16,13 @@
  */
 package org.apache.seata.discovery.registry.namingserver;
 
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import okhttp3.MediaType;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import org.apache.http.entity.ContentType;
-import org.apache.http.protocol.HTTP;
 import org.apache.seata.common.exception.RetryableException;
 import org.apache.seata.common.holder.ObjectHolder;
-import org.apache.seata.common.metadata.Instance;
-import org.apache.seata.common.metadata.Cluster;
-import org.apache.seata.common.metadata.ClusterRole;
 import org.apache.seata.common.metadata.Instance;
 import org.apache.seata.common.metadata.Node;
 import org.apache.seata.common.metadata.ServiceInstance;
@@ -59,10 +52,9 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.seata.common.Constants.OBJECT_KEY_SPRING_CONFIGURABLE_ENVIRONMENT;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -125,14 +117,6 @@ class NamingserverRegistryServiceImplTest {
         System.clearProperty("registry.seata.username");
         System.clearProperty("registry.seata.password");
         System.clearProperty("registry.seata.metadataMaxAgeMs");
-    }
-
-    @Test
-    public void unregister1() throws Exception {
-        NamingserverRegistryServiceImpl namingserverRegistryService = NamingserverRegistryServiceImpl.getInstance();
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 8080);
-        namingserverRegistryService.register(inetSocketAddress);
-        namingserverRegistryService.unregister(inetSocketAddress);
     }
 
     @Test
@@ -281,19 +265,6 @@ class NamingserverRegistryServiceImplTest {
         ConcurrentMap<String, List<NamingListener>> listenerServiceMap =
                 (ConcurrentMap<String, List<NamingListener>>) listenerServiceMapField.get(null);
         listenerServiceMap.remove(vGroup);
-    public void createGroupInCluster(String namespace, String vGroup, String clusterName) throws Exception {
-        Map<String, String> paraMap = new HashMap<>();
-        paraMap.put("namespace", namespace);
-        paraMap.put("vGroup", vGroup);
-        paraMap.put("clusterName", clusterName);
-        String url = "http://127.0.0.1:8080/naming/v1/createGroup";
-        Map<String, String> header = new HashMap<>();
-        header.put(HTTP.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
-        try {
-            Response response = HttpClientUtil.doGet(url, paraMap, header, 30000);
-        } catch (Exception e) {
-            throw new RemoteException();
-        }
     }
 
     @Test
@@ -344,7 +315,7 @@ class NamingserverRegistryServiceImplTest {
             NamingserverRegistryServiceImpl service =
                     mock(NamingserverRegistryServiceImpl.class, Answers.CALLS_REAL_METHODS);
 
-            service.unregister(Instance.getInstance());
+            service.unregister(new ServiceInstance(Instance.getInstance()));
         }
     }
 
@@ -422,7 +393,6 @@ class NamingserverRegistryServiceImplTest {
         }
     }
 
-    private class NamingListenerimpl implements NamingListener {
     private static class NamingListenerimpl implements NamingListener {
 
         public boolean isNotified = false;
