@@ -544,7 +544,8 @@ class RaftRegistryServiceImplTest {
 
         // Should return the previous value (initialList) from Map.put()
         @SuppressWarnings("unchecked")
-        List<InetSocketAddress> result = (List<InetSocketAddress>) (List<?>) instance.refreshAliveLookup("tx", aliveAddress);
+        List<InetSocketAddress> result =
+                (List<InetSocketAddress>) (List<?>) instance.refreshAliveLookup("tx", aliveAddress);
 
         assertNotNull(result, "Should return previous value from Map");
         assertEquals(1, result.size(), "Previous list should have 1 element");
